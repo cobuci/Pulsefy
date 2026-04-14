@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Deferred, Head, router } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router } from '@inertiajs/vue3';
 import { onUnmounted, ref } from 'vue';
 import ArtistCard from '@/components/dashboard/ArtistCard.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import TrackListItem from '@/components/dashboard/TrackListItem.vue';
 import { usePlayer } from '@/composables/usePlayer';
-import { dashboard } from '@/routes';
+import { dashboard, recentlyPlayed } from '@/routes';
 import type {
     RecentPlay,
     SpotifyArtist,
@@ -153,7 +153,14 @@ async function handlePlay(track: SpotifyTrack) {
 
         <!-- Recently Played -->
         <section>
-            <SectionHeader title="Recently Played" />
+            <SectionHeader title="Recently Played">
+                <Link
+                    :href="recentlyPlayed()"
+                    class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                    See all
+                </Link>
+            </SectionHeader>
             <div
                 class="mt-3 rounded-xl border border-border bg-card p-2 shadow-sm"
             >
