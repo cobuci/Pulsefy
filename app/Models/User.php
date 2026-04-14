@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -19,5 +20,15 @@ class User extends Authenticatable
         return [
             'spotify_token_expires_at' => 'datetime',
         ];
+    }
+
+    public function spotifyStats(): HasMany
+    {
+        return $this->hasMany(SpotifyStat::class);
+    }
+
+    public function isSpotifyTokenExpired(): bool
+    {
+        return $this->spotify_token_expires_at->subMinutes(5)->isPast();
     }
 }
