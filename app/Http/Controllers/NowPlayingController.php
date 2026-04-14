@@ -12,6 +12,10 @@ final class NowPlayingController extends Controller
     {
         $data = $spotify->currentlyPlaying($request->user());
 
+        if ($data === null) {
+            return response()->json(null, 204);
+        }
+
         return response()->json($data);
     }
 }

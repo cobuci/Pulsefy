@@ -118,3 +118,189 @@ test('long_term stats have 72 hour ttl', function () {
 
     expect($stat->expires_at->isAfter(now()->addHours(71)))->toBeTrue();
 });
+
+// ── currentlyPlaying ──────────────────────────────────────────────────────────
+
+test('currentlyPlaying returns track data when a track is playing', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::response([
+            'is_playing' => true,
+            'shuffle_state' => true,
+            'progress_ms' => 30000,
+            'currently_playing_type' => 'track',
+            'item' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
+        ]),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->currentlyPlaying($user);
+
+    expect($result)->toBe([
+        'is_playing' => true,
+        'shuffle_state' => true,
+        'progress_ms' => 30000,
+        'track' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
+    ]);
+});
+
+test('currentlyPlaying returns null when nothing is playing (204)', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+test('currentlyPlaying returns null when scope is missing (401)', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(
+            ['error' => ['status' => 401, 'message' => 'No token']],
+            401,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+test('currentlyPlaying returns null when user lacks premium (403)', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(
+            ['error' => ['status' => 403, 'message' => 'Premium required']],
+            403,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+test('currentlyPlaying returns null when currently playing type is not a track', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::response([
+            'is_playing' => true,
+            'currently_playing_type' => 'episode',
+            'item' => ['id' => 'ep1'],
+        ]),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+test('currentlyPlaying returns null gracefully when api throws', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/currently-playing*' => Http::failedConnection(),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+// ── command ───────────────────────────────────────────────────────────────────
+
+test('command returns true when spotify responds with 204', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/play*' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->command($user, fn ($client) => $client->play());
+
+    expect($result)->toBeTrue();
+});
+
+test('command returns false when spotify responds with 403 (Premium required)', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/play*' => Http::response(
+            ['error' => ['status' => 403, 'message' => 'Premium required']],
+            403,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->command($user, fn ($client) => $client->play());
+
+    expect($result)->toBeFalse();
+});
+
+test('command returns false when spotify responds with 401 (missing scope)', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/pause*' => Http::response(
+            ['error' => ['status' => 401, 'message' => 'No token provided']],
+            401,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->command($user, fn ($client) => $client->pause());
+
+    expect($result)->toBeFalse();
+});
+
+test('command returns false gracefully when network request fails', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/next*' => Http::failedConnection(),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->command($user, fn ($client) => $client->next());
+
+    expect($result)->toBeFalse();
+});
