@@ -20,7 +20,7 @@ final class DashboardController extends Controller
             'period' => $timeRange,
             'topTracks' => Inertia::defer(fn () => $spotify->topTracks($user, $timeRange)),
             'topArtists' => Inertia::defer(fn () => $spotify->topArtists($user, $timeRange)),
-            'recentPlays' => Inertia::defer(fn () => $spotify->recentlyPlayed($user)),
+            'recentPlays' => Inertia::defer(fn () => $spotify->recentlyPlayedUnique($user)),
         ]);
     }
 }

@@ -7,10 +7,10 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Client\Response;
 
-class SpotifyDataService
+readonly class SpotifyDataService
 {
     public function __construct(
-        private readonly SpotifyTokenService $tokenService,
+        private SpotifyTokenService $tokenService,
     ) {}
 
     public function topTracks(User $user, string $timeRange = 'medium_term'): array
@@ -70,12 +70,27 @@ class SpotifyDataService
         });
     }
 
-    /**
-     * Fetch the currently playing track — never cached, always live.
-     *
-     * Returns null when nothing is playing (HTTP 204), on permission errors,
-     * or when the currently playing type is not a track.
-     */
+    public function recentlyPlayedUnique(User $user): array
+    {
+        $items = $this->recentlyPlayed($user);
+
+        $seen = [];
+
+        return array_values(
+            array_filter($items, function (array $item) use (&$seen) {
+                $trackId = $item['track']['id'] ?? null;
+
+                if ($trackId === null || isset($seen[$trackId])) {
+                    return false;
+                }
+
+                $seen[$trackId] = true;
+
+                return true;
+            }),
+        );
+    }
+
     public function currentlyPlaying(User $user): ?array
     {
         try {
@@ -84,7 +99,6 @@ class SpotifyDataService
             $client = new SpotifyClient($token);
             $response = $client->playbackState();
 
-            // 204 = no active device/session, 401/403 = missing scope / premium issues
             if (in_array($response->status(), [204, 401, 403]) || $response->body() === '') {
                 return null;
             }
@@ -129,10 +143,6 @@ class SpotifyDataService
         }
     }
 
-    /**
-     * Play a specific URI, automatically targeting the first available device
-     * when no device is currently active.
-     */
     public function play(User $user, string $uri): bool
     {
         try {

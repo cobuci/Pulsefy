@@ -7,6 +7,7 @@ use App\Http\Controllers\PlayerControlController;
 use App\Http\Controllers\PlayerDeviceController;
 use App\Http\Controllers\PlayerDevicesController;
 use App\Http\Controllers\PlayerTransferController;
+use App\Http\Controllers\RecentlyPlayedController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('recently-played', RecentlyPlayedController::class)->name('recently-played');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
 

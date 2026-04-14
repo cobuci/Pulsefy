@@ -33,7 +33,7 @@ final class SpotifyClient
         ]);
     }
 
-    public function recentlyPlayed(int $limit = 20): Response
+    public function recentlyPlayed(int $limit = 50): Response
     {
         return $this->get('/me/player/recently-played', [
             'limit' => $limit,
