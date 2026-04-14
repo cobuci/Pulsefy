@@ -1,3 +1,47 @@
+## Project Context
+
+**Pulsefy** is a personal Spotify companion web app built with Laravel + Inertia + Vue 3.
+It connects to the Spotify API via OAuth (Socialite) and allows the user to explore their
+listening data and control playback — no public-facing features, single-user oriented.
+
+### Current Features
+
+- **Dashboard** — top tracks & artists (by time range: 4w / 6m / all time), recently played (deduplicated)
+- **Recently Played** — full history grouped by day, with per-track repeat count badge
+- **Player** — now playing bar with play/pause/next/previous, device switching, play by URI
+- **Lyrics** — synced lyrics via LRCLIB, cached locally, displayed in the player panel
+- **Settings** — profile update (name, email, password)
+- **Auth** — Spotify OAuth only; no email/password login
+
+### Planned Features
+
+- **Artist pages** — dedicated page per artist with their Spotify data
+- **User statistics pages** — deeper listening stats and insights
+- **Lyrics translation** — translate displayed lyrics in the player panel (language TBD)
+- **AI integration** — scope not yet defined; avoid making assumptions
+- **Player volume control** — volume slider/control in the player bar
+- **Spotify service refactor** — SpotifyDataService will be split into smaller focused services
+  (e.g. playback, stats, history). Do not add more responsibilities to SpotifyDataService;
+  keep new logic isolated in anticipation of the refactor.
+
+### Architecture Decisions
+
+- No local DB for tracks/artists — all data fetched live from the Spotify API
+- `SpotifyTokenService` manages OAuth token refresh; `SpotifyClient` is the raw HTTP wrapper;
+  `SpotifyDataService` orchestrates calls, applies caching, and shapes data for Inertia
+- Heavy data loaded with `Inertia::defer()` — always add a skeleton fallback in Vue
+- Wayfinder used for typed route/action references in the frontend (`@/routes`, `@/actions`)
+- All routes are auth-protected except `/` (redirect) and the OAuth callback
+
+### Key Files
+
+- `app/Services/Spotify/` — SpotifyAuthService, SpotifyClient, SpotifyDataService, SpotifyTokenService
+- `app/Http/Controllers/` — one invokable controller per feature
+- `resources/js/pages/` — Dashboard.vue, RecentlyPlayed.vue, settings/, auth/
+- `resources/js/components/dashboard/` — ArtistCard, TrackListItem, SectionHeader, PeriodSelector, StatCard
+- `resources/js/components/NowPlayingPlayer.vue` — persistent bottom player bar
+- `resources/js/types/spotify.ts` — all Spotify TypeScript types
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
@@ -106,7 +150,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 
 - Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
 - Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+    - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
 
 === php rules ===
 
@@ -209,6 +253,7 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 # Inertia + Vue
 
 Vue components must have a single root element.
+
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
