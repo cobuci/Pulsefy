@@ -215,7 +215,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::response([
+        'api.spotify.com/v1/me/player*' => Http::response([
             'is_playing' => true,
             'shuffle_state' => true,
             'progress_ms' => 30000,
@@ -235,14 +235,14 @@ test('currentlyPlaying returns track data when a track is playing', function () 
     ]);
 });
 
-test('currentlyPlaying returns null when nothing is playing (204)', function () {
+test('currentlyPlaying returns null when there is no playback state (204)', function () {
     $user = User::factory()->create();
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(null, 204),
+        'api.spotify.com/v1/me/player*' => Http::response(null, 204),
     ]);
 
     $service = new SpotifyDataService($tokenService);
@@ -257,7 +257,7 @@ test('currentlyPlaying returns null when scope is missing (401)', function () {
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(
+        'api.spotify.com/v1/me/player*' => Http::response(
             ['error' => ['status' => 401, 'message' => 'No token']],
             401,
         ),
@@ -275,7 +275,7 @@ test('currentlyPlaying returns null when user lacks premium (403)', function () 
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::response(
+        'api.spotify.com/v1/me/player*' => Http::response(
             ['error' => ['status' => 403, 'message' => 'Premium required']],
             403,
         ),
@@ -293,7 +293,7 @@ test('currentlyPlaying returns null when currently playing type is not a track',
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::response([
+        'api.spotify.com/v1/me/player*' => Http::response([
             'is_playing' => true,
             'currently_playing_type' => 'episode',
             'item' => ['id' => 'ep1'],
@@ -312,12 +312,39 @@ test('currentlyPlaying returns null gracefully when api throws', function () {
     $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
 
     Http::fake([
-        'api.spotify.com/v1/me/player/currently-playing*' => Http::failedConnection(),
+        'api.spotify.com/v1/me/player*' => Http::failedConnection(),
     ]);
 
     $service = new SpotifyDataService($tokenService);
 
     expect($service->currentlyPlaying($user))->toBeNull();
+});
+
+test('currentlyPlaying returns track data when playback is paused', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player*' => Http::response([
+            'is_playing' => false,
+            'shuffle_state' => false,
+            'progress_ms' => 45000,
+            'currently_playing_type' => 'track',
+            'item' => ['id' => 'track-paused', 'name' => 'Paused Song', 'duration_ms' => 200000],
+        ]),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+    $result = $service->currentlyPlaying($user);
+
+    expect($result)->toBe([
+        'is_playing' => false,
+        'shuffle_state' => false,
+        'progress_ms' => 45000,
+        'track' => ['id' => 'track-paused', 'name' => 'Paused Song', 'duration_ms' => 200000],
+    ]);
 });
 
 // ── command ───────────────────────────────────────────────────────────────────
