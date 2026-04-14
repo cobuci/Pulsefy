@@ -5,6 +5,7 @@ import ArtistCard from '@/components/dashboard/ArtistCard.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import TrackListItem from '@/components/dashboard/TrackListItem.vue';
+import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
 import type {
     RecentPlay,
@@ -43,6 +44,12 @@ onUnmounted(() => {
     offStart();
     offFinish();
 });
+
+const { isPlayingTrack, playTrack } = usePlayer();
+
+async function handlePlay(track: SpotifyTrack) {
+    await playTrack(`spotify:track:${track.id}`);
+}
 </script>
 
 <template>
@@ -93,6 +100,8 @@ onUnmounted(() => {
                                 :key="track.id"
                                 :rank="i + 1"
                                 :track="track"
+                                :is-playing="isPlayingTrack(track.id)"
+                                @play="handlePlay"
                             />
                             <p
                                 v-if="topTracks!.length === 0"
@@ -167,6 +176,8 @@ onUnmounted(() => {
                             :key="`${play.track.id}-${play.played_at}`"
                             :rank="i + 1"
                             :track="play.track"
+                            :is-playing="isPlayingTrack(play.track.id)"
+                            @play="handlePlay"
                         />
                         <p
                             v-if="recentPlays!.length === 0"

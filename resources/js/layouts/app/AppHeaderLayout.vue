@@ -18,7 +18,7 @@ withDefaults(defineProps<Props>(), {
 <template>
     <AppShell variant="header">
         <AppHeader :breadcrumbs="breadcrumbs" />
-        <AppContent variant="header" class="pb-20">
+        <AppContent variant="header" class="pb-24">
             <slot />
         </AppContent>
         <NowPlayingPlayer />
