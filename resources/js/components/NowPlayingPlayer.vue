@@ -25,13 +25,15 @@ import type {
 
 const POLL_INTERVAL = 30_000;
 
-const nowPlayingHttp = useHttp<NowPlaying | null>();
 const lyricsHttp = useHttp<LyricsResponse>();
 const deviceTokenHttp = useHttp<{ token: string }>();
 const devicesHttp = useHttp<{ devices: SpotifyDevice[] }>();
-const data = computed(() => nowPlayingHttp.response ?? null);
+const nowPlayingData = ref<NowPlaying | null>(null);
+const data = computed(() => nowPlayingData.value);
 const lyricsData = computed(() => lyricsHttp.response ?? null);
 const visible = computed(() => !!data.value?.track);
+const hasTrack = computed(() => !!data.value?.track);
+const isPlaying = computed(() => data.value?.is_playing ?? false);
 const isBusy = ref(false);
 const lyricsOpen = ref(false);
 const activeTrackId = ref<string | null>(null);
@@ -62,8 +64,24 @@ function handleDocumentPointerDown(event: PointerEvent) {
 
 async function fetchNowPlaying() {
     try {
-        await nowPlayingHttp.get(nowPlaying.url());
-    } catch {}
+        const response = await fetch(nowPlaying.url(), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (response.status === 204 || !response.ok) {
+            nowPlayingData.value = null;
+
+            return;
+        }
+
+        nowPlayingData.value = (await response.json()) as NowPlaying;
+    } catch {
+        nowPlayingData.value = null;
+    }
 }
 
 async function fetchDeviceToken(): Promise<string | null> {
@@ -693,15 +711,15 @@ function setLyricLineRef(element: Element | null, index: number) {
                     <div class="flex min-w-0 flex-1 items-center gap-3">
                         <div class="relative shrink-0">
                             <img
-                                v-if="data!.track.album.images[0]"
-                                :src="data!.track.album.images[0].url"
-                                :alt="data!.track.album.name"
+                                v-if="data?.track?.album?.images?.[0]"
+                                :src="data?.track?.album?.images?.[0]?.url"
+                                :alt="data?.track?.album?.name"
                                 class="size-10 rounded-md object-cover shadow-sm"
                             />
                             <div v-else class="size-10 rounded-md bg-muted" />
 
                             <span
-                                v-if="data!.is_playing"
+                                v-if="isPlaying"
                                 class="absolute -top-1 -right-1 flex size-3 items-center justify-center"
                             >
                                 <span
@@ -715,16 +733,16 @@ function setLyricLineRef(element: Element | null, index: number) {
 
                         <div class="min-w-0">
                             <a
-                                :href="data!.track.external_urls.spotify"
+                                :href="data?.track?.external_urls?.spotify"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 class="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
                             >
-                                {{ data!.track.name }}
+                                {{ data?.track?.name }}
                             </a>
                             <p class="truncate text-xs text-muted-foreground">
                                 {{
-                                    data!.track.artists
+                                    (data?.track?.artists ?? [])
                                         .map((a) => a.name)
                                         .join(', ')
                                 }}
@@ -741,7 +759,7 @@ function setLyricLineRef(element: Element | null, index: number) {
                             :disabled="isBusy"
                             :class="[
                                 'flex size-8 items-center justify-center rounded-full transition-colors',
-                                data!.shuffle_state
+                                data?.shuffle_state
                                     ? 'text-primary'
                                     : 'text-muted-foreground hover:text-foreground',
                                 isBusy
@@ -796,7 +814,7 @@ function setLyricLineRef(element: Element | null, index: number) {
 
                         <button
                             type="button"
-                            :title="data!.is_playing ? 'Pause' : 'Play'"
+                            :title="isPlaying ? 'Pause' : 'Play'"
                             :disabled="isBusy"
                             :class="[
                                 'flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 active:scale-95',
@@ -804,10 +822,10 @@ function setLyricLineRef(element: Element | null, index: number) {
                                     ? 'cursor-not-allowed opacity-60'
                                     : 'cursor-pointer',
                             ]"
-                            @click="data!.is_playing ? onPause() : onPlay()"
+                            @click="isPlaying ? onPause() : onPlay()"
                         >
                             <svg
-                                v-if="data!.is_playing"
+                                v-if="isPlaying"
                                 xmlns="http://www.w3.org/2000/svg"
                                 class="size-5"
                                 viewBox="0 0 24 24"
@@ -924,7 +942,9 @@ function setLyricLineRef(element: Element | null, index: number) {
                             <span>{{ formatDuration(progressMs) }}</span>
                             <span class="hidden opacity-40 sm:inline">/</span>
                             <span class="hidden sm:inline">{{
-                                formatDuration(data!.track.duration_ms)
+                                hasTrack && data?.track?.duration_ms
+                                    ? formatDuration(data.track.duration_ms)
+                                    : '--:--'
                             }}</span>
                         </div>
 

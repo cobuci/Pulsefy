@@ -1,12 +1,29 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SpotifyArtist } from '@/types/spotify';
 
-defineProps<{
+const props = defineProps<{
     artist?: SpotifyArtist;
     rank: number;
     loading?: boolean;
 }>();
+
+const primaryImageUrl = computed(() => {
+    if (!props.artist || !Array.isArray(props.artist.images)) {
+        return null;
+    }
+
+    return props.artist.images[0]?.url ?? null;
+});
+
+const primaryGenre = computed(() => {
+    if (!props.artist || !Array.isArray(props.artist.genres)) {
+        return null;
+    }
+
+    return props.artist.genres[0] ?? null;
+});
 </script>
 
 <template>
@@ -22,8 +39,8 @@ defineProps<{
         <template v-else>
             <div class="relative">
                 <img
-                    v-if="artist.images?.length"
-                    :src="artist.images[0].url"
+                    v-if="primaryImageUrl"
+                    :src="primaryImageUrl"
                     :alt="artist.name"
                     class="size-16 rounded-full object-cover ring-2 ring-primary/30"
                 />
@@ -38,10 +55,10 @@ defineProps<{
                 {{ artist.name }}
             </p>
             <p
-                v-if="artist.genres?.length"
+                v-if="primaryGenre"
                 class="truncate text-xs text-muted-foreground capitalize"
             >
-                {{ artist.genres[0] }}
+                {{ primaryGenre }}
             </p>
         </template>
     </div>

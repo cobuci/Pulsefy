@@ -1,12 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SpotifyTrack } from '@/types/spotify';
 
-defineProps<{
+const props = defineProps<{
     track?: SpotifyTrack;
     rank: number;
     loading?: boolean;
 }>();
+
+const albumImageUrl = computed(() => {
+    if (!props.track || !Array.isArray(props.track.album?.images)) {
+        return null;
+    }
+
+    return props.track.album.images[0]?.url ?? null;
+});
 
 function formatDuration(ms: number): string {
     const minutes = Math.floor(ms / 60000);
@@ -37,8 +46,8 @@ function formatDuration(ms: number): string {
 
         <template v-else>
             <img
-                v-if="track.album.images[0]"
-                :src="track.album.images[0].url"
+                v-if="albumImageUrl"
+                :src="albumImageUrl"
                 :alt="track.album.name"
                 class="size-10 shrink-0 rounded-md object-cover"
             />
