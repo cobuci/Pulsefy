@@ -4,6 +4,7 @@ namespace App\Services\Spotify;
 
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -20,7 +21,7 @@ class SpotifyTokenService
         return $this->refresh($user);
     }
 
-    /** @throws ConnectionException */
+    /** @throws RequestException|ConnectionException */
     public function refresh(User $user): string
     {
         $clientId = config('services.spotify.client_id');
