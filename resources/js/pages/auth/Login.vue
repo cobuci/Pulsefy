@@ -1,111 +1,79 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
-import PasswordInput from '@/components/PasswordInput.vue';
-import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
-import { register } from '@/routes';
-import { store } from '@/routes/login';
-import { request } from '@/routes/password';
+import { Head } from '@inertiajs/vue3';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import { redirect } from '@/actions/App/Http/Controllers/Auth/SpotifyController';
 
 defineOptions({
-    layout: {
-        title: 'Log in to your account',
-        description: 'Enter your email and password below to log in',
-    },
+    layout: false,
 });
-
-defineProps<{
-    status?: string;
-    canResetPassword: boolean;
-    canRegister: boolean;
-}>();
 </script>
 
 <template>
-    <Head title="Log in" />
+    <Head title="Sign in" />
 
     <div
-        v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
+        class="flex min-h-dvh flex-col items-center justify-center bg-background px-6"
     >
-        {{ status }}
-    </div>
-
-    <Form
-        v-bind="store.form()"
-        :reset-on-success="['password']"
-        v-slot="{ errors, processing }"
-        class="flex flex-col gap-6"
-    >
-        <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    name="email"
-                    required
-                    autofocus
-                    :tabindex="1"
-                    autocomplete="email"
-                    placeholder="email@example.com"
-                />
-                <InputError :message="errors.email" />
-            </div>
-
-            <div class="grid gap-2">
-                <div class="flex items-center justify-between">
-                    <Label for="password">Password</Label>
-                    <TextLink
-                        v-if="canResetPassword"
-                        :href="request()"
-                        class="text-sm"
-                        :tabindex="5"
+        <div class="w-full max-w-sm">
+            <div class="flex flex-col items-center gap-8">
+                <div class="flex flex-col items-center gap-3">
+                    <div
+                        class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg"
                     >
-                        Forgot password?
-                    </TextLink>
+                        <AppLogoIcon
+                            class="size-8 fill-current text-primary-foreground"
+                        />
+                    </div>
+                    <div class="space-y-1 text-center">
+                        <h1
+                            class="text-2xl font-semibold tracking-tight text-foreground"
+                        >
+                            Welcome to Pulsefy
+                        </h1>
+                        <p class="text-sm text-muted-foreground">
+                            Your Spotify stats, beautifully visualized
+                        </p>
+                    </div>
                 </div>
-                <PasswordInput
-                    id="password"
-                    name="password"
-                    required
-                    :tabindex="2"
-                    autocomplete="current-password"
-                    placeholder="Password"
-                />
-                <InputError :message="errors.password" />
+
+                <div
+                    class="w-full rounded-2xl border border-border bg-card p-8 shadow-sm"
+                >
+                    <div class="flex flex-col gap-4">
+                        <p class="text-center text-sm text-muted-foreground">
+                            Sign in with your Spotify account to get started
+                        </p>
+
+                        <a
+                            :href="redirect.url()"
+                            class="flex w-full items-center justify-center gap-3 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary-dark focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        >
+                            <svg
+                                class="size-5 shrink-0"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"
+                                />
+                            </svg>
+                            Continue with Spotify
+                        </a>
+                    </div>
+                </div>
+
+                <p class="text-center text-xs text-muted-foreground">
+                    By signing in, you agree to our
+                    <span class="font-medium text-foreground"
+                        >Terms of Service</span
+                    >
+                    and
+                    <span class="font-medium text-foreground"
+                        >Privacy Policy</span
+                    >
+                </p>
             </div>
-
-            <div class="flex items-center justify-between">
-                <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
-                    <span>Remember me</span>
-                </Label>
-            </div>
-
-            <Button
-                type="submit"
-                class="mt-4 w-full"
-                :tabindex="4"
-                :disabled="processing"
-                data-test="login-button"
-            >
-                <Spinner v-if="processing" />
-                Log in
-            </Button>
         </div>
-
-        <div
-            class="text-center text-sm text-muted-foreground"
-            v-if="canRegister"
-        >
-            Don't have an account?
-            <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
-        </div>
-    </Form>
+    </div>
 </template>
