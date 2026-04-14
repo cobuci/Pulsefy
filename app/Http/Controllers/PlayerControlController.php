@@ -13,10 +13,16 @@ final class PlayerControlController extends Controller
 
     public function play(Request $request): JsonResponse
     {
-        return $this->respond($this->spotify->command(
-            $request->user(),
-            fn (SpotifyClient $client) => $client->play(),
-        ));
+        $uri = $request->string('uri')->toString();
+
+        if ($uri === '') {
+            return $this->respond($this->spotify->command(
+                $request->user(),
+                fn (SpotifyClient $client) => $client->play(),
+            ));
+        }
+
+        return $this->respond($this->spotify->play($request->user(), $uri));
     }
 
     public function pause(Request $request): JsonResponse
@@ -43,21 +49,8 @@ final class PlayerControlController extends Controller
         ));
     }
 
-    public function shuffle(Request $request): JsonResponse
-    {
-        $state = filter_var($request->input('state', true), FILTER_VALIDATE_BOOLEAN);
-
-        return $this->respond($this->spotify->command(
-            $request->user(),
-            fn (SpotifyClient $client) => $client->shuffle($state),
-        ));
-    }
-
     private function respond(bool $success): JsonResponse
     {
-        return response()->json(
-            ['ok' => $success],
-            $success ? 200 : 403,
-        );
+        return response()->json(['ok' => $success]);
     }
 }

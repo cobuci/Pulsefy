@@ -59,9 +59,12 @@ final class SpotifyClient
         return $this->get('/me/player/devices');
     }
 
-    public function play(): Response
+    public function play(?array $uris = null, ?string $deviceId = null): Response
     {
-        return $this->putJson('/me/player/play');
+        $payload = $uris !== null ? ['uris' => $uris] : [];
+        $query = $deviceId !== null ? '?device_id='.urlencode($deviceId) : '';
+
+        return $this->putJson('/me/player/play'.$query, $payload);
     }
 
     public function pause(): Response
@@ -109,7 +112,6 @@ final class SpotifyClient
             ->post(self::BASE_URL.$path);
     }
 
-    /** PUT with query-string params (e.g. shuffle). */
     private function put(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)
@@ -118,7 +120,6 @@ final class SpotifyClient
             ->put(self::BASE_URL.$path.'?'.http_build_query($query));
     }
 
-    /** PUT with JSON body — required by Spotify for play/pause and transfer. */
     private function putJson(string $path, array $payload = []): Response
     {
         $body = $payload === [] ? '{}' : json_encode($payload);

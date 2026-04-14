@@ -123,7 +123,44 @@ class SpotifyDataService
             $token = $this->tokenService->ensureFreshToken($user);
             $response = $command(new SpotifyClient($token));
 
-            return in_array($response->status(), [200, 204]);
+            return in_array($response->status(), [200, 202, 204]);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Play a specific URI, automatically targeting the first available device
+     * when no device is currently active.
+     */
+    public function play(User $user, string $uri): bool
+    {
+        try {
+            $token = $this->tokenService->ensureFreshToken($user);
+            $client = new SpotifyClient($token);
+
+            $response = $client->play([$uri]);
+
+            if (in_array($response->status(), [200, 202, 204])) {
+                return true;
+            }
+
+            if ($response->status() === 404) {
+                $devicesResponse = $client->devices();
+                $devices = $devicesResponse->json('devices', []);
+                $deviceId = collect($devices)
+                    ->whereNotNull('id')
+                    ->where('is_restricted', false)
+                    ->value('id');
+
+                if ($deviceId) {
+                    $retry = $client->play([$uri], $deviceId);
+
+                    return in_array($retry->status(), [200, 202, 204]);
+                }
+            }
+
+            return false;
         } catch (\Throwable) {
             return false;
         }
