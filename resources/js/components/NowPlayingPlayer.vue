@@ -2,6 +2,8 @@
 import { useHttp } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
+    devices,
+    deviceToken,
     lyrics,
     next,
     nowPlaying,
@@ -9,13 +11,24 @@ import {
     play,
     previous,
     shuffle,
+    transfer,
 } from '@/routes/player';
-import type { LyricsResponse, NowPlaying } from '@/types/spotify';
+import type {
+    LyricsResponse,
+    NowPlaying,
+    SpotifyDevice,
+} from '@/types/spotify';
+import type {
+    SpotifyPlayer,
+    SpotifyWebPlaybackState,
+} from '@/types/spotify-web-playback';
 
 const POLL_INTERVAL = 30_000;
 
 const nowPlayingHttp = useHttp<NowPlaying | null>();
 const lyricsHttp = useHttp<LyricsResponse>();
+const deviceTokenHttp = useHttp<{ token: string }>();
+const devicesHttp = useHttp<{ devices: SpotifyDevice[] }>();
 const data = computed(() => nowPlayingHttp.response ?? null);
 const lyricsData = computed(() => lyricsHttp.response ?? null);
 const visible = computed(() => !!data.value?.track);
@@ -24,6 +37,15 @@ const lyricsOpen = ref(false);
 const activeTrackId = ref<string | null>(null);
 const lyricLineRefs = ref<HTMLElement[]>([]);
 const playerRootRef = ref<HTMLElement | null>(null);
+const localPlayer = ref<SpotifyPlayer | null>(null);
+const localDeviceId = ref<string | null>(null);
+const localPlayerReady = ref(false);
+const localPlaybackActive = ref(false);
+const localPlayerInitializing = ref(false);
+const selectedDeviceId = ref<string>('');
+const transferBusy = ref(false);
+const localStatus = ref('');
+const devicesOpen = ref(false);
 
 function handleDocumentPointerDown(event: PointerEvent) {
     if (!lyricsOpen.value || !playerRootRef.value) {
@@ -43,6 +65,73 @@ async function fetchNowPlaying() {
         await nowPlayingHttp.get(nowPlaying.url());
     } catch {}
 }
+
+async function fetchDeviceToken(): Promise<string | null> {
+    try {
+        await deviceTokenHttp.get(deviceToken.url());
+
+        return deviceTokenHttp.response?.token ?? null;
+    } catch {
+        return null;
+    }
+}
+
+async function refreshDevices() {
+    try {
+        await devicesHttp.get(devices.url());
+        localStatus.value = '';
+
+        const active = selectableDevices.value.find(
+            (device) => device.is_active,
+        );
+
+        if (active?.id) {
+            selectedDeviceId.value = active.id;
+
+            return;
+        }
+
+        if (!selectedDeviceId.value && selectableDevices.value[0]?.id) {
+            selectedDeviceId.value = selectableDevices.value[0].id;
+        }
+    } catch {
+        localStatus.value = 'Unable to load Spotify devices.';
+    }
+}
+
+const availableDevices = computed(() => devicesHttp.response?.devices ?? []);
+
+const selectableDevices = computed(() => {
+    const spotifyDevices = availableDevices.value.filter(
+        (device) => device.id && !device.is_restricted,
+    );
+
+    if (!localPlayerReady.value || !localDeviceId.value) {
+        return spotifyDevices;
+    }
+
+    const hasLocal = spotifyDevices.some(
+        (device) => device.id === localDeviceId.value,
+    );
+
+    if (hasLocal) {
+        return spotifyDevices;
+    }
+
+    return [
+        {
+            id: localDeviceId.value,
+            is_active: false,
+            is_private_session: false,
+            is_restricted: false,
+            name: 'Pulsefy Web Player',
+            type: 'computer',
+            volume_percent: null,
+            supports_volume: true,
+        },
+        ...spotifyDevices,
+    ];
+});
 
 async function fetchLyricsForCurrentTrack() {
     await fetchLyrics(false);
@@ -79,6 +168,167 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const progressPct = ref(0);
 let progressTimer: ReturnType<typeof setInterval> | null = null;
+
+function syncFromLocalState(state: SpotifyWebPlaybackState | null) {
+    if (!state) {
+        localPlaybackActive.value = false;
+
+        return;
+    }
+
+    localPlaybackActive.value = true;
+
+    const duration = state.duration || data.value?.track.duration_ms || 0;
+
+    if (duration > 0) {
+        progressPct.value = (state.position / duration) * 100;
+    }
+
+    if (data.value?.track?.id !== state.track_window.current_track.id) {
+        void fetchNowPlaying();
+    }
+}
+
+function loadSpotifySdk(): Promise<void> {
+    if (window.Spotify) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        const existingScript = document.querySelector<HTMLScriptElement>(
+            'script[data-spotify-web-playback="true"]',
+        );
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            resolve();
+        };
+
+        if (existingScript) {
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://sdk.scdn.co/spotify-player.js';
+        script.async = true;
+        script.dataset.spotifyWebPlayback = 'true';
+        script.onerror = () => reject(new Error('Failed to load Spotify SDK'));
+        document.body.appendChild(script);
+    });
+}
+
+async function initLocalPlayer() {
+    if (localPlayer.value || localPlayerInitializing.value) {
+        return;
+    }
+
+    localPlayerInitializing.value = true;
+
+    try {
+        await loadSpotifySdk();
+
+        if (!window.Spotify) {
+            return;
+        }
+
+        const player = new window.Spotify.Player({
+            name: 'Pulsefy Web Player',
+            getOAuthToken: async (callback) => {
+                const token = await fetchDeviceToken();
+                callback(token ?? '');
+            },
+            volume: 0.85,
+        });
+
+        player.addListener('ready', ({ device_id }: { device_id: string }) => {
+            localDeviceId.value = device_id;
+            localPlayerReady.value = true;
+            void refreshDevices();
+        });
+
+        player.addListener('not_ready', () => {
+            localPlayerReady.value = false;
+            localPlaybackActive.value = false;
+        });
+
+        player.addListener('player_state_changed', (state) => {
+            syncFromLocalState(state as SpotifyWebPlaybackState | null);
+        });
+
+        player.addListener('initialization_error', () => {
+            localPlayerReady.value = false;
+            localStatus.value =
+                'Spotify Web Playback failed to initialize for this account.';
+        });
+
+        player.addListener('authentication_error', () => {
+            localPlayerReady.value = false;
+            localStatus.value =
+                'Spotify Web Playback permission denied. Reconnect Spotify with streaming scope.';
+        });
+
+        player.addListener('account_error', () => {
+            localPlayerReady.value = false;
+            localStatus.value =
+                'Spotify Premium is required for browser playback (Web Playback SDK).';
+        });
+
+        player.addListener('playback_error', () => {
+            localPlaybackActive.value = false;
+        });
+
+        await player.connect();
+        localPlayer.value = player;
+    } finally {
+        localPlayerInitializing.value = false;
+    }
+}
+
+async function onTransferToSelectedDevice() {
+    if (!selectedDeviceId.value || transferBusy.value) {
+        return;
+    }
+
+    transferBusy.value = true;
+    localStatus.value = '';
+
+    try {
+        if (
+            localPlayer.value &&
+            localDeviceId.value &&
+            selectedDeviceId.value === localDeviceId.value
+        ) {
+            await localPlayer.value.activateElement();
+        }
+
+        const response = await fetch(transfer.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                device_id: selectedDeviceId.value,
+                play: data.value?.is_playing ?? true,
+            }),
+        });
+
+        if (!response.ok) {
+            localStatus.value = 'Could not switch device.';
+
+            return;
+        }
+
+        localStatus.value = 'Playback device updated.';
+        await refreshDevices();
+        await fetchNowPlaying();
+        devicesOpen.value = false;
+    } catch {
+        localStatus.value = 'Could not switch device.';
+    } finally {
+        transferBusy.value = false;
+    }
+}
 
 watch(data, (val) => {
     if (progressTimer) {
@@ -123,6 +373,11 @@ onUnmounted(() => {
     }
 
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
+
+    if (localPlayer.value) {
+        localPlayer.value.disconnect();
+        localPlayer.value = null;
+    }
 });
 
 let csrfToken = '';
@@ -136,6 +391,8 @@ onMounted(() => {
     fetchNowPlaying();
     pollTimer = setInterval(fetchNowPlaying, POLL_INTERVAL);
     document.addEventListener('pointerdown', handleDocumentPointerDown);
+    void initLocalPlayer();
+    void refreshDevices();
 });
 
 async function sendCommand(url: string, body?: Record<string, unknown>) {
@@ -163,15 +420,39 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
 }
 
 function onPlay() {
+    if (localPlaybackActive.value && localPlayer.value) {
+        void localPlayer.value.resume();
+
+        return;
+    }
+
     sendCommand(play.url());
 }
 function onPause() {
+    if (localPlaybackActive.value && localPlayer.value) {
+        void localPlayer.value.pause();
+
+        return;
+    }
+
     sendCommand(pause.url());
 }
 function onNext() {
+    if (localPlaybackActive.value && localPlayer.value) {
+        void localPlayer.value.nextTrack();
+
+        return;
+    }
+
     sendCommand(next.url());
 }
 function onPrevious() {
+    if (localPlaybackActive.value && localPlayer.value) {
+        void localPlayer.value.previousTrack();
+
+        return;
+    }
+
     sendCommand(previous.url());
 }
 function onShuffle() {
@@ -571,6 +852,72 @@ function setLyricLineRef(element: Element | null, index: number) {
                     <div
                         class="flex items-center justify-end gap-3 justify-self-end"
                     >
+                        <div class="relative hidden md:block">
+                            <button
+                                type="button"
+                                class="inline-flex rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                                :disabled="
+                                    devicesHttp.processing || transferBusy
+                                "
+                                title="Choose playback device"
+                                @click="
+                                    devicesOpen = !devicesOpen;
+                                    if (devicesOpen) refreshDevices();
+                                "
+                            >
+                                Devices
+                            </button>
+
+                            <div
+                                v-if="devicesOpen"
+                                class="absolute right-0 bottom-full z-20 mb-2 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
+                            >
+                                <p
+                                    class="mb-2 text-[11px] font-medium text-muted-foreground"
+                                >
+                                    Select playback device
+                                </p>
+
+                                <div
+                                    class="max-h-52 space-y-1 overflow-auto pr-1"
+                                >
+                                    <button
+                                        v-for="device in selectableDevices"
+                                        :key="device.id ?? device.name"
+                                        type="button"
+                                        class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
+                                        :class="
+                                            selectedDeviceId === device.id
+                                                ? 'bg-muted'
+                                                : ''
+                                        "
+                                        :disabled="transferBusy || !device.id"
+                                        @click="
+                                            selectedDeviceId = device.id ?? '';
+                                            onTransferToSelectedDevice();
+                                        "
+                                    >
+                                        <span class="truncate">{{
+                                            device.name
+                                        }}</span>
+                                        <span
+                                            class="text-[10px] text-muted-foreground"
+                                            >{{ device.type }}</span
+                                        >
+                                    </button>
+
+                                    <p
+                                        v-if="
+                                            !selectableDevices.length &&
+                                            !localPlayerReady
+                                        "
+                                        class="px-2 py-1 text-[11px] text-muted-foreground"
+                                    >
+                                        No available devices.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         <div
                             class="flex min-w-[92px] items-center justify-end gap-1 text-[11px] text-muted-foreground tabular-nums sm:text-xs"
                         >
@@ -601,6 +948,13 @@ function setLyricLineRef(element: Element | null, index: number) {
                         </button>
                     </div>
                 </div>
+
+                <p
+                    v-if="localStatus"
+                    class="mx-auto max-w-7xl px-4 pb-2 text-[11px] text-muted-foreground"
+                >
+                    {{ localStatus }}
+                </p>
             </div>
         </Transition>
     </div>

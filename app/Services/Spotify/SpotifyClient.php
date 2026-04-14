@@ -47,6 +47,11 @@ final class SpotifyClient
         ]);
     }
 
+    public function devices(): Response
+    {
+        return $this->get('/me/player/devices');
+    }
+
     public function play(): Response
     {
         return $this->putJson('/me/player/play');
@@ -70,6 +75,14 @@ final class SpotifyClient
     public function shuffle(bool $state): Response
     {
         return $this->put('/me/player/shuffle', ['state' => $state ? 'true' : 'false']);
+    }
+
+    public function transferPlayback(string $deviceId, bool $play = true): Response
+    {
+        return $this->putJson('/me/player', [
+            'device_ids' => [$deviceId],
+            'play' => $play,
+        ]);
     }
 
     private function get(string $path, array $query = []): Response
@@ -98,13 +111,15 @@ final class SpotifyClient
             ->put(self::BASE_URL.$path.'?'.http_build_query($query));
     }
 
-    /** PUT with an empty JSON body — required by Spotify for play/pause. */
-    private function putJson(string $path): Response
+    /** PUT with JSON body — required by Spotify for play/pause and transfer. */
+    private function putJson(string $path, array $payload = []): Response
     {
+        $body = $payload === [] ? '{}' : json_encode($payload);
+
         return Http::withToken($this->accessToken)
             ->timeout(10)
             ->connectTimeout(5)
-            ->withBody('{}', 'application/json')
+            ->withBody($body ?: '{}', 'application/json')
             ->put(self::BASE_URL.$path);
     }
 }

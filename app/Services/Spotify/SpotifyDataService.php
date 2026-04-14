@@ -124,6 +124,30 @@ class SpotifyDataService
         }
     }
 
+    public function transferPlayback(User $user, string $deviceId, bool $play = true): bool
+    {
+        return $this->command(
+            $user,
+            fn (SpotifyClient $client) => $client->transferPlayback($deviceId, $play),
+        );
+    }
+
+    public function devices(User $user): array
+    {
+        try {
+            $token = $this->tokenService->ensureFreshToken($user);
+            $response = (new SpotifyClient($token))->devices();
+
+            if (in_array($response->status(), [401, 403])) {
+                return [];
+            }
+
+            return $response->throw()->json('devices', []);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     private function cached(User $user, string $type, string $timeRange, Closure $fetch): array
     {
         $stat = SpotifyStat::firstOrNew([

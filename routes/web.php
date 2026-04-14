@@ -4,6 +4,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LyricsController;
 use App\Http\Controllers\NowPlayingController;
 use App\Http\Controllers\PlayerControlController;
+use App\Http\Controllers\PlayerDeviceController;
+use App\Http\Controllers\PlayerDevicesController;
+use App\Http\Controllers\PlayerTransferController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +29,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('next', [PlayerControlController::class, 'next'])->name('next');
         Route::post('previous', [PlayerControlController::class, 'previous'])->name('previous');
         Route::post('shuffle', [PlayerControlController::class, 'shuffle'])->name('shuffle');
+        Route::get('device-token', PlayerDeviceController::class)->name('device-token');
+        Route::get('devices', PlayerDevicesController::class)->name('devices');
+        Route::post('transfer', PlayerTransferController::class)->name('transfer');
     });
 });
 
