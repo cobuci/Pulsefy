@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { redirect } from '@/actions/App/Http/Controllers/Auth/SpotifyController';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
 
 defineOptions({
     inheritAttrs: false,

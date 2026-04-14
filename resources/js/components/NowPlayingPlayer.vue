@@ -23,6 +23,20 @@ const isBusy = ref(false);
 const lyricsOpen = ref(false);
 const activeTrackId = ref<string | null>(null);
 const lyricLineRefs = ref<HTMLElement[]>([]);
+const playerRootRef = ref<HTMLElement | null>(null);
+
+function handleDocumentPointerDown(event: PointerEvent) {
+    if (!lyricsOpen.value || !playerRootRef.value) {
+        return;
+    }
+
+    if (
+        event.target instanceof Node &&
+        !playerRootRef.value.contains(event.target)
+    ) {
+        lyricsOpen.value = false;
+    }
+}
 
 async function fetchNowPlaying() {
     try {
@@ -107,6 +121,8 @@ onUnmounted(() => {
     if (progressTimer) {
         clearInterval(progressTimer);
     }
+
+    document.removeEventListener('pointerdown', handleDocumentPointerDown);
 });
 
 let csrfToken = '';
@@ -119,6 +135,7 @@ onMounted(() => {
 
     fetchNowPlaying();
     pollTimer = setInterval(fetchNowPlaying, POLL_INTERVAL);
+    document.addEventListener('pointerdown', handleDocumentPointerDown);
 });
 
 async function sendCommand(url: string, body?: Record<string, unknown>) {
@@ -250,7 +267,7 @@ function setLyricLineRef(element: Element | null, index: number) {
 </script>
 
 <template>
-    <div class="fixed right-0 bottom-0 left-0 z-50">
+    <div ref="playerRootRef" class="fixed right-0 bottom-0 left-0 z-50">
         <Transition
             enter-active-class="transition-transform duration-500 ease-out"
             enter-from-class="translate-y-full"
@@ -390,7 +407,7 @@ function setLyricLineRef(element: Element | null, index: number) {
                 </div>
 
                 <div
-                    class="relative mx-auto flex h-16 max-w-7xl items-center px-4"
+                    class="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4"
                 >
                     <div class="flex min-w-0 flex-1 items-center gap-3">
                         <div class="relative shrink-0">
@@ -435,7 +452,7 @@ function setLyricLineRef(element: Element | null, index: number) {
                     </div>
 
                     <div
-                        class="absolute left-1/2 flex -translate-x-1/2 items-center gap-1"
+                        class="flex items-center justify-center gap-1 justify-self-center"
                     >
                         <button
                             type="button"
@@ -552,13 +569,23 @@ function setLyricLineRef(element: Element | null, index: number) {
                     </div>
 
                     <div
-                        class="hidden flex-1 items-center justify-end gap-2 sm:flex"
+                        class="flex items-center justify-end gap-3 justify-self-end"
                     >
+                        <div
+                            class="flex min-w-[92px] items-center justify-end gap-1 text-[11px] text-muted-foreground tabular-nums sm:text-xs"
+                        >
+                            <span>{{ formatDuration(progressMs) }}</span>
+                            <span class="hidden opacity-40 sm:inline">/</span>
+                            <span class="hidden sm:inline">{{
+                                formatDuration(data!.track.duration_ms)
+                            }}</span>
+                        </div>
+
                         <button
                             type="button"
                             :disabled="lyricsHttp.processing"
                             :title="lyricsOpen ? 'Hide lyrics' : 'Show lyrics'"
-                            class="flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                            class="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
                             @click="lyricsOpen = !lyricsOpen"
                         >
                             <svg
@@ -572,15 +599,6 @@ function setLyricLineRef(element: Element | null, index: number) {
                                 />
                             </svg>
                         </button>
-                        <div
-                            class="flex items-center gap-1 text-xs text-muted-foreground tabular-nums"
-                        >
-                            <span>{{ formatDuration(progressMs) }}</span>
-                            <span class="opacity-40">/</span>
-                            <span>{{
-                                formatDuration(data!.track.duration_ms)
-                            }}</span>
-                        </div>
                     </div>
                 </div>
             </div>
