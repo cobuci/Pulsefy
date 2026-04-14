@@ -14,6 +14,7 @@ import type {
 } from '@/types/spotify';
 
 defineOptions({
+    inheritAttrs: false,
     layout: {
         breadcrumbs: [
             {

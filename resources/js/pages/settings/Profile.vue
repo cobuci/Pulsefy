@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 
 defineOptions({
+    inheritAttrs: false,
     layout: {
         breadcrumbs: [
             {

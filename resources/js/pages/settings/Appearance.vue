@@ -5,6 +5,7 @@ import Heading from '@/components/Heading.vue';
 import { edit } from '@/routes/appearance';
 
 defineOptions({
+    inheritAttrs: false,
     layout: {
         breadcrumbs: [
             {
