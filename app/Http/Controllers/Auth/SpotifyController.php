@@ -18,6 +18,9 @@ final class SpotifyController extends Controller
                 'user-read-private',
                 'user-top-read',
                 'user-read-recently-played',
+                'user-read-playback-state',
+                'user-read-currently-playing',
+                'user-modify-playback-state',
             ])
             ->redirect();
     }

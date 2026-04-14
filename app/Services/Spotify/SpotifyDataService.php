@@ -5,6 +5,7 @@ namespace App\Services\Spotify;
 use App\Models\SpotifyStat;
 use App\Models\User;
 use Closure;
+use Illuminate\Http\Client\Response;
 
 class SpotifyDataService
 {
@@ -46,6 +47,60 @@ class SpotifyDataService
                 ->throw()
                 ->json('items', []);
         });
+    }
+
+    /**
+     * Fetch the currently playing track — never cached, always live.
+     *
+     * Returns null when nothing is playing (HTTP 204), on permission errors,
+     * or when the currently playing type is not a track.
+     */
+    public function currentlyPlaying(User $user): ?array
+    {
+        try {
+            $token = $this->tokenService->ensureFreshToken($user);
+
+            $response = (new SpotifyClient($token))->currentlyPlaying();
+
+            // 204 = nothing playing, 401/403 = missing scope
+            if (in_array($response->status(), [204, 401, 403]) || $response->body() === '') {
+                return null;
+            }
+
+            $response->throw();
+
+            $data = $response->json();
+
+            if (($data['currently_playing_type'] ?? '') !== 'track' || empty($data['item'])) {
+                return null;
+            }
+
+            return [
+                'is_playing' => $data['is_playing'] ?? false,
+                'shuffle_state' => $data['shuffle_state'] ?? false,
+                'progress_ms' => $data['progress_ms'] ?? 0,
+                'track' => $data['item'],
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Send a player command. Returns true on success, false on 403 (Premium required) or error.
+     *
+     * @param  callable(SpotifyClient): Response  $command
+     */
+    public function command(User $user, callable $command): bool
+    {
+        try {
+            $token = $this->tokenService->ensureFreshToken($user);
+            $response = $command(new SpotifyClient($token));
+
+            return in_array($response->status(), [200, 204]);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function cached(User $user, string $type, string $timeRange, Closure $fetch): array
