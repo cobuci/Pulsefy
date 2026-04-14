@@ -49,12 +49,12 @@ final class SpotifyClient
 
     public function play(): Response
     {
-        return $this->put('/me/player/play');
+        return $this->putJson('/me/player/play');
     }
 
     public function pause(): Response
     {
-        return $this->put('/me/player/pause');
+        return $this->putJson('/me/player/pause');
     }
 
     public function next(): Response
@@ -89,11 +89,22 @@ final class SpotifyClient
             ->post(self::BASE_URL.$path);
     }
 
+    /** PUT with query-string params (e.g. shuffle). */
     private function put(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)
             ->timeout(10)
             ->connectTimeout(5)
             ->put(self::BASE_URL.$path.'?'.http_build_query($query));
+    }
+
+    /** PUT with an empty JSON body — required by Spotify for play/pause. */
+    private function putJson(string $path): Response
+    {
+        return Http::withToken($this->accessToken)
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->withBody('{}', 'application/json')
+            ->put(self::BASE_URL.$path);
     }
 }

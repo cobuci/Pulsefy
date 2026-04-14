@@ -15,7 +15,11 @@ const isBusy = ref(false);
 
 // ── Polling ──────────────────────────────────────────────────────────────────
 async function fetchNowPlaying() {
-    await http.get(nowPlaying.url());
+    try {
+        await http.get(nowPlaying.url());
+    } catch {
+        // Silently swallow network/server errors — player disappears on next successful poll
+    }
 }
 
 fetchNowPlaying();
@@ -292,7 +296,7 @@ const progressMs = computed(() => {
                             viewBox="0 0 24 24"
                             fill="currentColor"
                         >
-                            <path d="M6 18l8.5-6L6 6v12zm8.5-6L23 6v12z" />
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
                         </svg>
                     </button>
                 </div>
