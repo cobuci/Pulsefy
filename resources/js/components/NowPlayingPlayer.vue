@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
-import { computed, onUnmounted, ref, watch } from 'vue';
-import { next, pause, play, previous, shuffle } from '@/routes/player';
-import { nowPlaying } from '@/routes/player';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import {
+    next,
+    nowPlaying,
+    pause,
+    play,
+    previous,
+    shuffle,
+} from '@/routes/player';
 import type { NowPlaying } from '@/types/spotify';
 
 const POLL_INTERVAL = 30_000;
@@ -18,12 +24,11 @@ async function fetchNowPlaying() {
     try {
         await http.get(nowPlaying.url());
     } catch {
-        // Silently swallow network/server errors — player disappears on next successful poll
+        // Silently swallow network/server errors — player hides on next successful poll
     }
 }
 
-fetchNowPlaying();
-const pollTimer = setInterval(fetchNowPlaying, POLL_INTERVAL);
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 // ── Progress bar ─────────────────────────────────────────────────────────────
 const progressPct = ref(0);
@@ -54,15 +59,22 @@ watch(data, (val) => {
 });
 
 onUnmounted(() => {
-    clearInterval(pollTimer);
+    if (pollTimer) clearInterval(pollTimer);
     if (progressTimer) clearInterval(progressTimer);
 });
 
-// ── Controls ─────────────────────────────────────────────────────────────────
-const csrfToken =
-    document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute('content') ?? '';
+// ── Controls — only run in browser ───────────────────────────────────────────
+let csrfToken = '';
+
+onMounted(() => {
+    csrfToken =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? '';
+
+    fetchNowPlaying();
+    pollTimer = setInterval(fetchNowPlaying, POLL_INTERVAL);
+});
 
 async function sendCommand(url: string, body?: Record<string, unknown>) {
     if (isBusy.value) return;
@@ -77,7 +89,6 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
             },
             body: body ? JSON.stringify(body) : undefined,
         });
-        // Refresh state after a short delay to let Spotify propagate the change
         await new Promise((r) => setTimeout(r, 600));
         await fetchNowPlaying();
     } finally {
@@ -88,22 +99,17 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
 function onPlay() {
     sendCommand(play.url());
 }
-
 function onPause() {
     sendCommand(pause.url());
 }
-
 function onNext() {
     sendCommand(next.url());
 }
-
 function onPrevious() {
     sendCommand(previous.url());
 }
-
 function onShuffle() {
-    const newState = !data.value?.shuffle_state;
-    sendCommand(shuffle.url(), { state: newState });
+    sendCommand(shuffle.url(), { state: !data.value?.shuffle_state });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -140,49 +146,55 @@ const progressMs = computed(() => {
                 />
             </div>
 
-            <div
-                class="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-4"
-            >
-                <!-- Album art -->
-                <div class="relative shrink-0">
-                    <img
-                        v-if="data!.track.album.images[0]"
-                        :src="data!.track.album.images[0].url"
-                        :alt="data!.track.album.name"
-                        class="size-10 rounded-md object-cover shadow-sm"
-                    />
-                    <div v-else class="size-10 rounded-md bg-muted" />
+            <!-- 3-column layout: track | controls | time -->
+            <div class="relative mx-auto flex h-16 max-w-7xl items-center px-4">
+                <!-- Left: Album art + track info -->
+                <div class="flex min-w-0 flex-1 items-center gap-3">
+                    <div class="relative shrink-0">
+                        <img
+                            v-if="data!.track.album.images[0]"
+                            :src="data!.track.album.images[0].url"
+                            :alt="data!.track.album.name"
+                            class="size-10 rounded-md object-cover shadow-sm"
+                        />
+                        <div v-else class="size-10 rounded-md bg-muted" />
 
-                    <span
-                        v-if="data!.is_playing"
-                        class="absolute -top-1 -right-1 flex size-3 items-center justify-center"
-                    >
                         <span
-                            class="absolute inline-flex size-3 animate-ping rounded-full bg-primary opacity-75"
-                        />
-                        <span
-                            class="relative inline-flex size-2 rounded-full bg-primary"
-                        />
-                    </span>
+                            v-if="data!.is_playing"
+                            class="absolute -top-1 -right-1 flex size-3 items-center justify-center"
+                        >
+                            <span
+                                class="absolute inline-flex size-3 animate-ping rounded-full bg-primary opacity-75"
+                            />
+                            <span
+                                class="relative inline-flex size-2 rounded-full bg-primary"
+                            />
+                        </span>
+                    </div>
+
+                    <div class="min-w-0">
+                        <a
+                            :href="data!.track.external_urls.spotify"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                        >
+                            {{ data!.track.name }}
+                        </a>
+                        <p class="truncate text-xs text-muted-foreground">
+                            {{
+                                data!.track.artists
+                                    .map((a) => a.name)
+                                    .join(', ')
+                            }}
+                        </p>
+                    </div>
                 </div>
 
-                <!-- Track info -->
-                <div class="min-w-0 flex-1">
-                    <a
-                        :href="data!.track.external_urls.spotify"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
-                    >
-                        {{ data!.track.name }}
-                    </a>
-                    <p class="truncate text-xs text-muted-foreground">
-                        {{ data!.track.artists.map((a) => a.name).join(', ') }}
-                    </p>
-                </div>
-
-                <!-- Controls -->
-                <div class="flex shrink-0 items-center gap-1">
+                <!-- Center: Controls (absolute so they're truly centered) -->
+                <div
+                    class="absolute left-1/2 flex -translate-x-1/2 items-center gap-1"
+                >
                     <!-- Shuffle -->
                     <button
                         type="button"
@@ -255,7 +267,6 @@ const progressMs = computed(() => {
                         ]"
                         @click="data!.is_playing ? onPause() : onPlay()"
                     >
-                        <!-- Pause icon -->
                         <svg
                             v-if="data!.is_playing"
                             xmlns="http://www.w3.org/2000/svg"
@@ -265,7 +276,6 @@ const progressMs = computed(() => {
                         >
                             <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
                         </svg>
-                        <!-- Play icon -->
                         <svg
                             v-else
                             xmlns="http://www.w3.org/2000/svg"
@@ -301,9 +311,9 @@ const progressMs = computed(() => {
                     </button>
                 </div>
 
-                <!-- Time (hidden on small screens) -->
+                <!-- Right: Time -->
                 <div
-                    class="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground tabular-nums sm:flex"
+                    class="hidden flex-1 items-center justify-end gap-1 text-xs text-muted-foreground tabular-nums sm:flex"
                 >
                     <span>{{ formatDuration(progressMs) }}</span>
                     <span class="opacity-40">/</span>
