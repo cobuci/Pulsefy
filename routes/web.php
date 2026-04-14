@@ -28,7 +28,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('pause', [PlayerControlController::class, 'pause'])->name('pause');
         Route::post('next', [PlayerControlController::class, 'next'])->name('next');
         Route::post('previous', [PlayerControlController::class, 'previous'])->name('previous');
-        Route::post('shuffle', [PlayerControlController::class, 'shuffle'])->name('shuffle');
         Route::get('device-token', PlayerDeviceController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
