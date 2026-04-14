@@ -119,6 +119,93 @@ test('long_term stats have 72 hour ttl', function () {
     expect($stat->expires_at->isAfter(now()->addHours(71)))->toBeTrue();
 });
 
+test('topTracks returns empty array when spotify responds with 401', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => Http::response(
+            ['error' => ['status' => 401, 'message' => 'Permissions missing']],
+            401,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->topTracks($user))->toBe([]);
+});
+
+test('topTracks returns empty array when spotify responds with 403', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => Http::response(
+            ['error' => ['status' => 403, 'message' => 'Forbidden']],
+            403,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->topTracks($user))->toBe([]);
+});
+
+test('topTracks returns empty array gracefully when api is unreachable', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => Http::failedConnection(),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->topTracks($user))->toBe([]);
+});
+
+test('topArtists returns empty array when spotify responds with 401', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/artists*' => Http::response(
+            ['error' => ['status' => 401, 'message' => 'Permissions missing']],
+            401,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->topArtists($user))->toBe([]);
+});
+
+test('recentlyPlayed returns empty array when spotify responds with 401', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/recently-played*' => Http::response(
+            ['error' => ['status' => 401, 'message' => 'Permissions missing']],
+            401,
+        ),
+    ]);
+
+    $service = new SpotifyDataService($tokenService);
+
+    expect($service->recentlyPlayed($user))->toBe([]);
+});
+
 // ── currentlyPlaying ──────────────────────────────────────────────────────────
 
 test('currentlyPlaying returns track data when a track is playing', function () {

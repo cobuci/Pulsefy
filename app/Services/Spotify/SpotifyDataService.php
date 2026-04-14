@@ -16,36 +16,57 @@ class SpotifyDataService
     public function topTracks(User $user, string $timeRange = 'medium_term'): array
     {
         return $this->cached($user, 'top_tracks', $timeRange, function () use ($user, $timeRange) {
-            $token = $this->tokenService->ensureFreshToken($user);
+            try {
+                $token = $this->tokenService->ensureFreshToken($user);
 
-            return (new SpotifyClient($token))
-                ->topTracks($timeRange)
-                ->throw()
-                ->json('items', []);
+                $response = (new SpotifyClient($token))->topTracks($timeRange);
+
+                if (in_array($response->status(), [401, 403])) {
+                    return [];
+                }
+
+                return $response->throw()->json('items', []);
+            } catch (\Throwable) {
+                return [];
+            }
         });
     }
 
     public function topArtists(User $user, string $timeRange = 'medium_term'): array
     {
         return $this->cached($user, 'top_artists', $timeRange, function () use ($user, $timeRange) {
-            $token = $this->tokenService->ensureFreshToken($user);
+            try {
+                $token = $this->tokenService->ensureFreshToken($user);
 
-            return (new SpotifyClient($token))
-                ->topArtists($timeRange)
-                ->throw()
-                ->json('items', []);
+                $response = (new SpotifyClient($token))->topArtists($timeRange);
+
+                if (in_array($response->status(), [401, 403])) {
+                    return [];
+                }
+
+                return $response->throw()->json('items', []);
+            } catch (\Throwable) {
+                return [];
+            }
         });
     }
 
     public function recentlyPlayed(User $user): array
     {
         return $this->cached($user, 'recently_played', 'none', function () use ($user) {
-            $token = $this->tokenService->ensureFreshToken($user);
+            try {
+                $token = $this->tokenService->ensureFreshToken($user);
 
-            return (new SpotifyClient($token))
-                ->recentlyPlayed()
-                ->throw()
-                ->json('items', []);
+                $response = (new SpotifyClient($token))->recentlyPlayed();
+
+                if (in_array($response->status(), [401, 403])) {
+                    return [];
+                }
+
+                return $response->throw()->json('items', []);
+            } catch (\Throwable) {
+                return [];
+            }
         });
     }
 

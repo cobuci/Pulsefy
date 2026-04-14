@@ -77,7 +77,7 @@ final class SpotifyClient
         return Http::withToken($this->accessToken)
             ->timeout(10)
             ->connectTimeout(5)
-            ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response->status() === 429))
+            ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429))
             ->get(self::BASE_URL.$path, $query);
     }
 
