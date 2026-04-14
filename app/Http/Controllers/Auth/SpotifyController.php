@@ -13,7 +13,12 @@ final class SpotifyController extends Controller
     public function redirect(): RedirectResponse
     {
         return Socialite::driver('spotify')
-            ->scopes(['user-read-email', 'user-read-private'])
+            ->scopes([
+                'user-read-email',
+                'user-read-private',
+                'user-top-read',
+                'user-read-recently-played',
+            ])
             ->redirect();
     }
 
