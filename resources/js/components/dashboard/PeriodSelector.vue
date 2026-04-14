@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { dashboard } from '@/routes';
+import { Loader2 } from 'lucide-vue-next';
 import type { TimeRange } from '@/types/spotify';
 
 const props = defineProps<{
     current: TimeRange;
+    loading?: boolean;
 }>();
 
 const options: { label: string; value: TimeRange }[] = [
@@ -14,14 +15,14 @@ const options: { label: string; value: TimeRange }[] = [
 ];
 
 function select(value: TimeRange) {
-    if (value === props.current) {
+    if (value === props.current || props.loading) {
         return;
     }
 
-    router.visit(dashboard(), {
+    router.reload({
         data: { period: value },
+        only: ['period', 'topTracks', 'topArtists'],
         preserveScroll: true,
-        preserveState: true,
     });
 }
 </script>
@@ -32,14 +33,20 @@ function select(value: TimeRange) {
             v-for="option in options"
             :key="option.value"
             type="button"
+            :disabled="loading"
             :class="[
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                'relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-200',
                 current === option.value
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
+                loading ? 'cursor-not-allowed' : 'cursor-pointer',
             ]"
             @click="select(option.value)"
         >
+            <Loader2
+                v-if="loading && current === option.value"
+                class="h-3 w-3 animate-spin"
+            />
             {{ option.label }}
         </button>
     </div>

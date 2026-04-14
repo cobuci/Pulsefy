@@ -46,3 +46,10 @@ export interface RecentPlay {
 }
 
 export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
+
+export interface NowPlaying {
+    is_playing: boolean;
+    shuffle_state: boolean;
+    progress_ms: number;
+    track: SpotifyTrack;
+}
