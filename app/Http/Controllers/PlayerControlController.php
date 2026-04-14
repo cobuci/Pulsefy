@@ -2,51 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Spotify\SpotifyClient;
-use App\Services\Spotify\SpotifyDataService;
+use App\Services\Spotify\SpotifyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class PlayerControlController extends Controller
 {
-    public function __construct(private readonly SpotifyDataService $spotify) {}
+    public function __construct(private readonly SpotifyService $spotify) {}
 
     public function play(Request $request): JsonResponse
     {
         $uri = $request->string('uri')->toString();
 
-        if ($uri === '') {
-            return $this->respond($this->spotify->command(
-                $request->user(),
-                fn (SpotifyClient $client) => $client->play(),
-            ));
-        }
+        $success = $uri === ''
+            ? $this->spotify->resumePlay($request->user())
+            : $this->spotify->play($request->user(), $uri);
 
-        return $this->respond($this->spotify->play($request->user(), $uri));
+        return $this->respond($success);
     }
 
     public function pause(Request $request): JsonResponse
     {
-        return $this->respond($this->spotify->command(
-            $request->user(),
-            fn (SpotifyClient $client) => $client->pause(),
-        ));
+        return $this->respond($this->spotify->pause($request->user()));
     }
 
     public function next(Request $request): JsonResponse
     {
-        return $this->respond($this->spotify->command(
-            $request->user(),
-            fn (SpotifyClient $client) => $client->next(),
-        ));
+        return $this->respond($this->spotify->next($request->user()));
     }
 
     public function previous(Request $request): JsonResponse
     {
-        return $this->respond($this->spotify->command(
-            $request->user(),
-            fn (SpotifyClient $client) => $client->previous(),
-        ));
+        return $this->respond($this->spotify->previous($request->user()));
     }
 
     private function respond(bool $success): JsonResponse
