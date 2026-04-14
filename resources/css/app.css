@@ -9,7 +9,7 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
@@ -71,119 +71,93 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
-    *,
-    ::after,
-    ::before,
-    ::backdrop,
-    ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
-    }
-}
-
-@layer utilities {
-    body,
-    html {
-        --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'Noto Color Emoji';
-    }
-}
-
+/* Light — Snow base, Verdigris primary, Electric Aqua accent */
 :root {
-    --background: #91e5f6;
-    --foreground: #133c55;
-    --card: #84d2f6;
-    --card-foreground: #133c55;
-    --popover: #84d2f6;
-    --popover-foreground: #133c55;
-    --primary: #386fa4;
-    --primary-dark: #133c55;
+    --background: #f7f0f0;
+    --foreground: #484349;
+    --card: #ffffff;
+    --card-foreground: #484349;
+    --popover: #ffffff;
+    --popover-foreground: #484349;
+    --primary: #18a999;
+    --primary-dark: #0e7a6e;
     --primary-foreground: #ffffff;
-    --secondary: #59a5d8;
-    --secondary-foreground: #133c55;
-    --muted: #59a5d8;
-    --muted-foreground: #133c55;
-    --accent: #386fa4;
-    --accent-foreground: #ffffff;
-    --success: #22c55e;
+    --secondary: #109648;
+    --secondary-foreground: #ffffff;
+    --muted: #ede6e6;
+    --muted-foreground: #6b6170;
+    --accent: #8af3ff;
+    --accent-foreground: #484349;
+    --success: #109648;
     --success-foreground: #ffffff;
     --warning: #f59e0b;
-    --warning-foreground: #133c55;
+    --warning-foreground: #484349;
     --danger: #ef4444;
     --danger-foreground: #ffffff;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #386fa4;
-    --input: #84d2f6;
-    --ring: #386fa4;
-    --chart-1: #386fa4;
-    --chart-2: #59a5d8;
-    --chart-3: #133c55;
-    --chart-4: #84d2f6;
-    --chart-5: #91e5f6;
-    --radius: 0.5rem;
-    --sidebar-background: #84d2f6;
-    --sidebar-foreground: #133c55;
-    --sidebar-primary: #386fa4;
+    --border: #ddd6d6;
+    --input: #ede6e6;
+    --ring: #18a999;
+    --chart-1: #18a999;
+    --chart-2: #109648;
+    --chart-3: #8af3ff;
+    --chart-4: #484349;
+    --chart-5: #f7f0f0;
+    --radius: 0.75rem;
+    --sidebar-background: #ffffff;
+    --sidebar-foreground: #484349;
+    --sidebar-primary: #18a999;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #59a5d8;
-    --sidebar-accent-foreground: #133c55;
-    --sidebar-border: #386fa4;
-    --sidebar-ring: #386fa4;
-    --sidebar: #84d2f6;
+    --sidebar-accent: #f0fafa;
+    --sidebar-accent-foreground: #18a999;
+    --sidebar-border: #ddd6d6;
+    --sidebar-ring: #18a999;
+    --sidebar: #ffffff;
 }
 
+/* Dark — Graphite base, Verdigris primary, Electric Aqua accent */
 .dark {
-    --background: #133c55;
-    --foreground: #91e5f6;
-    --card: #1a4d6b;
-    --card-foreground: #91e5f6;
-    --popover: #1a4d6b;
-    --popover-foreground: #91e5f6;
-    --primary: #59a5d8;
-    --primary-dark: #0d2d3f;
-    --primary-foreground: #133c55;
-    --secondary: #386fa4;
-    --secondary-foreground: #91e5f6;
-    --muted: #1a4d6b;
-    --muted-foreground: #84d2f6;
-    --accent: #386fa4;
-    --accent-foreground: #91e5f6;
-    --success: #22c55e;
+    --background: #2d292e;
+    --foreground: #f7f0f0;
+    --card: #3a353b;
+    --card-foreground: #f7f0f0;
+    --popover: #3a353b;
+    --popover-foreground: #f7f0f0;
+    --primary: #18a999;
+    --primary-dark: #0e7a6e;
+    --primary-foreground: #ffffff;
+    --secondary: #109648;
+    --secondary-foreground: #ffffff;
+    --muted: #484349;
+    --muted-foreground: #b8aeb8;
+    --accent: #8af3ff;
+    --accent-foreground: #2d292e;
+    --success: #109648;
     --success-foreground: #ffffff;
     --warning: #f59e0b;
-    --warning-foreground: #133c55;
+    --warning-foreground: #2d292e;
     --danger: #ef4444;
     --danger-foreground: #ffffff;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #386fa4;
-    --input: #1a4d6b;
-    --ring: #59a5d8;
-    --chart-1: #59a5d8;
-    --chart-2: #386fa4;
-    --chart-3: #91e5f6;
-    --chart-4: #84d2f6;
-    --chart-5: #133c55;
-    --sidebar-background: #0d2d3f;
-    --sidebar-foreground: #91e5f6;
-    --sidebar-primary: #59a5d8;
-    --sidebar-primary-foreground: #133c55;
-    --sidebar-accent: #386fa4;
-    --sidebar-accent-foreground: #91e5f6;
-    --sidebar-border: #386fa4;
-    --sidebar-ring: #59a5d8;
-    --sidebar: #0d2d3f;
+    --border: #5a525b;
+    --input: #484349;
+    --ring: #18a999;
+    --chart-1: #18a999;
+    --chart-2: #109648;
+    --chart-3: #8af3ff;
+    --chart-4: #b8aeb8;
+    --chart-5: #f7f0f0;
+    --sidebar-background: #231f24;
+    --sidebar-foreground: #f7f0f0;
+    --sidebar-primary: #18a999;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #3a353b;
+    --sidebar-accent-foreground: #8af3ff;
+    --sidebar-border: #5a525b;
+    --sidebar-ring: #18a999;
+    --sidebar: #231f24;
 }
 
 @layer base {
