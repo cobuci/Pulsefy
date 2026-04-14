@@ -47,6 +47,13 @@ final class SpotifyClient
         ]);
     }
 
+    public function playbackState(): Response
+    {
+        return $this->get('/me/player', [
+            'additional_types' => 'track',
+        ]);
+    }
+
     public function devices(): Response
     {
         return $this->get('/me/player/devices');

@@ -81,9 +81,10 @@ class SpotifyDataService
         try {
             $token = $this->tokenService->ensureFreshToken($user);
 
-            $response = (new SpotifyClient($token))->currentlyPlaying();
+            $client = new SpotifyClient($token);
+            $response = $client->playbackState();
 
-            // 204 = nothing playing, 401/403 = missing scope
+            // 204 = no active device/session, 401/403 = missing scope / premium issues
             if (in_array($response->status(), [204, 401, 403]) || $response->body() === '') {
                 return null;
             }
@@ -92,7 +93,11 @@ class SpotifyDataService
 
             $data = $response->json();
 
-            if (($data['currently_playing_type'] ?? '') !== 'track' || empty($data['item'])) {
+            if (empty($data['item'])) {
+                return null;
+            }
+
+            if (($data['currently_playing_type'] ?? 'track') !== 'track') {
                 return null;
             }
 
