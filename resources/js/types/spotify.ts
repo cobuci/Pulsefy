@@ -53,3 +53,10 @@ export interface NowPlaying {
     progress_ms: number;
     track: SpotifyTrack;
 }
+
+export interface LyricsResponse {
+    track_id: string;
+    type: 'synced' | 'plain' | 'none';
+    lyrics: string | null;
+    synced: boolean;
+}

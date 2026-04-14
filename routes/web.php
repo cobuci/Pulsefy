@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LyricsController;
 use App\Http\Controllers\NowPlayingController;
 use App\Http\Controllers\PlayerControlController;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,7 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
+    Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
 
     Route::prefix('player')->name('player.')->group(function () {
         Route::post('play', [PlayerControlController::class, 'play'])->name('play');
