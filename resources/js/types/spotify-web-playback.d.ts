@@ -52,6 +52,7 @@ export interface SpotifyPlayer {
     removeListener(event: string, callback?: (payload: any) => void): boolean;
     pause(): Promise<void>;
     resume(): Promise<void>;
+    seek(positionMs: number): Promise<void>;
     previousTrack(): Promise<void>;
     nextTrack(): Promise<void>;
     activateElement(): Promise<void>;

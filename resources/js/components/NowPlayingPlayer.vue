@@ -12,11 +12,12 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
-import { next, pause, play, previous } from '@/routes/player';
+import { next, pause, play, previous, seek } from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
 const POLL_INTERVAL = 30_000;
+const PREVIOUS_RESTART_THRESHOLD_MS = 3_000;
 
 const { nowPlayingData, fetchNowPlaying } = usePlayer();
 const data = computed(() => nowPlayingData.value);
@@ -196,6 +197,19 @@ function onNext() {
 }
 
 function onPrevious() {
+    if (progressMs.value > PREVIOUS_RESTART_THRESHOLD_MS) {
+        if (
+            webPlayer.localPlaybackActive.value &&
+            webPlayer.localPlayer.value
+        ) {
+            void webPlayer.localPlayer.value.seek(0);
+        } else {
+            sendCommand(seek.url(), { position_ms: 0 });
+        }
+
+        return;
+    }
+
     if (webPlayer.localPlaybackActive.value && webPlayer.localPlayer.value) {
         void webPlayer.localPlayer.value.previousTrack();
 

@@ -44,6 +44,11 @@ final class SpotifyPlaybackClient
         return $this->post('/me/player/previous');
     }
 
+    public function seek(int $positionMs): Response
+    {
+        return $this->put('/me/player/seek', ['position_ms' => $positionMs]);
+    }
+
     public function shuffle(bool $state): Response
     {
         return $this->put('/me/player/shuffle', ['state' => $state ? 'true' : 'false']);

@@ -222,6 +222,19 @@ final readonly class SpotifyService
         }
     }
 
+    public function seek(User $user, int $positionMs): bool
+    {
+        try {
+            $response = $this->playbackClient($user)->seek($positionMs);
+
+            return in_array($response->status(), [200, 202, 204]);
+        } catch (\Throwable $e) {
+            Log::warning('Spotify seek failed', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
     public function transferPlayback(User $user, string $deviceId, bool $play = true): bool
     {
         try {

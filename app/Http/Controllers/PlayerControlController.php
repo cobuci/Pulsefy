@@ -36,6 +36,13 @@ final class PlayerControlController extends Controller
         return $this->respond($this->spotify->previous($request->user()));
     }
 
+    public function seek(Request $request): JsonResponse
+    {
+        $positionMs = (int) $request->input('position_ms', 0);
+
+        return $this->respond($this->spotify->seek($request->user(), $positionMs));
+    }
+
     private function respond(bool $success): JsonResponse
     {
         return response()->json(['ok' => $success]);
