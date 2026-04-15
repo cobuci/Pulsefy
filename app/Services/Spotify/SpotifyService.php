@@ -113,6 +113,7 @@ final readonly class SpotifyService
                 'is_playing' => $data['is_playing'] ?? false,
                 'shuffle_state' => $data['shuffle_state'] ?? false,
                 'progress_ms' => $data['progress_ms'] ?? 0,
+                'volume_percent' => $data['device']['volume_percent'] ?? null,
                 'track' => $data['item'],
             ];
         } catch (\Throwable $e) {
@@ -230,6 +231,19 @@ final readonly class SpotifyService
             return in_array($response->status(), [200, 202, 204]);
         } catch (\Throwable $e) {
             Log::warning('Spotify seek failed', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    public function setVolume(User $user, int $volumePercent): bool
+    {
+        try {
+            $response = $this->playbackClient($user)->setVolume($volumePercent);
+
+            return in_array($response->status(), [200, 202, 204]);
+        } catch (\Throwable $e) {
+            Log::warning('Spotify setVolume failed', ['error' => $e->getMessage()]);
 
             return false;
         }

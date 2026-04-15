@@ -53,6 +53,8 @@ export interface SpotifyPlayer {
     pause(): Promise<void>;
     resume(): Promise<void>;
     seek(positionMs: number): Promise<void>;
+    setVolume(volume: number): Promise<void>;
+    getVolume(): Promise<number>;
     previousTrack(): Promise<void>;
     nextTrack(): Promise<void>;
     activateElement(): Promise<void>;

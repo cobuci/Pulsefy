@@ -51,6 +51,7 @@ export interface NowPlaying {
     is_playing: boolean;
     shuffle_state: boolean;
     progress_ms: number;
+    volume_percent: number | null;
     track: SpotifyTrack;
 }
 

@@ -38,9 +38,14 @@ final class PlayerControlController extends Controller
 
     public function seek(Request $request): JsonResponse
     {
-        $positionMs = (int) $request->input('position_ms', 0);
+        return $this->respond($this->spotify->seek($request->user(), $request->integer('position_ms')));
+    }
 
-        return $this->respond($this->spotify->seek($request->user(), $positionMs));
+    public function volume(Request $request): JsonResponse
+    {
+        $volumePercent = clamp($request->integer('volume_percent', 50), 0, 100);
+
+        return $this->respond($this->spotify->setVolume($request->user(), $volumePercent));
     }
 
     private function respond(bool $success): JsonResponse

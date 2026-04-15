@@ -231,6 +231,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
         'is_playing' => true,
         'shuffle_state' => true,
         'progress_ms' => 30000,
+        'volume_percent' => null,
         'track' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
     ]);
 });
@@ -343,6 +344,7 @@ test('currentlyPlaying returns track data when playback is paused', function () 
         'is_playing' => false,
         'shuffle_state' => false,
         'progress_ms' => 45000,
+        'volume_percent' => null,
         'track' => ['id' => 'track-paused', 'name' => 'Paused Song', 'duration_ms' => 200000],
     ]);
 });

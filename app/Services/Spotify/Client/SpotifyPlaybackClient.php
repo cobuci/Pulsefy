@@ -49,6 +49,11 @@ final class SpotifyPlaybackClient
         return $this->put('/me/player/seek', ['position_ms' => $positionMs]);
     }
 
+    public function setVolume(int $volumePercent): Response
+    {
+        return $this->put('/me/player/volume', ['volume_percent' => $volumePercent]);
+    }
+
     public function shuffle(bool $state): Response
     {
         return $this->put('/me/player/shuffle', ['state' => $state ? 'true' : 'false']);

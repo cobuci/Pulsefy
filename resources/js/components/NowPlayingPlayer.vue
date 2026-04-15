@@ -12,6 +12,7 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
+import VolumeControl from '@/components/player/VolumeControl.vue';
 import { next, pause, play, previous, seek } from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
@@ -337,7 +338,6 @@ function onPrevious() {
             <div
                 class="mx-auto grid h-[72px] max-w-7xl grid-cols-3 items-center px-4"
             >
-                <!-- Left: track info -->
                 <div class="flex min-w-0 flex-1 items-center gap-3">
                     <template v-if="hasTrack">
                         <div class="relative shrink-0">
@@ -386,12 +386,10 @@ function onPrevious() {
                     </p>
                 </div>
 
-                <!-- Center: controls + time stacked -->
                 <div
                     class="flex flex-col items-center justify-center gap-0.5 justify-self-center"
                 >
                     <div class="flex items-center gap-1">
-                        <!-- Previous -->
                         <button
                             type="button"
                             title="Previous"
@@ -407,7 +405,6 @@ function onPrevious() {
                             <IconPrevious class="size-5" />
                         </button>
 
-                        <!-- Play / Pause -->
                         <button
                             type="button"
                             :title="isPlaying ? 'Pause' : 'Play'"
@@ -424,7 +421,6 @@ function onPrevious() {
                             <IconPlay v-else class="size-5 translate-x-[1px]" />
                         </button>
 
-                        <!-- Next -->
                         <button
                             type="button"
                             title="Next"
@@ -441,7 +437,6 @@ function onPrevious() {
                         </button>
                     </div>
 
-                    <!-- Time centered below the 3 controls -->
                     <div
                         class="flex w-full items-center justify-center gap-1 text-[10px] text-muted-foreground tabular-nums"
                     >
@@ -455,11 +450,9 @@ function onPrevious() {
                     </div>
                 </div>
 
-                <!-- Right: device picker + lyrics -->
                 <div
                     class="flex items-center justify-end gap-2 justify-self-end"
                 >
-                    <!-- Device picker -->
                     <div class="relative hidden md:block">
                         <button
                             type="button"
@@ -539,7 +532,14 @@ function onPrevious() {
                         </div>
                     </div>
 
-                    <!-- Lyrics (microphone icon) -->
+                    <VolumeControl
+                        :initial-volume="data?.volume_percent ?? null"
+                        :local-player="webPlayer.localPlayer.value"
+                        :local-playback-active="
+                            webPlayer.localPlaybackActive.value
+                        "
+                    />
+
                     <button
                         type="button"
                         :disabled="lyrics.lyricsHttp.processing"

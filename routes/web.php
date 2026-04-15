@@ -31,6 +31,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('next', [PlayerControlController::class, 'next'])->name('next');
         Route::post('previous', [PlayerControlController::class, 'previous'])->name('previous');
         Route::post('seek', [PlayerControlController::class, 'seek'])->name('seek');
+        Route::post('volume', [PlayerControlController::class, 'volume'])->name('volume');
         Route::get('device-token', PlayerDeviceController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
