@@ -1,19 +1,27 @@
 <?php
 
+use App\Models\Album;
+use App\Models\Artist;
+use App\Models\Track;
 use App\Models\User;
 use App\Services\Spotify\Artist\SpotifyArtistService;
 use App\Services\Spotify\SpotifyTokenService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     Http::preventStrayRequests();
+    Cache::flush();
 });
 
 test('artist returns artist payload when spotify responds with 200', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
         'api.spotify.com/v1/artists/artist-1' => Http::response([
@@ -35,10 +43,13 @@ test('artist returns artist payload when spotify responds with 200', function ()
 });
 
 test('artist returns null when spotify responds with 404', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
         'api.spotify.com/v1/artists/missing-artist' => Http::response([
@@ -52,18 +63,31 @@ test('artist returns null when spotify responds with 404', function () {
 });
 
 test('topTracks returns tracks payload', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    Artist::query()->create([
+        'artist_id' => 'artist-1',
+        'artist_name' => 'Artist One',
+        'genres' => [],
+        'fetched_at' => now(),
+        'expires_at' => now()->addDay(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
-        'api.spotify.com/v1/artists/artist-1/top-tracks*' => Http::response([
+        'api.spotify.com/v1/search*' => Http::response([
             'tracks' => [
-                [
-                    'id' => 'track-1',
-                    'name' => 'Track One',
-                    'artists' => [['id' => 'artist-1', 'name' => 'Artist One']],
+                'items' => [
+                    [
+                        'id' => 'track-1',
+                        'name' => 'Track One',
+                        'artists' => [['id' => 'artist-1', 'name' => 'Artist One']],
+                    ],
                 ],
             ],
         ]),
@@ -84,38 +108,38 @@ test('topTracks falls back to search when top-tracks endpoint is forbidden', fun
         'spotify_token_expires_at' => now()->addHour(),
     ]);
 
-    $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->times(3)->andReturn('app-token');
-    $tokenService->shouldReceive('ensureFreshToken')->never();
-
-    Http::fake([
-        'api.spotify.com/v1/artists/artist-1/top-tracks*' => Http::sequence()
-            ->push(['error' => ['status' => 403, 'message' => 'Forbidden']], 403)
-            ->push(['error' => ['status' => 403, 'message' => 'Forbidden']], 403),
-        'api.spotify.com/v1/artists/artist-1' => Http::response([
-            'id' => 'artist-1',
-            'name' => 'Artist One',
-            'images' => [],
-            'genres' => ['rock'],
-            'external_urls' => ['spotify' => 'https://open.spotify.com/artist/artist-1'],
-        ]),
-        'api.spotify.com/v1/search*' => Http::response([
-            'tracks' => [
-                'items' => [
-                    [
-                        'id' => 'track-1',
-                        'name' => 'Track One',
-                        'artists' => [['id' => 'artist-1', 'name' => 'Artist One']],
-                    ],
-                    [
-                        'id' => 'track-2',
-                        'name' => 'Track Two',
-                        'artists' => [['id' => 'other-artist', 'name' => 'Other Artist']],
-                    ],
-                ],
-            ],
-        ]),
+    $artist = Artist::query()->create([
+        'artist_id' => 'artist-1',
+        'artist_name' => 'Artist One',
+        'genres' => ['rock'],
+        'fetched_at' => now(),
+        'expires_at' => now()->addDay(),
     ]);
+
+    $album = Album::query()->create([
+        'spotify_id' => 'album-1',
+        'name' => 'Album One',
+        'album_type' => 'album',
+        'release_date' => '2024-01-01',
+        'images' => [],
+        'total_tracks' => 10,
+        'metadata_synced_at' => now(),
+    ]);
+
+    $track = Track::query()->create([
+        'spotify_id' => 'track-1',
+        'album_id' => $album->id,
+        'name' => 'Track One',
+        'duration_ms' => 180000,
+        'explicit' => false,
+        'metadata_synced_at' => now(),
+    ]);
+
+    $track->artists()->syncWithoutDetaching([$artist->id]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldNotReceive('appAccessToken');
+    $tokenService->shouldNotReceive('ensureFreshToken');
 
     $service = new SpotifyArtistService($tokenService);
     $tracks = $service->topTracks($user, 'artist-1');
@@ -126,10 +150,13 @@ test('topTracks falls back to search when top-tracks endpoint is forbidden', fun
 });
 
 test('albums returns album items payload', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
         'api.spotify.com/v1/artists/artist-1/albums*' => Http::response([
@@ -146,10 +173,13 @@ test('albums returns album items payload', function () {
 });
 
 test('album returns album payload', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
         'api.spotify.com/v1/albums/album-1*' => Http::response([
@@ -170,10 +200,13 @@ test('album returns album payload', function () {
 });
 
 test('albumTracks returns items payload', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
 
     Http::fake([
         'api.spotify.com/v1/albums/album-1/tracks*' => Http::response([
@@ -259,4 +292,43 @@ test('saveAlbum returns true when spotify accepts save', function () {
     $service = new SpotifyArtistService($tokenService);
 
     expect($service->saveAlbum($user, 'album-1'))->toBeTrue();
+});
+
+test('albums returns hydrated db fallback when spotify is rate limited', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $artist = Artist::query()->create([
+        'artist_id' => 'artist-1',
+        'artist_name' => 'Artist One',
+        'genres' => ['alt pop'],
+        'fetched_at' => now(),
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $album = Album::query()->create([
+        'spotify_id' => 'album-1',
+        'name' => 'Album One',
+        'album_type' => 'album',
+        'release_date' => '2024-01-01',
+        'images' => [],
+        'total_tracks' => 10,
+        'metadata_synced_at' => now(),
+    ]);
+
+    $artist->albums()->syncWithoutDetaching([$album->id]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('appAccessToken')->zeroOrMoreTimes();
+    $tokenService->shouldReceive('ensureFreshToken')->zeroOrMoreTimes();
+
+    $service = new SpotifyArtistService($tokenService);
+
+    $albums = $service->albums($user, 'artist-1');
+
+    expect($albums)
+        ->toHaveCount(1)
+        ->and(data_get($albums, '0.id'))->toBe('album-1');
 });

@@ -4,10 +4,12 @@ use App\Jobs\HydrateAlbumPageDataJob;
 use App\Jobs\HydrateArtistPageDataJob;
 use App\Jobs\RunUserSpotifySyncJob;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 test('artist show dispatches hydration job to spotify-sync queue', function () {
     Queue::fake();
+    Cache::flush();
 
     $user = User::factory()->create();
 
@@ -18,6 +20,23 @@ test('artist show dispatches hydration job to spotify-sync queue', function () {
     Queue::assertPushed(HydrateArtistPageDataJob::class, function (HydrateArtistPageDataJob $job) use ($user): bool {
         return $job->userId === $user->id && $job->artistSpotifyId === 'artist-1' && $job->queue === 'spotify-sync';
     });
+});
+
+test('artist show dispatches only one hydration job during cooldown window', function () {
+    Queue::fake();
+    Cache::flush();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('artists.show', ['artistId' => 'artist-1']))
+        ->assertOk();
+
+    $this->actingAs($user)
+        ->get(route('artists.show', ['artistId' => 'artist-1']))
+        ->assertOk();
+
+    Queue::assertPushed(HydrateArtistPageDataJob::class, 1);
 });
 
 test('album show dispatches hydration job to spotify-sync queue', function () {

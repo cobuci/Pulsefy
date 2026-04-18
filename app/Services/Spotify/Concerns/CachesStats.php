@@ -78,7 +78,13 @@ trait CachesStats
 
     private function shouldPersistEmptyPayload(string $type): bool
     {
-        return ! in_array($type, ['artist_profile', 'album_profile'], true);
+        return ! in_array($type, [
+            'artist_profile',
+            'artist_top_tracks',
+            'artist_albums',
+            'album_profile',
+            'album_tracks',
+        ], true);
     }
 
     private function ttl(string $type, string $timeRange): int
