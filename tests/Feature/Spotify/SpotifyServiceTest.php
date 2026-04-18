@@ -2,6 +2,9 @@
 
 use App\Models\SpotifyStat;
 use App\Models\User;
+use App\Services\LastFm\LastFmClient;
+use App\Services\LastFm\LastFmGenreService;
+use App\Services\Spotify\Artist\ArtistGenreCacheService;
 use App\Services\Spotify\SpotifyService;
 use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Http\Client\Request;
@@ -10,6 +13,14 @@ use Illuminate\Support\Facades\Http;
 beforeEach(function () {
     Http::preventStrayRequests();
 });
+
+function makeSpotifyService(SpotifyTokenService $tokenService): SpotifyService
+{
+    return new SpotifyService(
+        $tokenService,
+        new ArtistGenreCacheService(new LastFmGenreService(new LastFmClient)),
+    );
+}
 
 test('returns cached data when stat exists and is not expired', function () {
     $user = User::factory()->create();
@@ -22,7 +33,7 @@ test('returns cached data when stat exists and is not expired', function () {
     $tokenService = Mockery::mock(SpotifyTokenService::class);
     $tokenService->shouldNotReceive('ensureFreshToken');
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $result = $service->topTracks($user, 'medium_term');
 
     expect($result)->toBe([['id' => 'track1', 'name' => 'Cached Track']]);
@@ -47,7 +58,7 @@ test('fetches from api when cache is expired', function () {
         ]),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $result = $service->topTracks($user, 'medium_term');
 
     expect($result)->toBe([['id' => 'new_track', 'name' => 'New Track']]);
@@ -71,7 +82,7 @@ test('fetches from api when no cache exists', function () {
         ]),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $result = $service->topArtists($user, 'short_term');
 
     expect($result)->toHaveCount(1)
@@ -90,7 +101,7 @@ test('recently_played has 15 minute ttl', function () {
         ]),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $service->recentlyPlayed($user);
 
     $stat = SpotifyStat::where('user_id', $user->id)
@@ -112,7 +123,7 @@ test('long_term stats have 72 hour ttl', function () {
         'api.spotify.com/v1/me/top/tracks*' => Http::response(['items' => []]),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $service->topTracks($user, 'long_term');
 
     $stat = SpotifyStat::where('user_id', $user->id)->where('time_range', 'long_term')->first();
@@ -133,7 +144,7 @@ test('topTracks returns empty array when spotify responds with 401', function ()
         ),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
 
     expect($service->topTracks($user))->toBe([]);
 });
@@ -151,7 +162,7 @@ test('topTracks returns empty array when spotify responds with 403', function ()
         ),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
 
     expect($service->topTracks($user))->toBe([]);
 });
@@ -166,7 +177,7 @@ test('topTracks returns empty array gracefully when api is unreachable', functio
         'api.spotify.com/v1/me/top/tracks*' => Http::failedConnection(),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
 
     expect($service->topTracks($user))->toBe([]);
 });
@@ -184,7 +195,7 @@ test('topArtists returns empty array when spotify responds with 401', function (
         ),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
 
     expect($service->topArtists($user))->toBe([]);
 });
@@ -202,7 +213,7 @@ test('recentlyPlayed returns empty array when spotify responds with 401', functi
         ),
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
 
     expect($service->recentlyPlayed($user))->toBe([]);
 });
@@ -214,6 +225,13 @@ test('topItemsSnapshot fetches paginated top tracks and artists', function () {
     $tokenService->shouldReceive('ensureFreshToken')->times(6)->andReturn('token');
 
     Http::fake([
+        'ws.audioscrobbler.com/2.0/*' => Http::response([
+            'toptags' => [
+                'tag' => [
+                    ['name' => 'rock', 'count' => 100],
+                ],
+            ],
+        ]),
         'api.spotify.com/v1/me/top/tracks*' => function (Request $request) {
             $offset = (int) ($request->data()['offset'] ?? 0);
 
@@ -239,7 +257,11 @@ test('topItemsSnapshot fetches paginated top tracks and artists', function () {
             if ($offset === 0) {
                 return Http::response([
                     'items' => array_map(
-                        fn (int $i): array => ['id' => 'artist-'.$i],
+                        fn (int $i): array => [
+                            'id' => 'artist-'.$i,
+                            'name' => 'Artist '.$i,
+                            'genres' => [],
+                        ],
                         range(1, 50),
                     ),
                 ]);
@@ -247,17 +269,18 @@ test('topItemsSnapshot fetches paginated top tracks and artists', function () {
 
             return Http::response([
                 'items' => [
-                    ['id' => 'artist-51'],
+                    ['id' => 'artist-51', 'name' => 'Artist 51', 'genres' => []],
                 ],
             ]);
         },
     ]);
 
-    $service = new SpotifyService($tokenService);
+    $service = makeSpotifyService($tokenService);
     $snapshot = $service->topItemsSnapshot($user);
 
     expect($snapshot)
         ->toHaveKeys(['short_term', 'medium_term', 'long_term'])
         ->and(data_get($snapshot, 'medium_term.tracks'))->toHaveCount(52)
-        ->and(data_get($snapshot, 'medium_term.artists'))->toHaveCount(51);
+        ->and(data_get($snapshot, 'medium_term.artists'))->toHaveCount(51)
+        ->and(data_get($snapshot, 'medium_term.artists.0.genres.0'))->toBe('rock');
 });

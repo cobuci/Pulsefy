@@ -64,6 +64,21 @@ final class SpotifyStatsClient
         ]);
     }
 
+    /**
+     * @param  array<int, string>  $artistIds
+     */
+    public function artists(array $artistIds): Response
+    {
+        return $this->get('/artists', [
+            'ids' => implode(',', $artistIds),
+        ]);
+    }
+
+    public function artist(string $artistId): Response
+    {
+        return $this->get('/artists/'.$artistId);
+    }
+
     private function get(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)

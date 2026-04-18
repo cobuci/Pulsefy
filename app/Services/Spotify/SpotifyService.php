@@ -3,6 +3,7 @@
 namespace App\Services\Spotify;
 
 use App\Models\User;
+use App\Services\Spotify\Artist\ArtistGenreCacheService;
 use App\Services\Spotify\Client\SpotifyStatsClient;
 use App\Services\Spotify\Concerns\CachesStats;
 use App\Services\Spotify\Contracts\SpotifyStatsProvider;
@@ -18,6 +19,7 @@ final readonly class SpotifyService implements SpotifyStatsProvider
 
     public function __construct(
         private SpotifyTokenService $tokenService,
+        private ArtistGenreCacheService $artistGenreCache,
     ) {}
 
     public function topTracks(User $user, string $timeRange = 'medium_term'): array
@@ -74,7 +76,7 @@ final readonly class SpotifyService implements SpotifyStatsProvider
 
     public function topItemsSnapshot(User $user): array
     {
-        return $this->cached($user, 'top_items_snapshot', 'v1', function () use ($user): array {
+        return $this->cached($user, 'top_items_snapshot', 'v2', function () use ($user): array {
             $snapshot = [];
 
             foreach (['short_term', 'medium_term', 'long_term'] as $timeRange) {
@@ -127,11 +129,13 @@ final readonly class SpotifyService implements SpotifyStatsProvider
      */
     private function fetchTopArtistsPaginated(User $user, string $timeRange): array
     {
-        return $this->fetchTopItemsPaginated(
+        $artists = $this->fetchTopItemsPaginated(
             operation: 'topArtistsSnapshot',
             request: fn (SpotifyStatsClient $client, int $limit, int $offset): Response => $client->topArtistsPage($timeRange, $limit, $offset),
             user: $user,
         );
+
+        return $this->artistGenreCache->mergeGenres($artists);
     }
 
     /**
