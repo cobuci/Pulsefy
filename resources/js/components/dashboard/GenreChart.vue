@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
     genres?: Array<{ label: string; value: number; color: string }>;
 }>();
 </script>

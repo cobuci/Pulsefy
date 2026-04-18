@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { use } from 'echarts/core';
 import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
+import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { computed } from 'vue';
 import VChart from 'vue-echarts';
@@ -25,7 +25,6 @@ const option = computed(() => {
             right: 12,
             top: 12,
             bottom: 16,
-            containLabel: true,
         },
         tooltip: {
             trigger: 'axis',

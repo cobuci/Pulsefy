@@ -4,7 +4,6 @@ import { redirect } from '@/actions/App/Http/Controllers/Auth/SpotifyController'
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 
 defineOptions({
-    inheritAttrs: false,
     layout: false,
 });
 </script>
