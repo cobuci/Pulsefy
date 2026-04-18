@@ -4,6 +4,7 @@ use App\Http\Controllers\Album\ShowController as AlbumShowController;
 use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
 use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Insights\RefreshController as InsightsRefreshController;
 use App\Http\Controllers\Player\ControlController as PlayerControlController;
 use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
@@ -28,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('artists', ArtistIndexController::class)->name('artists.index');
     Route::get('artists/{artistId}', ArtistShowController::class)->name('artists.show');
     Route::get('albums/{albumId}', AlbumShowController::class)->name('albums.show');
+    Route::post('insights/refresh', InsightsRefreshController::class)->name('insights.refresh');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
 

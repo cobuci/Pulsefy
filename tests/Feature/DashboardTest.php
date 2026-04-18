@@ -1,6 +1,9 @@
 <?php
 
+use App\Jobs\RefreshSpotifyInsightsJob;
+use App\Models\SpotifyStat;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 
@@ -85,4 +88,32 @@ test('dashboard response includes deferred spotify prop keys', function () {
                 ->has('insights')
             )
         );
+});
+
+test('authenticated users can refresh all spotify insight caches manually', function () {
+    Bus::fake();
+
+    $user = User::factory()->create([
+        'spotify_token' => 'fake-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    SpotifyStat::query()->create([
+        'user_id' => $user->id,
+        'type' => 'top_tracks',
+        'time_range' => 'medium_term',
+        'payload' => [['id' => 'old-track']],
+        'fetched_at' => now()->subDay(),
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('insights.refresh'))
+        ->assertRedirect();
+
+    Bus::assertDispatched(RefreshSpotifyInsightsJob::class, function (RefreshSpotifyInsightsJob $job) use ($user): bool {
+        return $job->userId === $user->id;
+    });
+
+    expect(SpotifyStat::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });

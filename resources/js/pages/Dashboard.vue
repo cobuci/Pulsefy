@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard, recentlyPlayed } from '@/routes';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
+import { refresh as refreshInsights } from '@/routes/insights';
 import type {
     RecentPlay,
     SpotifyArtist,
@@ -49,6 +50,7 @@ const props = defineProps<{
 const SKELETON_COUNT = 5;
 
 const isReloading = ref(false);
+const isRefreshing = ref(false);
 
 const offStart = router.on('start', () => (isReloading.value = true));
 const offFinish = router.on('finish', () => (isReloading.value = false));
@@ -144,6 +146,25 @@ const recentlyPlayedAlbums = computed(() => {
 async function handlePlay(track: SpotifyTrack) {
     await playTrack(`spotify:track:${track.id}`);
 }
+
+function refreshAllInsights() {
+    if (isRefreshing.value) {
+        return;
+    }
+
+    isRefreshing.value = true;
+
+    router.post(
+        refreshInsights.url(),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                isRefreshing.value = false;
+            },
+        },
+    );
+}
 </script>
 
 <template>
@@ -183,7 +204,17 @@ async function handlePlay(track: SpotifyTrack) {
         </section>
 
         <div class="flex items-center justify-end">
-            <PeriodSelector :current="period" :loading="isReloading" />
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    class="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    :disabled="isRefreshing"
+                    @click="refreshAllInsights"
+                >
+                    {{ isRefreshing ? 'Refreshing…' : 'Refresh data' }}
+                </button>
+                <PeriodSelector :current="period" :loading="isReloading" />
+            </div>
         </div>
 
         <section class="grid gap-4 lg:grid-cols-3">
