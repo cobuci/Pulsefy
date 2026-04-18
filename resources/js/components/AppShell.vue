@@ -11,11 +11,20 @@ withDefaults(defineProps<Props>(), {
     variant: 'sidebar',
 });
 
-const isOpen = (usePage().props as Record<string, unknown>).sidebarOpen ?? true;
+const isOpen = Boolean(
+    (usePage().props as { sidebarOpen?: boolean }).sidebarOpen ?? true,
+);
 </script>
 
 <template>
-    <div v-if="variant === 'header'" class="flex min-h-screen w-full flex-col">
+    <div
+        v-if="variant === 'header'"
+        class="relative flex min-h-screen w-full flex-col overflow-x-clip bg-background text-foreground"
+    >
+        <div
+            class="pointer-events-none fixed inset-0 -z-10 opacity-80"
+            style="background: var(--gradient-hero)"
+        />
         <slot />
     </div>
     <SidebarProvider v-else :default-open="isOpen">

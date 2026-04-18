@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Disc3, LayoutGrid, Menu } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import AppLogo from '@/components/AppLogo.vue';
+import { Activity, Disc3, LayoutGrid, Menu, Search } from 'lucide-vue-next';
+import { computed } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,7 +27,7 @@ import {
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
-import { dashboard } from '@/routes';
+import { dashboard, recentlyPlayed } from '@/routes';
 import { index as artistsIndex } from '@/routes/artists';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
@@ -42,18 +41,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 const auth = computed(() => page.props.auth);
-const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
+const { whenCurrentUrl } = useCurrentUrl();
 
-const scrolled = ref(false);
-
-function onScroll() {
-    scrolled.value = window.scrollY > 8;
-}
-
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }));
-onUnmounted(() => window.removeEventListener('scroll', onScroll));
-
-const activeItemStyles = 'text-primary font-semibold';
+const activeItemStyles = 'text-foreground bg-secondary';
 
 const mainNavItems: NavItem[] = [
     {
@@ -66,45 +56,47 @@ const mainNavItems: NavItem[] = [
         href: artistsIndex(),
         icon: Disc3,
     },
+    {
+        title: 'Recently Played',
+        href: recentlyPlayed(),
+        icon: Activity,
+    },
 ];
 </script>
 
 <template>
     <header
-        class="sticky top-0 z-50 w-full transition-all duration-300"
-        :class="
-            scrolled
-                ? 'border-b border-border bg-card shadow-sm'
-                : 'border-b border-transparent bg-background/60 backdrop-blur-md'
-        "
+        class="glass fixed top-0 right-0 left-0 z-50 border-b border-border/60"
     >
-        <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
+        <div class="mx-auto flex h-16 items-center gap-6 px-6 md:max-w-7xl">
             <div class="lg:hidden">
                 <Sheet>
                     <SheetTrigger :as-child="true">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            class="mr-2 h-9 w-9"
-                        >
+                        <Button variant="ghost" size="icon" class="h-9 w-9">
                             <Menu class="h-5 w-5" />
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" class="w-[300px] p-6">
                         <SheetTitle class="sr-only">Navigation</SheetTitle>
                         <SheetHeader class="flex justify-start text-left">
-                            <AppLogoIcon class="size-6 text-primary" />
+                            <div
+                                class="bg-gradient-primary shadow-glow relative grid size-8 place-items-center rounded-lg"
+                            >
+                                <AppLogoIcon
+                                    class="size-5 text-primary-foreground"
+                                />
+                            </div>
                         </SheetHeader>
                         <nav class="-mx-3 mt-6 space-y-1">
                             <Link
                                 v-for="item in mainNavItems"
                                 :key="item.title"
                                 :href="item.href"
-                                class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+                                class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                                 :class="
                                     whenCurrentUrl(
                                         item.href,
-                                        'bg-muted font-semibold text-primary',
+                                        'bg-secondary font-semibold text-foreground',
                                     )
                                 "
                             >
@@ -120,58 +112,61 @@ const mainNavItems: NavItem[] = [
                 </Sheet>
             </div>
 
-            <Link :href="dashboard()" class="flex items-center gap-x-2">
-                <AppLogo />
+            <Link :href="dashboard()" class="group flex items-center gap-2">
+                <div
+                    class="bg-gradient-primary shadow-glow relative grid size-8 place-items-center rounded-lg"
+                >
+                    <AppLogoIcon class="size-5 text-primary-foreground" />
+                </div>
+                <span class="font-display text-lg font-bold tracking-tight">
+                    Pulse<span class="text-gradient">fy</span>
+                </span>
             </Link>
 
-            <nav class="ml-8 hidden h-full items-stretch lg:flex">
-                <div class="flex h-full items-stretch">
-                    <NavigationMenu class="flex h-full items-stretch">
-                        <NavigationMenuList
-                            class="flex h-full items-stretch gap-1"
+            <nav class="ml-4 hidden items-center gap-1 md:flex">
+                <NavigationMenu>
+                    <NavigationMenuList class="gap-1">
+                        <NavigationMenuItem
+                            v-for="(item, index) in mainNavItems"
+                            :key="index"
                         >
-                            <NavigationMenuItem
-                                v-for="(item, index) in mainNavItems"
-                                :key="index"
-                                class="relative flex h-full items-center"
+                            <Link
+                                :class="[
+                                    navigationMenuTriggerStyle(),
+                                    'h-9 cursor-pointer rounded-md bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground',
+                                    whenCurrentUrl(item.href, activeItemStyles),
+                                ]"
+                                :href="item.href"
                             >
-                                <Link
-                                    :class="[
-                                        navigationMenuTriggerStyle(),
-                                        'h-9 cursor-pointer bg-transparent px-3 text-sm font-medium text-foreground/70 transition-colors hover:bg-transparent hover:text-foreground',
-                                        whenCurrentUrl(
-                                            item.href,
-                                            activeItemStyles,
-                                        ),
-                                    ]"
-                                    :href="item.href"
-                                >
-                                    <component
-                                        v-if="item.icon"
-                                        :is="item.icon"
-                                        class="mr-2 h-4 w-4"
-                                    />
-                                    {{ item.title }}
-                                </Link>
-                                <div
-                                    v-if="isCurrentUrl(item.href)"
-                                    class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px rounded-full bg-primary"
-                                />
-                            </NavigationMenuItem>
-                        </NavigationMenuList>
-                    </NavigationMenu>
-                </div>
+                                {{ item.title }}
+                            </Link>
+                        </NavigationMenuItem>
+                    </NavigationMenuList>
+                </NavigationMenu>
             </nav>
 
-            <div class="ml-auto">
+            <button
+                type="button"
+                class="ml-auto hidden h-9 w-full max-w-xs items-center gap-2 rounded-lg border border-border/60 bg-secondary/60 px-3 text-sm text-muted-foreground transition-all hover:bg-secondary lg:flex"
+            >
+                <Search class="h-4 w-4" />
+                <span class="flex-1 text-left">Search...</span>
+                <kbd
+                    class="hidden items-center gap-0.5 rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] sm:inline-flex"
+                >
+                    ⌘K
+                </kbd>
+            </button>
+
+            <div>
                 <DropdownMenu>
                     <DropdownMenuTrigger :as-child="true">
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
+                            class="relative h-9 w-9 rounded-full p-0.5 focus-within:ring-2 focus-within:ring-primary"
                         >
-                            <Avatar class="size-8 overflow-hidden rounded-full">
+                            <Avatar class="size-9 overflow-hidden rounded-full">
                                 <AvatarImage
                                     v-if="auth.user.avatar"
                                     :src="auth.user.avatar"
@@ -194,10 +189,10 @@ const mainNavItems: NavItem[] = [
 
         <div
             v-if="props.breadcrumbs.length > 1"
-            class="border-t border-border/50"
+            class="border-t border-border/50 bg-background/30"
         >
             <div
-                class="mx-auto flex h-10 w-full items-center px-4 md:max-w-7xl"
+                class="mx-auto flex h-10 w-full items-center px-6 md:max-w-7xl"
             >
                 <Breadcrumbs :breadcrumbs="breadcrumbs" />
             </div>
