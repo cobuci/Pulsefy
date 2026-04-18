@@ -233,7 +233,7 @@ function onPrevious() {
         >
             <div
                 v-if="hasTrack && lyrics.lyricsOpen.value"
-                class="mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-t-xl border border-b-0 border-border bg-card/95 px-4 pb-4 backdrop-blur-md"
+                class="glass-strong mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-t-2xl border border-b-0 border-border/60 px-4 pb-4"
             >
                 <div class="flex items-center justify-between py-3">
                     <p
@@ -251,7 +251,7 @@ function onPrevious() {
                 </div>
 
                 <div
-                    class="h-[55vh] overflow-y-auto rounded-md bg-muted/20 px-2 py-2"
+                    class="h-[55vh] overflow-y-auto rounded-xl bg-muted/20 px-2 py-2"
                 >
                     <div v-if="lyrics.lyricsHttp.processing" class="space-y-2">
                         <div class="h-5 w-2/3 animate-pulse rounded bg-muted" />
@@ -327,39 +327,50 @@ function onPrevious() {
             </div>
         </Transition>
 
-        <div class="border-t border-border bg-card/95 backdrop-blur-md">
-            <div class="h-0.5 w-full bg-muted">
+        <div class="glass-strong border-t border-border/60">
+            <div
+                class="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
+            />
+
+            <div class="h-0.5 w-full bg-secondary/90">
                 <div
-                    class="h-full bg-primary transition-[width] duration-500 ease-linear"
+                    class="bg-gradient-primary h-full transition-[width] duration-500 ease-linear"
                     :style="{ width: `${progressPct}%` }"
                 />
             </div>
 
             <div
-                class="mx-auto grid h-[72px] max-w-7xl grid-cols-3 items-center px-4"
+                class="mx-auto flex h-20 max-w-7xl items-center gap-4 px-4 sm:px-6"
             >
-                <div class="flex min-w-0 flex-1 items-center gap-3">
+                <div class="flex w-1/3 min-w-0 items-center gap-3 lg:w-1/4">
                     <template v-if="hasTrack">
                         <div class="relative shrink-0">
                             <img
                                 v-if="data?.track?.album?.images?.[0]"
                                 :src="data?.track?.album?.images?.[0]?.url"
                                 :alt="data?.track?.album?.name"
-                                class="size-10 rounded-md object-cover shadow-sm"
+                                class="shadow-glow size-12 rounded-md object-cover"
                             />
-                            <div v-else class="size-10 rounded-md bg-muted" />
+                            <div v-else class="size-12 rounded-md bg-muted" />
 
-                            <span
+                            <div
                                 v-if="isPlaying"
-                                class="absolute -top-1 -right-1 flex size-3 items-center justify-center"
+                                class="absolute inset-0 grid place-items-center bg-background/40"
                             >
-                                <span
-                                    class="absolute inline-flex size-3 animate-ping rounded-full bg-primary opacity-75"
-                                />
-                                <span
-                                    class="relative inline-flex size-2 rounded-full bg-primary"
-                                />
-                            </span>
+                                <div class="flex items-end gap-0.5">
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                    />
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                        style="animation-delay: 0.15s"
+                                    />
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                        style="animation-delay: 0.3s"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div class="min-w-0">
@@ -386,16 +397,14 @@ function onPrevious() {
                     </p>
                 </div>
 
-                <div
-                    class="flex flex-col items-center justify-center gap-0.5 justify-self-center"
-                >
+                <div class="flex flex-1 flex-col items-center gap-1.5">
                     <div class="flex items-center gap-1">
                         <button
                             type="button"
                             title="Previous"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-8 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground',
+                                'grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-40'
                                     : 'cursor-pointer',
@@ -410,7 +419,7 @@ function onPrevious() {
                             :title="isPlaying ? 'Pause' : 'Play'"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 active:scale-95',
+                                'shadow-glow grid size-9 place-items-center rounded-full bg-foreground text-background transition-all hover:scale-105 active:scale-95',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-60'
                                     : 'cursor-pointer',
@@ -426,7 +435,7 @@ function onPrevious() {
                             title="Next"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-8 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground',
+                                'grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-40'
                                     : 'cursor-pointer',
@@ -437,108 +446,124 @@ function onPrevious() {
                         </button>
                     </div>
 
-                    <div
-                        class="flex w-full items-center justify-center gap-1 text-[10px] text-muted-foreground tabular-nums"
-                    >
-                        <span>{{ formatDuration(progressMs) }}</span>
-                        <span class="opacity-40">/</span>
-                        <span>{{
-                            hasTrack && data?.track?.duration_ms
-                                ? formatDuration(data.track.duration_ms)
-                                : '--:--'
-                        }}</span>
+                    <div class="flex w-full max-w-md items-center gap-2">
+                        <span
+                            class="text-[10px] text-muted-foreground tabular-nums"
+                            >{{ formatDuration(progressMs) }}</span
+                        >
+                        <div
+                            class="h-1 flex-1 overflow-hidden rounded-full bg-secondary"
+                        >
+                            <div
+                                class="bg-gradient-primary h-full transition-[width] duration-500 ease-linear"
+                                :style="{ width: `${progressPct}%` }"
+                            />
+                        </div>
+                        <span
+                            class="text-[10px] text-muted-foreground tabular-nums"
+                            >{{
+                                hasTrack && data?.track?.duration_ms
+                                    ? formatDuration(data.track.duration_ms)
+                                    : '--:--'
+                            }}</span
+                        >
                     </div>
                 </div>
 
-                <div
-                    class="flex items-center justify-end gap-2 justify-self-end"
-                >
-                    <div class="relative hidden md:block">
-                        <button
-                            type="button"
-                            title="Choose playback device"
-                            :disabled="
-                                devices.devicesHttp.processing ||
-                                devices.transferBusy.value
-                            "
-                            :class="[
-                                'flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
-                                devices.devicesOpen.value
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            ]"
-                            @click="
-                                devices.devicesOpen.value =
-                                    !devices.devicesOpen.value;
-                                if (devices.devicesOpen.value)
-                                    devices.refreshDevices();
-                            "
-                        >
-                            <IconDevice class="size-4" />
-                        </button>
-
-                        <div
-                            v-if="devices.devicesOpen.value"
-                            class="absolute right-0 bottom-full z-20 mb-2 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
-                        >
-                            <p
-                                class="mb-2 text-[11px] font-medium text-muted-foreground"
+                <div class="ml-auto flex items-center justify-end gap-2">
+                    <div
+                        class="hidden w-1/3 items-center justify-end gap-2 lg:flex lg:w-1/4"
+                    >
+                        <div class="relative">
+                            <button
+                                type="button"
+                                title="Choose playback device"
+                                :disabled="
+                                    devices.devicesHttp.processing ||
+                                    devices.transferBusy.value
+                                "
+                                :class="[
+                                    'grid size-8 place-items-center rounded-md transition-colors disabled:opacity-50',
+                                    devices.devicesOpen.value
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground hover:text-foreground',
+                                ]"
+                                @click="
+                                    devices.devicesOpen.value =
+                                        !devices.devicesOpen.value;
+                                    if (devices.devicesOpen.value)
+                                        devices.refreshDevices();
+                                "
                             >
-                                Select playback device
-                            </p>
+                                <IconDevice class="size-4" />
+                            </button>
 
-                            <div class="max-h-52 space-y-1 overflow-auto pr-1">
-                                <button
-                                    v-for="device in devices.selectableDevices
-                                        .value"
-                                    :key="device.id ?? device.name"
-                                    type="button"
-                                    class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
-                                    :class="
-                                        devices.selectedDeviceId.value ===
-                                        device.id
-                                            ? 'bg-muted'
-                                            : ''
-                                    "
-                                    :disabled="
-                                        devices.transferBusy.value || !device.id
-                                    "
-                                    @click="
-                                        devices.selectedDeviceId.value =
-                                            device.id ?? '';
-                                        devices.onTransferToSelectedDevice();
-                                    "
-                                >
-                                    <span class="truncate">{{
-                                        device.name
-                                    }}</span>
-                                    <span
-                                        class="text-[10px] text-muted-foreground"
-                                        >{{ device.type }}</span
-                                    >
-                                </button>
-
+                            <div
+                                v-if="devices.devicesOpen.value"
+                                class="absolute right-0 bottom-full z-20 mb-2 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
+                            >
                                 <p
-                                    v-if="
-                                        !devices.selectableDevices.value
-                                            .length &&
-                                        !webPlayer.localPlayerReady.value
-                                    "
-                                    class="px-2 py-1 text-[11px] text-muted-foreground"
+                                    class="mb-2 text-[11px] font-medium text-muted-foreground"
                                 >
-                                    No available devices.
+                                    Select playback device
                                 </p>
+
+                                <div
+                                    class="max-h-52 space-y-1 overflow-auto pr-1"
+                                >
+                                    <button
+                                        v-for="device in devices
+                                            .selectableDevices.value"
+                                        :key="device.id ?? device.name"
+                                        type="button"
+                                        class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
+                                        :class="
+                                            devices.selectedDeviceId.value ===
+                                            device.id
+                                                ? 'bg-muted'
+                                                : ''
+                                        "
+                                        :disabled="
+                                            devices.transferBusy.value ||
+                                            !device.id
+                                        "
+                                        @click="
+                                            devices.selectedDeviceId.value =
+                                                device.id ?? '';
+                                            devices.onTransferToSelectedDevice();
+                                        "
+                                    >
+                                        <span class="truncate">{{
+                                            device.name
+                                        }}</span>
+                                        <span
+                                            class="text-[10px] text-muted-foreground"
+                                            >{{ device.type }}</span
+                                        >
+                                    </button>
+
+                                    <p
+                                        v-if="
+                                            !devices.selectableDevices.value
+                                                .length &&
+                                            !webPlayer.localPlayerReady.value
+                                        "
+                                        class="px-2 py-1 text-[11px] text-muted-foreground"
+                                    >
+                                        No available devices.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <VolumeControl
-                        :initial-volume="data?.volume_percent ?? null"
-                        :local-player="webPlayer.localPlayer.value"
-                        :local-playback-active="
-                            webPlayer.localPlaybackActive.value
-                        "
-                    />
+                        <VolumeControl
+                            :initial-volume="data?.volume_percent ?? null"
+                            :local-player="webPlayer.localPlayer.value"
+                            :local-playback-active="
+                                webPlayer.localPlaybackActive.value
+                            "
+                        />
+                    </div>
 
                     <button
                         type="button"
@@ -549,7 +574,7 @@ function onPrevious() {
                                 : 'Show lyrics'
                         "
                         :class="[
-                            'flex size-8 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50',
+                            'grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50',
                             lyrics.lyricsOpen.value
                                 ? 'text-primary'
                                 : 'text-muted-foreground hover:text-foreground',
@@ -565,7 +590,7 @@ function onPrevious() {
 
             <p
                 v-if="localStatus && hasTrack"
-                class="mx-auto max-w-7xl px-4 pb-2 text-[11px] text-muted-foreground"
+                class="mx-auto max-w-7xl px-4 pb-2 text-[11px] text-muted-foreground sm:px-6"
             >
                 {{ localStatus }}
             </p>
