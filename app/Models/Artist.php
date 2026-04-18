@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -36,5 +38,22 @@ class Artist extends Model
     public function isExpired(): bool
     {
         return $this->expires_at->isPast();
+    }
+
+    public function albums(): BelongsToMany
+    {
+        return $this->belongsToMany(Album::class, 'artist_album', 'artist_model_id', 'album_id')
+            ->withTimestamps();
+    }
+
+    public function tracks(): BelongsToMany
+    {
+        return $this->belongsToMany(Track::class, 'artist_track', 'artist_model_id', 'track_id')
+            ->withTimestamps();
+    }
+
+    public function topForUsers(): HasMany
+    {
+        return $this->hasMany(UserTopArtist::class, 'artist_model_id');
     }
 }
