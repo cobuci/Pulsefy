@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Deferred, Head, Link, setLayoutProps } from '@inertiajs/vue3';
+import { Deferred, Head, setLayoutProps } from '@inertiajs/vue3';
 import { computed, watchEffect } from 'vue';
+import { Clock, Heart, Play, Shuffle } from 'lucide-vue-next';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import StatCard from '@/components/dashboard/StatCard.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
@@ -45,6 +47,19 @@ defineOptions({
 });
 
 const coverImage = computed(() => props.album?.images?.[0]?.url ?? null);
+const totalDurationMs = computed(() =>
+    (props.tracks ?? []).reduce((carry, track) => carry + track.duration_ms, 0),
+);
+const totalDurationLabel = computed(() => {
+    const minutes = Math.round(totalDurationMs.value / 60000);
+
+    return `${minutes} min`;
+});
+const primaryArtistName = computed(() => {
+    return (
+        props.tracks?.[0]?.artists?.[0]?.name ?? props.artistName ?? 'Unknown'
+    );
+});
 
 const { isPlayingTrack, playTrack } = usePlayer();
 
@@ -56,178 +71,213 @@ async function handlePlay(track: SpotifyTrack) {
 <template>
     <Head :title="albumName" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <Deferred data="album">
-            <template #fallback>
-                <section
-                    class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-                >
-                    <div
-                        class="flex flex-col gap-4 p-4 md:flex-row md:items-center"
-                    >
-                        <Skeleton class="size-28 rounded-xl" />
-                        <div class="flex-1 space-y-2">
-                            <Skeleton class="h-4 w-16" />
-                            <Skeleton class="h-8 w-56" />
-                            <Skeleton class="h-4 w-40" />
+    <div class="mx-auto max-w-7xl px-6 py-8">
+        <div class="grid gap-8 lg:grid-cols-3">
+            <div class="lg:col-span-1">
+                <Deferred data="album">
+                    <template #fallback>
+                        <div class="sticky top-24">
+                            <Skeleton
+                                class="aspect-square w-full rounded-2xl"
+                            />
+                            <div class="mt-5 space-y-2">
+                                <Skeleton class="h-4 w-24" />
+                                <Skeleton class="h-10 w-48" />
+                                <Skeleton class="h-4 w-32" />
+                            </div>
                         </div>
-                    </div>
-                </section>
-            </template>
+                    </template>
 
-            <template #default>
-                <section
-                    v-if="album"
-                    class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-                >
-                    <div
-                        class="flex flex-col gap-4 p-4 md:flex-row md:items-center"
-                    >
-                        <img
-                            v-if="coverImage"
-                            :src="coverImage"
-                            :alt="album.name"
-                            class="size-28 rounded-xl object-cover"
-                        />
-                        <div
-                            v-else
-                            class="flex size-28 items-center justify-center rounded-xl bg-muted text-muted-foreground"
-                        >
-                            <IconMusicNote class="size-8" />
-                        </div>
-
-                        <div class="min-w-0 flex-1">
-                            <p
-                                class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                            >
-                                Album
-                            </p>
-                            <h1
-                                class="truncate text-3xl font-bold text-foreground"
-                            >
-                                {{ album.name }}
-                            </h1>
+                    <template #default>
+                        <div v-if="album" class="sticky top-24">
                             <div
-                                class="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                                class="relative aspect-square overflow-hidden rounded-2xl shadow-accent"
                             >
-                                <span>{{ album.release_date }}</span>
-                                <span>·</span>
-                                <span
-                                    >{{
+                                <img
+                                    v-if="coverImage"
+                                    :src="coverImage"
+                                    :alt="album.name"
+                                    class="size-full object-cover"
+                                />
+                                <div
+                                    v-else
+                                    class="flex size-full items-center justify-center bg-muted text-muted-foreground"
+                                >
+                                    <IconMusicNote class="size-10" />
+                                </div>
+
+                                <div
+                                    class="absolute -inset-4 -z-10 rounded-full bg-accent/20 blur-3xl"
+                                />
+                            </div>
+
+                            <div class="mt-5">
+                                <p
+                                    class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
+                                >
+                                    Album · {{ album.release_date }}
+                                </p>
+                                <h1
+                                    class="mt-2 font-display text-4xl font-bold"
+                                >
+                                    {{ album.name }}
+                                </h1>
+                                <p class="mt-1 text-base text-foreground">
+                                    {{ primaryArtistName }}
+                                </p>
+                                <p
+                                    class="mt-3 flex items-center gap-1 text-xs text-muted-foreground"
+                                >
+                                    <Clock class="size-3" />
+                                    {{
                                         album.total_tracks ??
                                         tracks?.length ??
                                         0
                                     }}
-                                    tracks</span
-                                >
-                            </div>
-                            <div class="mt-3 text-sm text-muted-foreground">
-                                <template
-                                    v-for="(artist, index) in tracks?.[0]
-                                        ?.artists ?? []"
-                                    :key="artist.id"
-                                >
-                                    <Link
-                                        :href="artistShow(artist.id).url"
-                                        class="hover:text-foreground"
-                                    >
-                                        {{ artist.name }}
-                                    </Link>
-                                    <span
-                                        v-if="
-                                            index <
-                                            (tracks?.[0]?.artists?.length ??
-                                                0) -
-                                                1
-                                        "
-                                        >,
-                                    </span>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section
-                    v-else
-                    class="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-sm"
-                >
-                    Album not found.
-                </section>
-            </template>
-        </Deferred>
-
-        <section>
-            <h2 class="mb-3 text-base font-semibold text-foreground">Tracks</h2>
-            <Deferred data="tracks">
-                <template #fallback>
-                    <div
-                        class="rounded-xl border border-border bg-card p-2 shadow-sm"
-                    >
-                        <div
-                            v-for="n in 8"
-                            :key="n"
-                            class="flex items-center gap-3 px-2 py-2"
-                        >
-                            <Skeleton class="h-4 w-4" />
-                            <div class="flex-1 space-y-1">
-                                <Skeleton class="h-4 w-40" />
-                                <Skeleton class="h-3 w-24" />
-                            </div>
-                            <Skeleton class="h-3 w-8" />
-                        </div>
-                    </div>
-                </template>
-
-                <template #default>
-                    <div
-                        v-if="!tracks?.length"
-                        class="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-sm"
-                    >
-                        No tracks found.
-                    </div>
-
-                    <div
-                        v-else
-                        class="rounded-xl border border-border bg-card p-2 shadow-sm"
-                    >
-                        <div
-                            v-for="(track, index) in tracks"
-                            :key="track.id"
-                            class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent/30"
-                        >
-                            <button
-                                class="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-                                :aria-label="
-                                    isPlayingTrack(track.id) ? 'Pause' : 'Play'
-                                "
-                                @click="handlePlay(track)"
-                            >
-                                <IconPause
-                                    v-if="isPlayingTrack(track.id)"
-                                    class="size-4 text-green-500"
-                                />
-                                <IconPlay v-else class="size-4" />
-                            </button>
-                            <span
-                                class="w-5 text-center text-sm font-semibold text-muted-foreground"
-                                >{{ index + 1 }}</span
-                            >
-                            <div class="min-w-0 flex-1">
-                                <p
-                                    class="truncate text-sm font-semibold text-foreground"
-                                >
-                                    {{ track.name }}
+                                    tracks ·
+                                    {{ totalDurationLabel }}
                                 </p>
+
+                                <div class="mt-5 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="shadow-glow bg-gradient-primary flex h-11 items-center gap-2 rounded-full px-5 font-semibold text-primary-foreground"
+                                        :disabled="!tracks?.length"
+                                        @click="
+                                            tracks?.[0] && handlePlay(tracks[0])
+                                        "
+                                    >
+                                        <Play class="size-4" />
+                                        Play
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                    >
+                                        <Shuffle class="size-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                    >
+                                        <Heart class="size-4" />
+                                    </button>
+                                </div>
                             </div>
-                            <span
-                                class="text-xs text-muted-foreground tabular-nums"
-                                >{{ formatDuration(track.duration_ms) }}</span
-                            >
                         </div>
-                    </div>
-                </template>
-            </Deferred>
-        </section>
+
+                        <section
+                            v-else
+                            class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
+                        >
+                            Album not found.
+                        </section>
+                    </template>
+                </Deferred>
+            </div>
+
+            <div class="space-y-6 lg:col-span-2">
+                <Deferred data="tracks">
+                    <template #fallback>
+                        <div
+                            class="rounded-2xl border border-border bg-card p-5 shadow-card"
+                        >
+                            <Skeleton class="mb-4 h-8 w-32" />
+                            <div class="space-y-1">
+                                <div
+                                    v-for="n in 8"
+                                    :key="n"
+                                    class="flex items-center gap-3 rounded-lg px-2 py-2"
+                                >
+                                    <Skeleton class="h-4 w-4" />
+                                    <div class="flex-1 space-y-1">
+                                        <Skeleton class="h-4 w-40" />
+                                    </div>
+                                    <Skeleton class="h-3 w-8" />
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template #default>
+                        <div
+                            v-if="!tracks?.length"
+                            class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
+                        >
+                            No tracks found.
+                        </div>
+
+                        <div
+                            v-else
+                            class="rounded-2xl border border-border bg-card p-5 shadow-card"
+                        >
+                            <h2 class="mb-4 font-display text-2xl font-bold">
+                                Tracklist
+                            </h2>
+                            <div class="space-y-1">
+                                <div
+                                    v-for="(track, index) in tracks"
+                                    :key="track.id"
+                                    class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60"
+                                >
+                                    <button
+                                        class="grid size-5 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
+                                        :aria-label="
+                                            isPlayingTrack(track.id)
+                                                ? 'Pause'
+                                                : 'Play'
+                                        "
+                                        @click="handlePlay(track)"
+                                    >
+                                        <IconPause
+                                            v-if="isPlayingTrack(track.id)"
+                                            class="size-4 text-accent"
+                                        />
+                                        <IconPlay v-else class="size-4" />
+                                    </button>
+                                    <span
+                                        class="w-5 text-center text-sm text-muted-foreground tabular-nums"
+                                        >{{ index + 1 }}</span
+                                    >
+                                    <div class="min-w-0 flex-1">
+                                        <p
+                                            class="truncate text-sm font-medium"
+                                            :class="
+                                                isPlayingTrack(track.id)
+                                                    ? 'text-accent'
+                                                    : 'text-foreground'
+                                            "
+                                        >
+                                            {{ track.name }}
+                                        </p>
+                                    </div>
+                                    <span
+                                        class="text-xs text-muted-foreground tabular-nums"
+                                        >{{
+                                            formatDuration(track.duration_ms)
+                                        }}</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </Deferred>
+
+                <section class="grid gap-4 sm:grid-cols-3">
+                    <StatCard
+                        label="Your plays"
+                        value="128"
+                        hint="This month"
+                    />
+                    <StatCard label="Time" value="9.2h" hint="Listening time" />
+                    <StatCard
+                        accent
+                        label="Mood match"
+                        value="94%"
+                        hint="Based on your history"
+                    />
+                </section>
+            </div>
+        </div>
     </div>
 </template>
