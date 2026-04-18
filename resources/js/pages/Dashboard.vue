@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Deferred, Head, Link, router } from '@inertiajs/vue3';
-import { onUnmounted, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import ArtistCard from '@/components/dashboard/ArtistCard.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
@@ -27,7 +27,7 @@ defineOptions({
     },
 });
 
-defineProps<{
+const props = defineProps<{
     period: TimeRange;
     topTracks?: SpotifyTrack[];
     topArtists?: SpotifyArtist[];
@@ -48,6 +48,28 @@ onUnmounted(() => {
 
 const { isPlayingTrack, playTrack } = usePlayer();
 
+const periodDescription = computed(() => {
+    if (props.period === 'short_term') {
+        return 'Last 4 weeks';
+    }
+
+    if (props.period === 'medium_term') {
+        return 'Last 6 months';
+    }
+
+    return 'All time';
+});
+
+const topTracksPreview = computed(() =>
+    (props.topTracks ?? []).slice(0, SKELETON_COUNT),
+);
+const topArtistsPreview = computed(() =>
+    (props.topArtists ?? []).slice(0, SKELETON_COUNT),
+);
+const recentPlaysPreview = computed(() =>
+    (props.recentPlays ?? []).slice(0, SKELETON_COUNT),
+);
+
 async function handlePlay(track: SpotifyTrack) {
     await playTrack(`spotify:track:${track.id}`);
 }
@@ -67,13 +89,7 @@ async function handlePlay(track: SpotifyTrack) {
         <section>
             <SectionHeader
                 title="Top Tracks"
-                :description="
-                    period === 'short_term'
-                        ? 'Last 4 weeks'
-                        : period === 'medium_term'
-                          ? 'Last 6 months'
-                          : 'All time'
-                "
+                :description="periodDescription"
             />
             <div
                 class="mt-3 rounded-xl border border-border bg-card p-2 shadow-sm"
@@ -94,10 +110,7 @@ async function handlePlay(track: SpotifyTrack) {
                             :class="{ 'opacity-40': reloading }"
                         >
                             <TrackListItem
-                                v-for="(track, i) in topTracks!.slice(
-                                    0,
-                                    SKELETON_COUNT,
-                                )"
+                                v-for="(track, i) in topTracksPreview"
                                 :key="track.id"
                                 :rank="i + 1"
                                 :track="track"
@@ -105,7 +118,7 @@ async function handlePlay(track: SpotifyTrack) {
                                 @play="handlePlay"
                             />
                             <p
-                                v-if="topTracks!.length === 0"
+                                v-if="topTracksPreview.length === 0"
                                 class="py-6 text-center text-sm text-muted-foreground"
                             >
                                 No tracks found for this period.
@@ -139,10 +152,7 @@ async function handlePlay(track: SpotifyTrack) {
                         :class="{ 'opacity-40': reloading }"
                     >
                         <Link
-                            v-for="(artist, i) in topArtists!.slice(
-                                0,
-                                SKELETON_COUNT,
-                            )"
+                            v-for="(artist, i) in topArtistsPreview"
                             :key="artist.id"
                             :href="artistShow(artist.id).url"
                         >
@@ -178,10 +188,7 @@ async function handlePlay(track: SpotifyTrack) {
 
                     <template #default>
                         <TrackListItem
-                            v-for="(play, i) in recentPlays!.slice(
-                                0,
-                                SKELETON_COUNT,
-                            )"
+                            v-for="(play, i) in recentPlaysPreview"
                             :key="`${play.track.id}-${play.played_at}`"
                             :rank="i + 1"
                             :track="play.track"
@@ -189,7 +196,7 @@ async function handlePlay(track: SpotifyTrack) {
                             @play="handlePlay"
                         />
                         <p
-                            v-if="recentPlays!.length === 0"
+                            v-if="recentPlaysPreview.length === 0"
                             class="py-6 text-center text-sm text-muted-foreground"
                         >
                             No recent plays found.

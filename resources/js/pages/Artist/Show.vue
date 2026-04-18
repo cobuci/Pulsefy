@@ -54,6 +54,17 @@ const albumFilter = ref<
     'all' | 'album' | 'single' | 'appears_on' | 'compilation'
 >('all');
 
+const albumFilterOptions: Array<{
+    value: 'all' | 'album' | 'single' | 'appears_on' | 'compilation';
+    label: string;
+}> = [
+    { value: 'all', label: 'All' },
+    { value: 'album', label: 'Albums' },
+    { value: 'single', label: 'Singles' },
+    { value: 'appears_on', label: 'Appears On' },
+    { value: 'compilation', label: 'Compilations' },
+];
+
 const displayedTopTracks = computed(() => {
     const tracks = props.topTracks ?? [];
 
@@ -293,64 +304,18 @@ async function handlePlay(track: SpotifyTrack) {
 
             <div class="mb-3 flex flex-wrap gap-1.5">
                 <button
+                    v-for="option in albumFilterOptions"
+                    :key="option.value"
                     type="button"
                     :class="[
                         'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        albumFilter === 'all'
+                        albumFilter === option.value
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground hover:text-foreground',
                     ]"
-                    @click="setAlbumFilter('all')"
+                    @click="setAlbumFilter(option.value)"
                 >
-                    All
-                </button>
-                <button
-                    type="button"
-                    :class="[
-                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        albumFilter === 'album'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:text-foreground',
-                    ]"
-                    @click="setAlbumFilter('album')"
-                >
-                    Albums
-                </button>
-                <button
-                    type="button"
-                    :class="[
-                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        albumFilter === 'single'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:text-foreground',
-                    ]"
-                    @click="setAlbumFilter('single')"
-                >
-                    Singles
-                </button>
-                <button
-                    type="button"
-                    :class="[
-                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        albumFilter === 'appears_on'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:text-foreground',
-                    ]"
-                    @click="setAlbumFilter('appears_on')"
-                >
-                    Appears On
-                </button>
-                <button
-                    type="button"
-                    :class="[
-                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                        albumFilter === 'compilation'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:text-foreground',
-                    ]"
-                    @click="setAlbumFilter('compilation')"
-                >
-                    Compilations
+                    {{ option.label }}
                 </button>
             </div>
 

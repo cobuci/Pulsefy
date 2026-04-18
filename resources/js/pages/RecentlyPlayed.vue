@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Deferred, Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { show as artistShow } from '@/routes/artists';
 import { dashboard, recentlyPlayed } from '@/routes';
-import type { RecentPlay, SpotifyTrack } from '@/types/spotify';
+import type { SpotifyTrack } from '@/types/spotify';
 
 defineOptions({
     inheritAttrs: false,
@@ -20,7 +19,7 @@ defineOptions({
 });
 
 const props = defineProps<{
-    plays?: RecentPlay[];
+    playGroups?: PlayGroup[];
 }>();
 
 const SKELETON_COUNT = 10;
@@ -48,27 +47,6 @@ function formatTime(isoString: string): string {
     });
 }
 
-function formatGroupDate(isoString: string): string {
-    const date = new Date(isoString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 86400000);
-    const playDate = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-    );
-
-    if (playDate.getTime() === today.getTime()) return 'Today';
-    if (playDate.getTime() === yesterday.getTime()) return 'Yesterday';
-
-    return date.toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-    });
-}
-
 interface TrackEntry {
     track: SpotifyTrack;
     lastPlayedAt: string;
@@ -80,45 +58,6 @@ interface PlayGroup {
     label: string;
     entries: TrackEntry[];
 }
-
-const groupedPlays = computed((): PlayGroup[] => {
-    if (!props.plays) return [];
-
-    const dayMap: Record<string, RecentPlay[]> = {};
-
-    for (const play of props.plays) {
-        const label = formatGroupDate(play.played_at);
-        if (!dayMap[label]) dayMap[label] = [];
-        dayMap[label].push(play);
-    }
-
-    let globalRank = 0;
-
-    return Object.entries(dayMap).map(([label, dayPlays]) => {
-        const trackMap: Record<string, TrackEntry> = {};
-
-        for (const play of dayPlays) {
-            const id = play.track.id;
-
-            if (!trackMap[id]) {
-                globalRank++;
-                trackMap[id] = {
-                    track: play.track,
-                    lastPlayedAt: play.played_at,
-                    count: 1,
-                    rank: globalRank,
-                };
-            } else {
-                trackMap[id].count++;
-                if (play.played_at > trackMap[id].lastPlayedAt) {
-                    trackMap[id].lastPlayedAt = play.played_at;
-                }
-            }
-        }
-
-        return { label, entries: Object.values(trackMap) };
-    });
-});
 
 function albumImageUrl(track: SpotifyTrack): string | null {
     return track.album?.images?.[0]?.url ?? null;
@@ -136,7 +75,7 @@ function albumImageUrl(track: SpotifyTrack): string | null {
             </p>
         </div>
 
-        <Deferred data="plays">
+        <Deferred data="playGroups">
             <template #fallback>
                 <div class="rounded-xl border border-border bg-card shadow-sm">
                     <div class="border-b border-border px-4 py-2.5">
@@ -162,7 +101,7 @@ function albumImageUrl(track: SpotifyTrack): string | null {
 
             <template #default>
                 <div
-                    v-if="plays!.length === 0"
+                    v-if="playGroups!.length === 0"
                     class="py-16 text-center text-sm text-muted-foreground"
                 >
                     No listening history found.
@@ -170,7 +109,7 @@ function albumImageUrl(track: SpotifyTrack): string | null {
 
                 <div v-else class="flex flex-col gap-4">
                     <section
-                        v-for="group in groupedPlays"
+                        v-for="group in playGroups"
                         :key="group.label"
                         class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
                     >
