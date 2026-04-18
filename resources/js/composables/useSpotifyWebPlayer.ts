@@ -1,6 +1,6 @@
+import { useHttp } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { deviceToken } from '@/routes/player';
-import { useHttp } from '@inertiajs/vue3';
 import type {
     SpotifyPlayer,
     SpotifyWebPlaybackState,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Skeleton } from '@/components/ui/skeleton';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';

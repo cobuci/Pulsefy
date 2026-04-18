@@ -1,5 +1,5 @@
-import { computed, ref, watch } from 'vue';
 import { useHttp } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 import { lyrics } from '@/routes/player';
 import type { LyricsResponse, SpotifyTrack } from '@/types/spotify';
 

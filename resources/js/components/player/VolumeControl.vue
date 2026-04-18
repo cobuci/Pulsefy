@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue';
-import type { SpotifyPlayer } from '@/types/spotify-web-playback';
 import IconVolume from '@/components/icons/IconVolume.vue';
 import { volume as volumeRoute } from '@/routes/player';
+import type { SpotifyPlayer } from '@/types/spotify-web-playback';
 import { getCsrfToken } from '@/utils/csrf';
 
 const props = withDefaults(
@@ -38,6 +38,7 @@ onUnmounted(() => {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
     }
+
     if (closeTimer) {
         clearTimeout(closeTimer);
     }
@@ -52,6 +53,7 @@ function onMouseEnter() {
         clearTimeout(closeTimer);
         closeTimer = null;
     }
+
     isHovered.value = true;
 }
 
@@ -59,6 +61,7 @@ function onMouseLeave() {
     if (isDragging.value) {
         return;
     }
+
     closeTimer = setTimeout(() => {
         isHovered.value = false;
         closeTimer = null;

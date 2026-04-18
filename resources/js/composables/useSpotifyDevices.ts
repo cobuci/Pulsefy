@@ -1,8 +1,8 @@
-import { computed, ref } from 'vue';
 import { useHttp } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import { devices, transfer } from '@/routes/player';
-import { getCsrfToken } from '@/utils/csrf';
 import type { SpotifyDevice } from '@/types/spotify';
+import { getCsrfToken } from '@/utils/csrf';
 
 export function useSpotifyDevices(
     localPlayerReady: ReturnType<typeof ref<boolean>>,

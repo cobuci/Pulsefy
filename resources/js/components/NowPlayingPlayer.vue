@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Repeat, Shuffle } from 'lucide-vue-next';
-import { usePlayer } from '@/composables/usePlayer';
-import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
-import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
-import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
@@ -14,6 +10,10 @@ import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
 import VolumeControl from '@/components/player/VolumeControl.vue';
+import { usePlayer } from '@/composables/usePlayer';
+import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
+import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
+import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
 import { next, pause, play, previous, seek } from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';

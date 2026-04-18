@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Deferred, Head, setLayoutProps } from '@inertiajs/vue3';
-import { computed, watchEffect } from 'vue';
 import { Clock, Heart, Play, Shuffle } from 'lucide-vue-next';
+import { computed, watchEffect } from 'vue';
+import StatCard from '@/components/dashboard/StatCard.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
-import StatCard from '@/components/dashboard/StatCard.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
