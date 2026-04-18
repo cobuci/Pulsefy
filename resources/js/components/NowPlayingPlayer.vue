@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { Repeat, Repeat1, Shuffle } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
@@ -14,6 +15,8 @@ import { usePlayer } from '@/composables/usePlayer';
 import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
 import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
 import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
+import { show as albumShow } from '@/routes/albums';
+import { show as artistShow } from '@/routes/artists';
 import {
     next,
     pause,
@@ -432,20 +435,43 @@ function onToggleRepeat() {
                         </div>
 
                         <div class="min-w-0">
-                            <a
-                                :href="data?.track?.external_urls?.spotify"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                v-if="data?.track?.album?.id"
+                                :href="albumShow(data.track.album.id).url"
                                 class="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
                             >
                                 {{ data?.track?.name }}
-                            </a>
+                            </Link>
+                            <p
+                                v-else
+                                class="block truncate text-sm font-semibold text-foreground"
+                            >
+                                {{ data?.track?.name }}
+                            </p>
                             <p class="truncate text-xs text-muted-foreground">
-                                {{
-                                    (data?.track?.artists ?? [])
-                                        .map((a) => a.name)
-                                        .join(', ')
-                                }}
+                                <template
+                                    v-for="(artist, index) in data?.track
+                                        ?.artists ?? []"
+                                    :key="artist.id"
+                                >
+                                    <Link
+                                        v-if="artist.id"
+                                        :href="artistShow(artist.id).url"
+                                        class="hover:text-foreground"
+                                    >
+                                        {{ artist.name }}
+                                    </Link>
+                                    <span v-else>{{ artist.name }}</span>
+                                    <span
+                                        v-if="
+                                            index <
+                                            (data?.track?.artists?.length ??
+                                                0) -
+                                                1
+                                        "
+                                        >,
+                                    </span>
+                                </template>
                             </p>
                         </div>
                     </template>
