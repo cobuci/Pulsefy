@@ -53,6 +53,13 @@ final class SpotifyArtistClient
         ]);
     }
 
+    public function artistTopTracks(string $artistId, string $market = 'US'): Response
+    {
+        return $this->get('/artists/'.$artistId.'/top-tracks', [
+            'market' => $market,
+        ]);
+    }
+
     private function get(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)

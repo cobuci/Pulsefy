@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Log;
 /**
  * @phpstan-type SpotifyPayload array<string, mixed>
  * @phpstan-type SpotifyPayloadList array<int, array<string, mixed>>
- * @phpstan-type ArtistTrack array{artists?: array<int, array{id?: ?string}>}
  */
 final readonly class SpotifyArtistService implements SpotifyArtistProvider
 {
@@ -44,33 +43,94 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
     public function topTracks(User $user, string $artistId): array
     {
-        return $this->cached($user, 'artist_top_tracks', 'v1:'.$artistId, function () use ($user, $artistId) {
-            try {
-                $artist = $this->artist($user, $artistId);
+        return $this->cached($user, 'artist_top_tracks', 'v2:'.$artistId, function () use ($user, $artistId) {
+            $tracks = $this->fetchTopTracks($user, $artistId);
 
-                if (! $artist || empty($artist['name'])) {
-                    return [];
-                }
+            if ($tracks === []) {
+                return $this->searchTopTracksFallback($user, $artistId);
+            }
 
-                $response = $this->requestWithFallback(
-                    user: $user,
-                    appRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name'], 50),
-                    userRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name'], 50),
-                );
+            return $tracks;
+        });
+    }
 
-                if (in_array($response->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
-                    return [];
-                }
+    /**
+     * @return SpotifyPayloadList
+     */
+    private function fetchTopTracks(User $user, string $artistId): array
+    {
+        try {
+            $response = $this->requestWithFallback(
+                user: $user,
+                appRequest: fn (SpotifyArtistClient $client): Response => $client->artistTopTracks($artistId),
+                userRequest: fn (SpotifyArtistClient $client): Response => $client->artistTopTracks($artistId),
+            );
 
-                $items = $response->throw()->json('tracks.items', []);
-
-                return array_values(array_filter($items, fn (array $track): bool => $this->trackContainsArtist($track, $artistId)));
-            } catch (\Throwable $e) {
-                Log::warning('Spotify topTracks failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
-
+            if (in_array($response->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
                 return [];
             }
-        });
+
+            /** @var SpotifyPayloadList $tracks */
+            $tracks = $response->throw()->json('tracks', []);
+
+            return $tracks;
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify topTracks failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @return SpotifyPayloadList
+     */
+    private function searchTopTracksFallback(User $user, string $artistId): array
+    {
+        try {
+            $artistResponse = $this->requestWithFallback(
+                user: $user,
+                appRequest: fn (SpotifyArtistClient $client): Response => $client->artist($artistId),
+                userRequest: fn (SpotifyArtistClient $client): Response => $client->artist($artistId),
+            );
+
+            if (in_array($artistResponse->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
+                return [];
+            }
+
+            $artistName = (string) $artistResponse->throw()->json('name', '');
+
+            if ($artistName === '') {
+                return [];
+            }
+
+            $tracksResponse = $this->requestWithFallback(
+                user: $user,
+                appRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artistName),
+                userRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artistName),
+            );
+
+            if (in_array($tracksResponse->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
+                return [];
+            }
+
+            /** @var SpotifyPayloadList $tracks */
+            $tracks = $tracksResponse->throw()->json('tracks.items', []);
+
+            return collect($tracks)
+                ->filter(function (array $track) use ($artistId): bool {
+                    $artists = data_get($track, 'artists', []);
+
+                    return collect($artists)
+                        ->contains(fn (array $artist): bool => (string) data_get($artist, 'id', '') === $artistId);
+                })
+                ->take(10)
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify topTracks fallback failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
+
+            return [];
+        }
     }
 
     public function albums(User $user, string $artistId): array
@@ -106,7 +166,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
                 return $albums;
             } catch (\Throwable $e) {
-                Log::warning('Spotify artistAlbums failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
+                Log::channel('spotify')->warning('Spotify artistAlbums failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
 
                 return [];
             }
@@ -150,7 +210,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
             return $response->throw()->json($path, []);
         } catch (\Throwable $e) {
-            Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
             return [];
         }
@@ -167,7 +227,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
             return $response->throw()->json();
         } catch (\Throwable $e) {
-            Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
             return [];
         }
@@ -182,17 +242,6 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
         }
 
         return $response;
-    }
-
-    private function trackContainsArtist(array $track, string $artistId): bool
-    {
-        foreach ($track['artists'] ?? [] as $artist) {
-            if (($artist['id'] ?? null) === $artistId) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function appArtistClient(): SpotifyArtistClient

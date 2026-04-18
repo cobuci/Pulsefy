@@ -50,8 +50,27 @@ test('authenticated users can visit artist show page with deferred props', funct
             'popularity' => 50,
             'external_urls' => ['spotify' => 'https://open.spotify.com/artist/artist-1'],
         ]),
-        'api.spotify.com/v1/search*' => Http::response([
-            'tracks' => ['items' => []],
+        'api.spotify.com/v1/artists/artist-1/top-tracks*' => Http::response([
+            'tracks' => [[
+                'id' => 'track-1',
+                'name' => 'Track One',
+                'artists' => [[
+                    'id' => 'artist-1',
+                    'name' => 'Artist One',
+                    'external_urls' => ['spotify' => 'https://open.spotify.com/artist/artist-1'],
+                ]],
+                'album' => [
+                    'id' => 'album-1',
+                    'name' => 'Album One',
+                    'images' => [],
+                    'release_date' => '2024-01-01',
+                    'external_urls' => ['spotify' => 'https://open.spotify.com/album/album-1'],
+                ],
+                'duration_ms' => 180000,
+                'popularity' => 50,
+                'preview_url' => null,
+                'external_urls' => ['spotify' => 'https://open.spotify.com/track/track-1'],
+            ]],
         ]),
         'api.spotify.com/v1/me/top/artists*' => Http::response([
             'items' => [[

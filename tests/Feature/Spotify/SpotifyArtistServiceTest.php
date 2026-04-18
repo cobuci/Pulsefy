@@ -55,9 +55,43 @@ test('topTracks returns tracks payload', function () {
     $user = User::factory()->create();
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('appAccessToken')->twice()->andReturn('token');
+    $tokenService->shouldReceive('appAccessToken')->once()->andReturn('token');
 
     Http::fake([
+        'api.spotify.com/v1/artists/artist-1/top-tracks*' => Http::response([
+            'tracks' => [
+                [
+                    'id' => 'track-1',
+                    'name' => 'Track One',
+                    'artists' => [['id' => 'artist-1', 'name' => 'Artist One']],
+                ],
+            ],
+        ]),
+    ]);
+
+    $service = new SpotifyArtistService($tokenService);
+    $tracks = $service->topTracks($user, 'artist-1');
+
+    expect($tracks)
+        ->toHaveCount(1)
+        ->and(data_get($tracks, '0.id'))->toBe('track-1')
+        ->and(data_get($tracks, '0.name'))->toBe('Track One');
+});
+
+test('topTracks falls back to search when top-tracks endpoint is forbidden', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('appAccessToken')->times(3)->andReturn('app-token');
+    $tokenService->shouldReceive('ensureFreshToken')->never();
+
+    Http::fake([
+        'api.spotify.com/v1/artists/artist-1/top-tracks*' => Http::sequence()
+            ->push(['error' => ['status' => 403, 'message' => 'Forbidden']], 403)
+            ->push(['error' => ['status' => 403, 'message' => 'Forbidden']], 403),
         'api.spotify.com/v1/artists/artist-1' => Http::response([
             'id' => 'artist-1',
             'name' => 'Artist One',
@@ -73,6 +107,11 @@ test('topTracks returns tracks payload', function () {
                         'name' => 'Track One',
                         'artists' => [['id' => 'artist-1', 'name' => 'Artist One']],
                     ],
+                    [
+                        'id' => 'track-2',
+                        'name' => 'Track Two',
+                        'artists' => [['id' => 'other-artist', 'name' => 'Other Artist']],
+                    ],
                 ],
             ],
         ]),
@@ -83,8 +122,7 @@ test('topTracks returns tracks payload', function () {
 
     expect($tracks)
         ->toHaveCount(1)
-        ->and(data_get($tracks, '0.id'))->toBe('track-1')
-        ->and(data_get($tracks, '0.name'))->toBe('Track One');
+        ->and(data_get($tracks, '0.id'))->toBe('track-1');
 });
 
 test('albums returns album items payload', function () {
