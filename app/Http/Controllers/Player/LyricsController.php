@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Player;
 
+use App\Http\Controllers\Controller;
 use App\Services\LyricsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

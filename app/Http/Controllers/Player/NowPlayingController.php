@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Player;
 
-use App\Services\Spotify\SpotifyService;
+use App\Http\Controllers\Controller;
+use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class NowPlayingController extends Controller
 {
-    public function __invoke(Request $request, SpotifyService $spotify): SymfonyResponse
+    public function __invoke(Request $request, SpotifyPlaybackProvider $playback): SymfonyResponse
     {
-        $data = $spotify->currentlyPlaying($request->user());
+        $data = $playback->currentlyPlaying($request->user());
 
         if ($data === null) {
             return response()->noContent();

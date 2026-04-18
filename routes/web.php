@@ -1,12 +1,15 @@
 <?php
 
+use App\Http\Controllers\Album\ShowController as AlbumShowController;
+use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
+use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\LyricsController;
-use App\Http\Controllers\NowPlayingController;
-use App\Http\Controllers\PlayerControlController;
-use App\Http\Controllers\PlayerDeviceController;
-use App\Http\Controllers\PlayerDevicesController;
-use App\Http\Controllers\PlayerTransferController;
+use App\Http\Controllers\Player\ControlController as PlayerControlController;
+use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
+use App\Http\Controllers\Player\DeviceTokenController;
+use App\Http\Controllers\Player\LyricsController;
+use App\Http\Controllers\Player\NowPlayingController;
+use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +25,9 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('recently-played', RecentlyPlayedController::class)->name('recently-played');
+    Route::get('artists', ArtistIndexController::class)->name('artists.index');
+    Route::get('artists/{artistId}', ArtistShowController::class)->name('artists.show');
+    Route::get('albums/{albumId}', AlbumShowController::class)->name('albums.show');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
 
@@ -32,7 +38,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('previous', [PlayerControlController::class, 'previous'])->name('previous');
         Route::post('seek', [PlayerControlController::class, 'seek'])->name('seek');
         Route::post('volume', [PlayerControlController::class, 'volume'])->name('volume');
-        Route::get('device-token', PlayerDeviceController::class)->name('device-token');
+        Route::get('device-token', DeviceTokenController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
     });

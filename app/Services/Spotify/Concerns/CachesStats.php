@@ -10,6 +10,16 @@ trait CachesStats
 {
     private const RECENTLY_PLAYED_TTL = 15 * 60;
 
+    private const ARTIST_PROFILE_TTL = 30 * 60;
+
+    private const ARTIST_TOP_TRACKS_TTL = 30 * 60;
+
+    private const ARTIST_ALBUMS_TTL = 6 * 3600;
+
+    private const ALBUM_PROFILE_TTL = 6 * 3600;
+
+    private const ALBUM_TRACKS_TTL = 6 * 3600;
+
     private const DEFAULT_TTL = 24 * 3600;
 
     private const LONG_TERM_TTL = 72 * 3600;
@@ -36,6 +46,26 @@ trait CachesStats
     {
         if ($type === 'recently_played') {
             return self::RECENTLY_PLAYED_TTL;
+        }
+
+        if ($type === 'artist_profile') {
+            return self::ARTIST_PROFILE_TTL;
+        }
+
+        if ($type === 'artist_top_tracks') {
+            return self::ARTIST_TOP_TRACKS_TTL;
+        }
+
+        if ($type === 'artist_albums') {
+            return self::ARTIST_ALBUMS_TTL;
+        }
+
+        if ($type === 'album_profile') {
+            return self::ALBUM_PROFILE_TTL;
+        }
+
+        if ($type === 'album_tracks') {
+            return self::ALBUM_TRACKS_TTL;
         }
 
         return match ($timeRange) {

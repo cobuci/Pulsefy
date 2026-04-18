@@ -6,11 +6,14 @@ use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class SpotifyTokenService
 {
     private const TOKEN_URL = 'https://accounts.spotify.com/api/token';
+
+    private const APP_TOKEN_CACHE_KEY = 'spotify_app_access_token';
 
     public function ensureFreshToken(User $user): string
     {
@@ -19,6 +22,27 @@ class SpotifyTokenService
         }
 
         return $this->refresh($user);
+    }
+
+    /** @throws RequestException|ConnectionException */
+    public function appAccessToken(): string
+    {
+        return Cache::remember(self::APP_TOKEN_CACHE_KEY, now()->addMinutes(50), function (): string {
+            $clientId = config('services.spotify.client_id');
+            $clientSecret = config('services.spotify.client_secret');
+
+            $response = Http::asForm()
+                ->withBasicAuth($clientId, $clientSecret)
+                ->timeout(10)
+                ->retry(2, 500)
+                ->post(self::TOKEN_URL, [
+                    'grant_type' => 'client_credentials',
+                ]);
+
+            $response->throw();
+
+            return (string) $response->json('access_token');
+        });
     }
 
     /** @throws RequestException|ConnectionException */

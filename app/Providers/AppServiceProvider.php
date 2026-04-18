@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Services\Spotify\Artist\SpotifyArtistService;
+use App\Services\Spotify\Contracts\SpotifyArtistProvider;
+use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
+use App\Services\Spotify\Contracts\SpotifyStatsProvider;
+use App\Services\Spotify\Playback\SpotifyPlaybackService;
+use App\Services\Spotify\SpotifyService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
@@ -16,7 +22,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(SpotifyStatsProvider::class, SpotifyService::class);
+        $this->app->bind(SpotifyArtistProvider::class, SpotifyArtistService::class);
+        $this->app->bind(SpotifyPlaybackProvider::class, SpotifyPlaybackService::class);
     }
 
     public function boot(): void

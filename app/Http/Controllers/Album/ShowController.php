@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Controllers\Album;
+
+use App\Http\Controllers\Controller;
+use App\Services\Spotify\Contracts\SpotifyArtistProvider;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+final class ShowController extends Controller
+{
+    public function __invoke(Request $request, SpotifyArtistProvider $artistService, string $albumId): Response
+    {
+        $user = $request->user();
+
+        return Inertia::render('Album/Show', [
+            'albumId' => $albumId,
+            'artistId' => $request->string('artistId')->toString() ?: null,
+            'artistName' => $request->string('artistName')->toString() ?: null,
+            'album' => Inertia::defer(fn () => $artistService->album($user, $albumId)),
+            'tracks' => Inertia::defer(fn () => $artistService->albumTracks($user, $albumId)),
+        ]);
+    }
+}
