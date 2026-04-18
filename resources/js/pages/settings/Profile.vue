@@ -37,20 +37,26 @@ const user = computed(() => page.props.auth.user);
             description="Update your display name. Your Spotify email and avatar are managed by Spotify."
         />
 
-        <div class="flex items-center gap-4">
-            <img
-                v-if="user.avatar"
-                :src="user.avatar"
-                :alt="user.name"
-                class="size-16 rounded-full object-cover"
-            />
-            <div class="flex flex-col gap-0.5">
-                <span class="text-sm font-medium text-foreground">{{
-                    user.name
-                }}</span>
-                <span v-if="user.email" class="text-xs text-muted-foreground">{{
-                    user.email
-                }}</span>
+        <div
+            class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card"
+        >
+            <div class="flex items-center gap-4">
+                <img
+                    v-if="user.avatar"
+                    :src="user.avatar"
+                    :alt="user.name"
+                    class="size-16 rounded-full object-cover ring-2 ring-accent/40"
+                />
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-sm font-medium text-foreground">{{
+                        user.name
+                    }}</span>
+                    <span
+                        v-if="user.email"
+                        class="text-xs text-muted-foreground"
+                        >{{ user.email }}</span
+                    >
+                </div>
             </div>
         </div>
 
@@ -63,7 +69,7 @@ const user = computed(() => page.props.auth.user);
                 <Label for="name">Display name</Label>
                 <Input
                     id="name"
-                    class="mt-1 block w-full"
+                    class="mt-1 block h-11 w-full rounded-xl"
                     name="name"
                     :default-value="user.name"
                     required
@@ -74,7 +80,10 @@ const user = computed(() => page.props.auth.user);
             </div>
 
             <div class="flex items-center gap-4">
-                <Button :disabled="processing" data-test="update-profile-button"
+                <Button
+                    :disabled="processing"
+                    data-test="update-profile-button"
+                    class="bg-gradient-primary shadow-glow text-primary-foreground"
                     >Save</Button
                 >
             </div>
