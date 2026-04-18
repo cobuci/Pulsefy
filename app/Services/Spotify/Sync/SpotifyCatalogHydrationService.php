@@ -111,6 +111,10 @@ final class SpotifyCatalogHydrationService
             [
                 'artist_name' => $name,
                 'genres' => is_array(data_get($payload, 'genres')) ? data_get($payload, 'genres') : [],
+                'images' => is_array(data_get($payload, 'images')) ? data_get($payload, 'images') : null,
+                'popularity' => is_numeric(data_get($payload, 'popularity')) ? (int) data_get($payload, 'popularity') : null,
+                'uri' => is_string(data_get($payload, 'uri')) ? data_get($payload, 'uri') : null,
+                'external_urls' => is_array(data_get($payload, 'external_urls')) ? data_get($payload, 'external_urls') : null,
                 'fetched_at' => now(),
                 'expires_at' => now()->addDays(7),
             ],

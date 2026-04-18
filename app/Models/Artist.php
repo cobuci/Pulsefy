@@ -13,6 +13,10 @@ use Illuminate\Support\Carbon;
  * @property string $artist_id
  * @property ?string $artist_name
  * @property array<int, string> $genres
+ * @property ?array<int, array{url: string, height?: int|null, width?: int|null}> $images
+ * @property ?int $popularity
+ * @property ?string $uri
+ * @property ?array<string, mixed> $external_urls
  * @property Carbon $fetched_at
  * @property Carbon $expires_at
  * @property ?Carbon $created_at
@@ -30,6 +34,8 @@ class Artist extends Model
     {
         return [
             'genres' => 'array',
+            'images' => 'array',
+            'external_urls' => 'array',
             'fetched_at' => 'datetime',
             'expires_at' => 'datetime',
         ];

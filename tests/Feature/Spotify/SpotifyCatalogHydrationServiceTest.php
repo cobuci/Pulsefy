@@ -68,3 +68,30 @@ test('hydrate album profile and artists links album to artists', function () {
     expect($artist)->not->toBeNull()
         ->and($artist?->albums()->where('albums.id', $album?->id)->exists())->toBeTrue();
 });
+
+test('hydrate artist profile persists metadata used by frontend', function () {
+    $service = app(SpotifyCatalogHydrationService::class);
+
+    $artist = $service->hydrateArtistProfile([
+        'id' => 'artist-meta',
+        'name' => 'Artist Meta',
+        'genres' => ['metalcore'],
+        'images' => [[
+            'url' => 'https://example.com/artist-meta.jpg',
+            'height' => 640,
+            'width' => 640,
+        ]],
+        'popularity' => 87,
+        'uri' => 'spotify:artist:artist-meta',
+        'external_urls' => [
+            'spotify' => 'https://open.spotify.com/artist/artist-meta',
+        ],
+    ]);
+
+    expect($artist)->not->toBeNull()
+        ->and($artist?->images)->toBeArray()
+        ->and(data_get($artist?->images, '0.url'))->toBe('https://example.com/artist-meta.jpg')
+        ->and($artist?->popularity)->toBe(87)
+        ->and($artist?->uri)->toBe('spotify:artist:artist-meta')
+        ->and(data_get($artist?->external_urls, 'spotify'))->toBe('https://open.spotify.com/artist/artist-meta');
+});

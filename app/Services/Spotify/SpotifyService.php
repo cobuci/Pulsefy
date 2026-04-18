@@ -427,10 +427,11 @@ final readonly class SpotifyService implements SpotifyStatsProvider
         return [
             'id' => $artist->artist_id,
             'name' => $artist->artist_name ?? 'Unknown Artist',
-            'images' => [],
+            'images' => $artist->images ?? [],
             'genres' => $artist->genres,
-            'popularity' => 0,
-            'external_urls' => [
+            'popularity' => $artist->popularity ?? 0,
+            'uri' => $artist->uri ?? 'spotify:artist:'.$artist->artist_id,
+            'external_urls' => $artist->external_urls ?? [
                 'spotify' => 'https://open.spotify.com/artist/'.$artist->artist_id,
             ],
         ];
