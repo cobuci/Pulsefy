@@ -22,7 +22,7 @@ function select(value: TimeRange) {
     router.reload({
         data: { period: value },
         only: ['period', 'topTracks', 'topArtists'],
-        preserveScroll: true,
+        preserveUrl: true,
     });
 }
 </script>
