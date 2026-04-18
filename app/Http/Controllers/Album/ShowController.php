@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Album;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\HydrateAlbumPageDataJob;
 use App\Services\Spotify\Contracts\SpotifyArtistProvider;
 use App\Services\Spotify\Contracts\SpotifyInsightsProvider;
 use Illuminate\Http\Request;
@@ -14,6 +15,9 @@ final class ShowController extends Controller
     public function __invoke(Request $request, SpotifyArtistProvider $artistService, SpotifyInsightsProvider $insights, string $albumId): Response
     {
         $user = $request->user();
+
+        HydrateAlbumPageDataJob::dispatch($user->id, $albumId)
+            ->onQueue('spotify-sync');
 
         return Inertia::render('Album/Show', [
             'albumId' => $albumId,
