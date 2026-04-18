@@ -6,6 +6,7 @@ import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard, recentlyPlayed } from '@/routes';
+import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';
@@ -61,7 +62,6 @@ interface TrackEntry {
     track: SpotifyTrack;
     lastPlayedAt: string;
     count: number;
-    rank: number;
 }
 
 interface PlayGroup {
@@ -156,11 +156,11 @@ const totalEntries = computed(() => {
                                         v-if="!isPlayingTrack(entry.track.id)"
                                         class="text-sm text-muted-foreground tabular-nums group-hover:hidden"
                                     >
-                                        {{ entry.rank }}
+                                        •
                                     </span>
                                     <button
                                         type="button"
-                                        class="hidden w-6 place-items-center text-foreground group-hover:grid"
+                                        class="hidden w-6 cursor-pointer place-items-center text-foreground group-hover:grid"
                                         :aria-label="'Play'"
                                         @click="handlePlay(entry.track)"
                                     >
@@ -169,7 +169,7 @@ const totalEntries = computed(() => {
                                     <button
                                         v-if="isPlayingTrack(entry.track.id)"
                                         type="button"
-                                        class="grid w-6 place-items-center text-accent"
+                                        class="grid w-6 cursor-pointer place-items-center text-accent"
                                         :aria-label="'Pause'"
                                         @click="handlePlay(entry.track)"
                                     >
@@ -189,7 +189,10 @@ const totalEntries = computed(() => {
                                 />
 
                                 <div class="min-w-0 flex-1">
-                                    <p
+                                    <Link
+                                        :href="
+                                            albumShow(entry.track.album.id).url
+                                        "
                                         class="truncate text-sm font-medium"
                                         :class="
                                             isPlayingTrack(entry.track.id)
@@ -197,8 +200,8 @@ const totalEntries = computed(() => {
                                                 : 'text-foreground'
                                         "
                                     >
-                                        {{ entry.track.name }}
-                                    </p>
+                                        {{ entry.track.album.name }}
+                                    </Link>
                                     <p
                                         class="truncate text-xs text-muted-foreground"
                                     >
@@ -212,7 +215,7 @@ const totalEntries = computed(() => {
                                                 :href="
                                                     artistShow(artist.id).url
                                                 "
-                                                class="hover:text-foreground"
+                                                class="cursor-pointer hover:text-foreground"
                                             >
                                                 {{ artist.name }}
                                             </Link>

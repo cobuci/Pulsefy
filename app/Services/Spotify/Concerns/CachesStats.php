@@ -26,6 +26,8 @@ trait CachesStats
 
     private const INSIGHTS_ALBUM_TTL = 30 * 60;
 
+    private const TOP_ITEMS_SNAPSHOT_TTL = 12 * 3600;
+
     private const DEFAULT_TTL = 24 * 3600;
 
     private const LONG_TERM_TTL = 72 * 3600;
@@ -84,6 +86,10 @@ trait CachesStats
 
         if ($type === 'insights_album') {
             return self::INSIGHTS_ALBUM_TTL;
+        }
+
+        if ($type === 'top_items_snapshot') {
+            return self::TOP_ITEMS_SNAPSHOT_TTL;
         }
 
         return match ($timeRange) {

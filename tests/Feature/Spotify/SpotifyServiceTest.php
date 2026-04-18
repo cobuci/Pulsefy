@@ -4,6 +4,7 @@ use App\Models\SpotifyStat;
 use App\Models\User;
 use App\Services\Spotify\SpotifyService;
 use App\Services\Spotify\SpotifyTokenService;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -204,4 +205,59 @@ test('recentlyPlayed returns empty array when spotify responds with 401', functi
     $service = new SpotifyService($tokenService);
 
     expect($service->recentlyPlayed($user))->toBe([]);
+});
+
+test('topItemsSnapshot fetches paginated top tracks and artists', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->times(6)->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => function (Request $request) {
+            $offset = (int) ($request->data()['offset'] ?? 0);
+
+            if ($offset === 0) {
+                return Http::response([
+                    'items' => array_map(
+                        fn (int $i): array => ['id' => 'track-'.$i],
+                        range(1, 50),
+                    ),
+                ]);
+            }
+
+            return Http::response([
+                'items' => [
+                    ['id' => 'track-51'],
+                    ['id' => 'track-52'],
+                ],
+            ]);
+        },
+        'api.spotify.com/v1/me/top/artists*' => function (Request $request) {
+            $offset = (int) ($request->data()['offset'] ?? 0);
+
+            if ($offset === 0) {
+                return Http::response([
+                    'items' => array_map(
+                        fn (int $i): array => ['id' => 'artist-'.$i],
+                        range(1, 50),
+                    ),
+                ]);
+            }
+
+            return Http::response([
+                'items' => [
+                    ['id' => 'artist-51'],
+                ],
+            ]);
+        },
+    ]);
+
+    $service = new SpotifyService($tokenService);
+    $snapshot = $service->topItemsSnapshot($user);
+
+    expect($snapshot)
+        ->toHaveKeys(['short_term', 'medium_term', 'long_term'])
+        ->and(data_get($snapshot, 'medium_term.tracks'))->toHaveCount(52)
+        ->and(data_get($snapshot, 'medium_term.artists'))->toHaveCount(51);
 });

@@ -19,6 +19,8 @@ final readonly class SpotifyInsightsRefreshService
     {
         $user->spotifyStats()->delete();
 
+        $this->stats->topItemsSnapshot($user);
+
         foreach (['short_term', 'medium_term', 'long_term'] as $timeRange) {
             $this->stats->topTracks($user, $timeRange);
             $this->stats->topArtists($user, $timeRange);

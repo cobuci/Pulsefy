@@ -13,6 +13,7 @@ import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard, recentlyPlayed } from '@/routes';
+import { show as albumShow } from '@/routes/albums';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
 import { refresh as refreshInsights } from '@/routes/insights';
 import type {
@@ -128,18 +129,18 @@ const headlineText = computed(() => {
 const activitySeries = computed(() => props.insights?.activitySeries ?? []);
 const genreMix = computed(() => props.insights?.genreMix ?? []);
 
-const recentlyPlayedAlbums = computed(() => {
-    const uniqueByAlbum = new Map<string, RecentPlay>();
+const recentlyPlayedTracks = computed(() => {
+    const uniqueByTrack = new Map<string, RecentPlay>();
 
     (props.recentPlays ?? []).forEach((play) => {
-        const albumId = play.track.album?.id ?? play.track.id;
+        const trackId = play.track.id;
 
-        if (!uniqueByAlbum.has(albumId)) {
-            uniqueByAlbum.set(albumId, play);
+        if (!uniqueByTrack.has(trackId)) {
+            uniqueByTrack.set(trackId, play);
         }
     });
 
-    return Array.from(uniqueByAlbum.values()).slice(0, 6);
+    return Array.from(uniqueByTrack.values()).slice(0, 6);
 });
 
 async function handlePlay(track: SpotifyTrack) {
@@ -228,7 +229,6 @@ function refreshAllInsights() {
 
         <section>
             <SectionHeader
-                hint="01"
                 title="Top Tracks"
                 :description="periodDescription"
             />
@@ -338,11 +338,7 @@ function refreshAllInsights() {
         </section>
 
         <section>
-            <SectionHeader
-                hint="02"
-                title="Top Artists"
-                :description="periodDescription"
-            >
+            <SectionHeader title="Top Artists" :description="periodDescription">
                 <Link
                     :href="artistsIndex()"
                     class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-accent"
@@ -383,7 +379,7 @@ function refreshAllInsights() {
         </section>
 
         <section>
-            <SectionHeader hint="03" title="Recently Played">
+            <SectionHeader title="Recently Played">
                 <Link
                     :href="recentlyPlayed()"
                     class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-accent"
@@ -411,7 +407,7 @@ function refreshAllInsights() {
 
                 <template #default>
                     <div
-                        v-if="!recentlyPlayedAlbums.length"
+                        v-if="!recentlyPlayedTracks.length"
                         class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
                     >
                         No recent plays found.
@@ -422,7 +418,7 @@ function refreshAllInsights() {
                         class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
                     >
                         <div
-                            v-for="play in recentlyPlayedAlbums"
+                            v-for="play in recentlyPlayedTracks"
                             :key="`${play.track.id}-${play.played_at}`"
                             class="group"
                         >
@@ -441,7 +437,7 @@ function refreshAllInsights() {
                                 >
                                     <button
                                         type="button"
-                                        class="bg-gradient-primary shadow-glow grid size-12 scale-75 place-items-center rounded-full opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100"
+                                        class="bg-gradient-primary shadow-glow grid size-12 scale-75 cursor-pointer place-items-center rounded-full opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100"
                                         @click="handlePlay(play.track)"
                                     >
                                         <IconPlay
@@ -451,18 +447,37 @@ function refreshAllInsights() {
                                 </div>
                             </div>
 
-                            <p
-                                class="truncate text-sm font-medium transition-colors group-hover:text-accent"
-                            >
-                                {{ play.track.album.name }}
-                            </p>
-                            <p class="truncate text-xs text-muted-foreground">
-                                {{
-                                    play.track.artists
-                                        .map((artist) => artist.name)
-                                        .join(', ')
-                                }}
-                            </p>
+                            <div class="min-w-0">
+                                <Link
+                                    :href="albumShow(play.track.album.id).url"
+                                    class="block max-w-full truncate text-sm font-medium transition-colors group-hover:text-accent hover:text-accent"
+                                >
+                                    {{ play.track.name }}
+                                </Link>
+                                <p
+                                    class="truncate text-xs text-muted-foreground"
+                                >
+                                    <template
+                                        v-for="(artist, artistIndex) in play
+                                            .track.artists"
+                                        :key="artist.id"
+                                    >
+                                        <Link
+                                            :href="artistShow(artist.id).url"
+                                            class="cursor-pointer hover:text-foreground"
+                                        >
+                                            {{ artist.name }}
+                                        </Link>
+                                        <span
+                                            v-if="
+                                                artistIndex <
+                                                play.track.artists.length - 1
+                                            "
+                                            >,
+                                        </span>
+                                    </template>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </template>

@@ -25,11 +25,35 @@ final class SpotifyStatsClient
         ]);
     }
 
+    public function topTracksPage(
+        string $timeRange = 'medium_term',
+        int $limit = 50,
+        int $offset = 0,
+    ): Response {
+        return $this->get('/me/top/tracks', [
+            'time_range' => $timeRange,
+            'limit' => $limit,
+            'offset' => $offset,
+        ]);
+    }
+
     public function topArtists(string $timeRange = 'medium_term', int $limit = 10): Response
     {
         return $this->get('/me/top/artists', [
             'time_range' => $timeRange,
             'limit' => $limit,
+        ]);
+    }
+
+    public function topArtistsPage(
+        string $timeRange = 'medium_term',
+        int $limit = 50,
+        int $offset = 0,
+    ): Response {
+        return $this->get('/me/top/artists', [
+            'time_range' => $timeRange,
+            'limit' => $limit,
+            'offset' => $offset,
         ]);
     }
 

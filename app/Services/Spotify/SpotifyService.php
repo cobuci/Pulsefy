@@ -72,6 +72,22 @@ final readonly class SpotifyService implements SpotifyStatsProvider
         );
     }
 
+    public function topItemsSnapshot(User $user): array
+    {
+        return $this->cached($user, 'top_items_snapshot', 'v1', function () use ($user): array {
+            $snapshot = [];
+
+            foreach (['short_term', 'medium_term', 'long_term'] as $timeRange) {
+                $snapshot[$timeRange] = [
+                    'tracks' => $this->fetchTopTracksPaginated($user, $timeRange),
+                    'artists' => $this->fetchTopArtistsPaginated($user, $timeRange),
+                ];
+            }
+
+            return $snapshot;
+        });
+    }
+
     private function statsClient(User $user): SpotifyStatsClient
     {
         return new SpotifyStatsClient($this->tokenService->ensureFreshToken($user));
@@ -87,6 +103,76 @@ final readonly class SpotifyService implements SpotifyStatsProvider
             }
 
             return $response->throw()->json($path, []);
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchTopTracksPaginated(User $user, string $timeRange): array
+    {
+        return $this->fetchTopItemsPaginated(
+            operation: 'topTracksSnapshot',
+            request: fn (SpotifyStatsClient $client, int $limit, int $offset): Response => $client->topTracksPage($timeRange, $limit, $offset),
+            user: $user,
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchTopArtistsPaginated(User $user, string $timeRange): array
+    {
+        return $this->fetchTopItemsPaginated(
+            operation: 'topArtistsSnapshot',
+            request: fn (SpotifyStatsClient $client, int $limit, int $offset): Response => $client->topArtistsPage($timeRange, $limit, $offset),
+            user: $user,
+        );
+    }
+
+    /**
+     * @param  \Closure(SpotifyStatsClient, int, int): Response  $request
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchTopItemsPaginated(string $operation, \Closure $request, User $user): array
+    {
+        $limit = 50;
+        $offset = 0;
+        $pages = 2;
+        $items = [];
+
+        try {
+            $client = $this->statsClient($user);
+
+            for ($page = 0; $page < $pages; $page++) {
+                $response = $request($client, $limit, $offset);
+
+                if (in_array($response->status(), [401, 403], true)) {
+                    return [];
+                }
+
+                $response->throw();
+
+                $chunk = $response->json('items', []);
+
+                if (! is_array($chunk) || $chunk === []) {
+                    break;
+                }
+
+                $items = [...$items, ...$chunk];
+
+                if (count($chunk) < $limit) {
+                    break;
+                }
+
+                $offset += $limit;
+            }
+
+            return $items;
         } catch (\Throwable $e) {
             Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
