@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Repeat, Shuffle } from 'lucide-vue-next';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
 import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
@@ -401,6 +402,14 @@ function onPrevious() {
                     <div class="flex items-center gap-1">
                         <button
                             type="button"
+                            title="Shuffle"
+                            class="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <Shuffle class="size-3.5" />
+                        </button>
+
+                        <button
+                            type="button"
                             title="Previous"
                             :disabled="isBusy"
                             :class="[
@@ -444,6 +453,14 @@ function onPrevious() {
                         >
                             <IconNext class="size-5" />
                         </button>
+
+                        <button
+                            type="button"
+                            title="Repeat"
+                            class="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <Repeat class="size-3.5" />
+                        </button>
                     </div>
 
                     <div class="flex w-full max-w-md items-center gap-2">
@@ -470,10 +487,31 @@ function onPrevious() {
                     </div>
                 </div>
 
-                <div class="ml-auto flex items-center justify-end gap-2">
-                    <div
-                        class="hidden w-1/3 items-center justify-end gap-2 lg:flex lg:w-1/4"
+                <div
+                    class="ml-auto hidden items-center justify-end gap-2 md:flex"
+                >
+                    <button
+                        type="button"
+                        :disabled="lyrics.lyricsHttp.processing"
+                        :title="
+                            lyrics.lyricsOpen.value
+                                ? 'Hide lyrics'
+                                : 'Show lyrics'
+                        "
+                        :class="[
+                            'grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50',
+                            lyrics.lyricsOpen.value
+                                ? 'text-primary'
+                                : 'text-muted-foreground hover:text-foreground',
+                        ]"
+                        @click="
+                            lyrics.lyricsOpen.value = !lyrics.lyricsOpen.value
+                        "
                     >
+                        <IconKaraoke class="size-4" />
+                    </button>
+
+                    <div class="hidden items-center justify-end gap-2 lg:flex">
                         <div class="relative">
                             <button
                                 type="button"
@@ -562,29 +600,10 @@ function onPrevious() {
                             :local-playback-active="
                                 webPlayer.localPlaybackActive.value
                             "
+                            orientation="horizontal"
+                            :show-icon="true"
                         />
                     </div>
-
-                    <button
-                        type="button"
-                        :disabled="lyrics.lyricsHttp.processing"
-                        :title="
-                            lyrics.lyricsOpen.value
-                                ? 'Hide lyrics'
-                                : 'Show lyrics'
-                        "
-                        :class="[
-                            'grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50',
-                            lyrics.lyricsOpen.value
-                                ? 'text-primary'
-                                : 'text-muted-foreground hover:text-foreground',
-                        ]"
-                        @click="
-                            lyrics.lyricsOpen.value = !lyrics.lyricsOpen.value
-                        "
-                    >
-                        <IconKaraoke class="size-4" />
-                    </button>
                 </div>
             </div>
 

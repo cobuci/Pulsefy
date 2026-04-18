@@ -5,11 +5,19 @@ import IconVolume from '@/components/icons/IconVolume.vue';
 import { volume as volumeRoute } from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 
-const props = defineProps<{
-    initialVolume: number | null;
-    localPlayer: SpotifyPlayer | null;
-    localPlaybackActive: boolean;
-}>();
+const props = withDefaults(
+    defineProps<{
+        initialVolume: number | null;
+        localPlayer: SpotifyPlayer | null;
+        localPlaybackActive: boolean;
+        orientation?: 'vertical' | 'horizontal';
+        showIcon?: boolean;
+    }>(),
+    {
+        orientation: 'vertical',
+        showIcon: true,
+    },
+);
 
 const volumePct = ref<number>(props.initialVolume ?? 50);
 const isDragging = ref(false);
@@ -92,64 +100,90 @@ function applyVolume(pct: number) {
 
 <template>
     <div
-        class="relative hidden items-center justify-center md:flex"
+        :class="
+            props.orientation === 'vertical'
+                ? 'relative hidden items-center justify-center md:flex'
+                : 'relative flex items-center gap-2'
+        "
         @mouseenter="onMouseEnter"
         @mouseleave="onMouseLeave"
     >
-        <Transition
-            enter-active-class="transition-all duration-200 ease-out"
-            enter-from-class="opacity-0 translate-y-3 scale-90"
-            enter-to-class="opacity-100 translate-y-0 scale-100"
-            leave-active-class="transition-all duration-[400ms] ease-in-out"
-            leave-from-class="opacity-100 translate-y-0 scale-100"
-            leave-to-class="opacity-0 translate-y-3 scale-90"
-        >
-            <div
-                v-show="isHovered"
-                class="absolute right-0 bottom-full mb-2"
-                style="transform-origin: bottom right"
-                @mouseenter="onMouseEnter"
-                @mouseleave="onMouseLeave"
+        <template v-if="props.orientation === 'vertical'">
+            <Transition
+                enter-active-class="transition-all duration-200 ease-out"
+                enter-from-class="opacity-0 translate-y-3 scale-90"
+                enter-to-class="opacity-100 translate-y-0 scale-100"
+                leave-active-class="transition-all duration-[400ms] ease-in-out"
+                leave-from-class="opacity-100 translate-y-0 scale-100"
+                leave-to-class="opacity-0 translate-y-3 scale-90"
             >
                 <div
-                    class="volume-popup flex flex-col items-center gap-2 rounded-2xl px-3 pt-4 pb-3"
+                    v-show="isHovered"
+                    class="absolute right-0 bottom-full mb-2"
+                    style="transform-origin: bottom right"
+                    @mouseenter="onMouseEnter"
+                    @mouseleave="onMouseLeave"
                 >
-                    <span
-                        class="text-[10px] leading-none font-semibold text-foreground/60 tabular-nums"
+                    <div
+                        class="volume-popup flex flex-col items-center gap-2 rounded-2xl px-3 pt-4 pb-3"
                     >
-                        {{ volumePct }}
-                    </span>
+                        <span
+                            class="text-[10px] leading-none font-semibold text-foreground/60 tabular-nums"
+                        >
+                            {{ volumePct }}
+                        </span>
 
-                    <div class="flex h-24 w-6 items-center justify-center">
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            :value="volumePct"
-                            :style="trackStyle"
-                            class="volume-slider"
-                            title="Volume"
-                            @input="onInput"
-                            @mouseup="isDragging = false"
-                        />
+                        <div class="flex h-24 w-6 items-center justify-center">
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="1"
+                                :value="volumePct"
+                                :style="trackStyle"
+                                class="volume-slider"
+                                title="Volume"
+                                @input="onInput"
+                                @mouseup="isDragging = false"
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Transition>
+            </Transition>
 
-        <button
-            type="button"
-            class="flex size-8 items-center justify-center rounded-md transition-colors"
-            :class="
-                isHovered
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-            "
-            tabindex="-1"
-        >
-            <IconVolume class="size-4" />
-        </button>
+            <button
+                v-if="props.showIcon"
+                type="button"
+                class="flex size-8 items-center justify-center rounded-md transition-colors"
+                :class="
+                    isHovered
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                tabindex="-1"
+            >
+                <IconVolume class="size-4" />
+            </button>
+        </template>
+
+        <template v-else>
+            <IconVolume
+                v-if="props.showIcon"
+                class="size-4 shrink-0 text-muted-foreground"
+            />
+            <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                :value="volumePct"
+                :style="trackStyle"
+                class="volume-slider-horizontal"
+                title="Volume"
+                @input="onInput"
+                @mouseup="isDragging = false"
+            />
+        </template>
     </div>
 </template>
 
@@ -222,5 +256,51 @@ function applyVolume(pct: number) {
     box-shadow:
         0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent),
         0 2px 6px rgb(0 0 0 / 0.3);
+}
+
+.volume-slider-horizontal {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 96px;
+    height: 4px;
+    border-radius: 9999px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider-horizontal::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+}
+
+.volume-slider-horizontal::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: transparent;
+}
+
+.volume-slider-horizontal::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -4px;
+    border-radius: 9999px;
+    background: var(--color-foreground);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent),
+        0 2px 4px rgb(0 0 0 / 0.25);
+}
+
+.volume-slider-horizontal::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 9999px;
+    background: var(--color-foreground);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent),
+        0 2px 4px rgb(0 0 0 / 0.25);
 }
 </style>
