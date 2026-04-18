@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Deferred, Head, setLayoutProps } from '@inertiajs/vue3';
+import { Deferred, Head, Link, setLayoutProps } from '@inertiajs/vue3';
 import { Clock, Heart, Play, Shuffle } from 'lucide-vue-next';
 import { computed, ref, watchEffect } from 'vue';
 import { toast } from 'vue-sonner';
@@ -13,6 +13,7 @@ import { dashboard } from '@/routes';
 import { favorite as favoriteAlbum } from '@/routes/albums';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
+import { pause as pauseRoute } from '@/routes/player';
 import { shuffle as shuffleRoute } from '@/routes/player';
 import type { SpotifyAlbum, SpotifyTrack } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
@@ -70,11 +71,21 @@ const primaryArtistName = computed(() => {
         props.tracks?.[0]?.artists?.[0]?.name ?? props.artistName ?? 'Unknown'
     );
 });
+const primaryArtistId = computed(() => {
+    return props.tracks?.[0]?.artists?.[0]?.id ?? props.artistId ?? null;
+});
 
-const { isPlayingTrack, playTrack } = usePlayer();
+const { isPlayingTrack, nowPlayingData, playTrack, fetchNowPlaying } = usePlayer();
 const favorite = ref<boolean>(props.isFavorite ?? false);
 const favoriteBusy = ref(false);
 const shuffleBusy = ref(false);
+const playbackBusy = ref(false);
+
+const isAlbumCurrentlyPlaying = computed(() => {
+    const nowPlayingAlbumId = nowPlayingData.value?.track?.album?.id;
+
+    return !!(nowPlayingData.value?.is_playing && nowPlayingAlbumId === props.albumId);
+});
 
 watchEffect(() => {
     if (typeof props.isFavorite === 'boolean') {
@@ -93,6 +104,52 @@ async function handlePlay(track: SpotifyTrack) {
         uris: queueUris.length > 0 ? queueUris : undefined,
         offsetPosition: trackIndex >= 0 ? trackIndex : undefined,
     });
+}
+
+async function pausePlayback(): Promise<void> {
+    if (playbackBusy.value) {
+        return;
+    }
+
+    playbackBusy.value = true;
+
+    try {
+        await fetch(pauseRoute.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await fetchNowPlaying();
+    } finally {
+        playbackBusy.value = false;
+    }
+}
+
+async function onPrimaryPlayButtonClick(): Promise<void> {
+    if (isAlbumCurrentlyPlaying.value) {
+        await pausePlayback();
+
+        return;
+    }
+
+    if (props.tracks?.[0]) {
+        await handlePlay(props.tracks[0]);
+    }
+}
+
+async function onTrackRowClick(track: SpotifyTrack): Promise<void> {
+    if (isPlayingTrack.value(track.id)) {
+        await pausePlayback();
+
+        return;
+    }
+
+    await handlePlay(track);
 }
 
 async function toggleFavorite() {
@@ -231,7 +288,14 @@ async function playShuffledTracks() {
                                     {{ album.name }}
                                 </h1>
                                 <p class="mt-1 text-base text-foreground">
-                                    {{ primaryArtistName }}
+                                    <Link
+                                        v-if="primaryArtistId"
+                                        :href="artistShow(primaryArtistId).url"
+                                        class="transition-colors hover:text-accent"
+                                    >
+                                        {{ primaryArtistName }}
+                                    </Link>
+                                    <span v-else>{{ primaryArtistName }}</span>
                                 </p>
                                 <p
                                     class="mt-3 flex items-center gap-1 text-xs text-muted-foreground"
@@ -250,18 +314,20 @@ async function playShuffledTracks() {
                                     <button
                                         type="button"
                                         class="shadow-glow bg-gradient-primary flex h-11 items-center gap-2 rounded-full px-5 font-semibold text-primary-foreground"
-                                        :disabled="!tracks?.length"
+                                        :disabled="!tracks?.length || playbackBusy"
                                         :class="
-                                            (tracks?.length ?? 0) > 0
+                                            (tracks?.length ?? 0) > 0 && !playbackBusy
                                                 ? 'cursor-pointer'
                                                 : 'cursor-not-allowed'
                                         "
-                                        @click="
-                                            tracks?.[0] && handlePlay(tracks[0])
-                                        "
+                                        @click="onPrimaryPlayButtonClick"
                                     >
-                                        <Play class="size-4" />
-                                        Play
+                                        <IconPause
+                                            v-if="isAlbumCurrentlyPlaying"
+                                            class="size-4"
+                                        />
+                                        <Play v-else class="size-4" />
+                                        {{ isAlbumCurrentlyPlaying ? 'Pause' : 'Play' }}
                                     </button>
                                     <button
                                         type="button"
@@ -371,11 +437,13 @@ async function playShuffledTracks() {
                                     :key="track.id"
                                     class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60"
                                     :class="
-                                        track.id
-                                            ? 'cursor-pointer'
-                                            : 'cursor-default'
+                                        isPlayingTrack(track.id)
+                                            ? 'bg-accent/10 ring-1 ring-accent/30'
+                                            : track.id
+                                              ? 'cursor-pointer'
+                                              : 'cursor-default'
                                     "
-                                    @click="handlePlay(track)"
+                                    @click="onTrackRowClick(track)"
                                 >
                                     <button
                                         class="grid size-5 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
@@ -384,12 +452,22 @@ async function playShuffledTracks() {
                                                 ? 'Pause'
                                                 : 'Play'
                                         "
-                                        @click.stop="handlePlay(track)"
+                                        @click.stop="onTrackRowClick(track)"
                                     >
-                                        <IconPause
+                                        <div
                                             v-if="isPlayingTrack(track.id)"
-                                            class="size-4 text-accent"
-                                        />
+                                            class="flex items-end gap-0.5"
+                                        >
+                                            <span class="eq-bar h-3 w-0.5 rounded-full bg-accent" />
+                                            <span
+                                                class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                                style="animation-delay: 0.15s"
+                                            />
+                                            <span
+                                                class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                                style="animation-delay: 0.3s"
+                                            />
+                                        </div>
                                         <IconPlay v-else class="size-4" />
                                     </button>
                                     <span
@@ -407,6 +485,12 @@ async function playShuffledTracks() {
                                         >
                                             {{ track.name }}
                                         </p>
+                                        <div
+                                            v-if="isPlayingTrack(track.id)"
+                                            class="mt-1 h-0.5 w-20 overflow-hidden rounded-full bg-accent/25"
+                                        >
+                                            <div class="bg-gradient-primary h-full w-full animate-pulse" />
+                                        </div>
                                     </div>
                                     <span
                                         class="text-xs text-muted-foreground tabular-nums"
