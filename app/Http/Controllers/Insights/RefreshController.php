@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Insights;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\RefreshSpotifyInsightsJob;
+use App\Jobs\RunUserSpotifySyncJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,11 +15,11 @@ final class RefreshController extends Controller
     ): RedirectResponse {
         $user = $request->user();
 
-        RefreshSpotifyInsightsJob::dispatch($user->id)->onQueue('insights');
+        RunUserSpotifySyncJob::dispatch($user->id)->onQueue('spotify-sync');
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('Insights refresh started. New data will appear shortly.'),
+            'message' => __('Sync started. Data will refresh shortly.'),
         ]);
 
         return back();

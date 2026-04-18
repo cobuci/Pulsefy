@@ -1,6 +1,6 @@
 <?php
 
-use App\Jobs\RefreshSpotifyInsightsJob;
+use App\Jobs\RunUserSpotifySyncJob;
 use App\Models\SpotifyStat;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
@@ -113,7 +113,7 @@ test('authenticated users can refresh all spotify insight caches manually', func
         ->post(route('insights.refresh'))
         ->assertRedirect();
 
-    Bus::assertDispatched(RefreshSpotifyInsightsJob::class, function (RefreshSpotifyInsightsJob $job) use ($user): bool {
+    Bus::assertDispatched(RunUserSpotifySyncJob::class, function (RunUserSpotifySyncJob $job) use ($user): bool {
         return $job->userId === $user->id;
     });
 
