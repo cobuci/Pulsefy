@@ -12,7 +12,7 @@ class LyricsService
     /**
      * Get lyrics for a track, returning from cache when available.
      *
-     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: string|null, synced: bool}
+     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: ?string, synced: bool}
      */
     public function getLyrics(
         string $trackId,
@@ -36,7 +36,7 @@ class LyricsService
     }
 
     /**
-     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: string|null, synced: bool}
+     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: ?string, synced: bool}
      */
     private function refreshLyrics(
         string $trackId,
@@ -72,7 +72,7 @@ class LyricsService
     }
 
     /**
-     * @return array{syncedLyrics?: string|null, plainLyrics?: string|null}|null
+     * @return ?array{syncedLyrics?: ?string, plainLyrics?: ?string}
      */
     private function fetchWithFallbacks(
         string $rawArtist,
@@ -142,7 +142,7 @@ class LyricsService
     }
 
     /**
-     * @param  array{syncedLyrics?: string|null, plainLyrics?: string|null}|null  $payload
+     * @param  ?array{syncedLyrics?: ?string, plainLyrics?: ?string}  $payload
      */
     private function hasAnyLyrics(?array $payload): bool
     {
@@ -192,7 +192,7 @@ class LyricsService
     /**
      * Fetch lyrics from the LRCLIB API.
      *
-     * @return array{syncedLyrics?: string|null, plainLyrics?: string|null}|null
+     * @return ?array{syncedLyrics?: ?string, plainLyrics?: ?string}
      */
     private function fetchFromLrclib(
         string $artist,
@@ -228,7 +228,7 @@ class LyricsService
     /**
      * Fetch best-match lyrics from LRCLIB search endpoint.
      *
-     * @return array{syncedLyrics?: string|null, plainLyrics?: string|null}|null
+     * @return ?array{syncedLyrics?: ?string, plainLyrics?: ?string}
      */
     private function searchFromLrclib(string $artist, string $track): ?array
     {
@@ -263,7 +263,7 @@ class LyricsService
     }
 
     /**
-     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: string|null, synced: bool}
+     * @return array{track_id: string, type: 'synced'|'plain'|'none', lyrics: ?string, synced: bool}
      */
     private function formatResponse(Lyric $lyric): array
     {

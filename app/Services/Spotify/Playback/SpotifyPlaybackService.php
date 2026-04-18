@@ -9,7 +9,7 @@ use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, progress_ms: int, volume_percent: int|null, track: array<string, mixed>}
+ * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, progress_ms: int, volume_percent: ?int, track: array<string, mixed>}
  */
 final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 {

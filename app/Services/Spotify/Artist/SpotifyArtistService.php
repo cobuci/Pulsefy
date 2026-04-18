@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * @phpstan-type SpotifyPayload array<string, mixed>
  * @phpstan-type SpotifyPayloadList array<int, array<string, mixed>>
- * @phpstan-type ArtistTrack array{artists?: array<int, array{id?: string|null}>}
+ * @phpstan-type ArtistTrack array{artists?: array<int, array{id?: ?string}>}
  */
 final readonly class SpotifyArtistService implements SpotifyArtistProvider
 {
