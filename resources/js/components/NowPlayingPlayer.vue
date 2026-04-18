@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Repeat, Shuffle } from 'lucide-vue-next';
+import { Repeat, Repeat1, Shuffle } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
@@ -14,7 +14,15 @@ import { usePlayer } from '@/composables/usePlayer';
 import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
 import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
 import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
-import { next, pause, play, previous, seek } from '@/routes/player';
+import {
+    next,
+    pause,
+    play,
+    previous,
+    repeat as repeatRoute,
+    seek,
+    shuffle as shuffleRoute,
+} from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
@@ -26,6 +34,8 @@ const data = computed(() => nowPlayingData.value);
 const hasTrack = computed(() => !!data.value?.track);
 const isPlaying = computed(() => data.value?.is_playing ?? false);
 const isBusy = ref(false);
+const isShuffleBusy = ref(false);
+const isRepeatBusy = ref(false);
 const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
@@ -226,6 +236,47 @@ function onPrevious() {
 
     sendCommand(previous.url());
 }
+
+function onToggleShuffle() {
+    if (isShuffleBusy.value || !data.value) {
+        return;
+    }
+
+    isShuffleBusy.value = true;
+
+    const nextState = !data.value.shuffle_state;
+
+    void sendCommand(shuffleRoute.url(), { state: nextState }).finally(() => {
+        isShuffleBusy.value = false;
+    });
+}
+
+function nextRepeatState(
+    current: 'off' | 'track' | 'context',
+): 'off' | 'track' | 'context' {
+    if (current === 'off') {
+        return 'context';
+    }
+
+    if (current === 'context') {
+        return 'track';
+    }
+
+    return 'off';
+}
+
+function onToggleRepeat() {
+    if (isRepeatBusy.value || !data.value) {
+        return;
+    }
+
+    isRepeatBusy.value = true;
+    const nextState = nextRepeatState(data.value.repeat_state ?? 'off');
+
+    void sendCommand(repeatRoute.url(), { state: nextState }).finally(() => {
+        isRepeatBusy.value = false;
+    });
+}
 </script>
 
 <template>
@@ -409,7 +460,17 @@ function onPrevious() {
                         <button
                             type="button"
                             title="Shuffle"
-                            class="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                            :disabled="isShuffleBusy || !hasTrack"
+                            :class="[
+                                'grid size-8 place-items-center rounded-full transition-colors',
+                                data?.shuffle_state
+                                    ? 'text-accent'
+                                    : 'text-muted-foreground hover:text-foreground',
+                                isShuffleBusy || !hasTrack
+                                    ? 'cursor-not-allowed opacity-40'
+                                    : 'cursor-pointer',
+                            ]"
+                            @click="onToggleShuffle"
                         >
                             <Shuffle class="size-3.5" />
                         </button>
@@ -463,9 +524,24 @@ function onPrevious() {
                         <button
                             type="button"
                             title="Repeat"
-                            class="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                            :disabled="isRepeatBusy || !hasTrack"
+                            :class="[
+                                'grid size-8 place-items-center rounded-full transition-colors',
+                                data?.repeat_state &&
+                                data.repeat_state !== 'off'
+                                    ? 'text-accent'
+                                    : 'text-muted-foreground hover:text-foreground',
+                                isRepeatBusy || !hasTrack
+                                    ? 'cursor-not-allowed opacity-40'
+                                    : 'cursor-pointer',
+                            ]"
+                            @click="onToggleRepeat"
                         >
-                            <Repeat class="size-3.5" />
+                            <Repeat1
+                                v-if="data?.repeat_state === 'track'"
+                                class="size-3.5"
+                            />
+                            <Repeat v-else class="size-3.5" />
                         </button>
                     </div>
 
@@ -509,6 +585,9 @@ function onPrevious() {
                             lyrics.lyricsOpen.value
                                 ? 'text-primary'
                                 : 'text-muted-foreground hover:text-foreground',
+                            lyrics.lyricsHttp.processing
+                                ? 'cursor-not-allowed'
+                                : 'cursor-pointer',
                         ]"
                         @click="
                             lyrics.lyricsOpen.value = !lyrics.lyricsOpen.value
@@ -531,6 +610,10 @@ function onPrevious() {
                                     devices.devicesOpen.value
                                         ? 'text-primary'
                                         : 'text-muted-foreground hover:text-foreground',
+                                    devices.devicesHttp.processing ||
+                                    devices.transferBusy.value
+                                        ? 'cursor-not-allowed'
+                                        : 'cursor-pointer',
                                 ]"
                                 @click="
                                     devices.devicesOpen.value =

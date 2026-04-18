@@ -14,6 +14,11 @@ interface SpotifyPlaybackProvider
 
     public function play(User $user, string $uri): bool;
 
+    /**
+     * @param  array<int, string>  $uris
+     */
+    public function playMany(User $user, array $uris, ?int $offsetPosition = null): bool;
+
     public function pause(User $user): bool;
 
     public function next(User $user): bool;
@@ -23,6 +28,10 @@ interface SpotifyPlaybackProvider
     public function seek(User $user, int $positionMs): bool;
 
     public function setVolume(User $user, int $volumePercent): bool;
+
+    public function setShuffle(User $user, bool $state): bool;
+
+    public function setRepeat(User $user, string $mode): bool;
 
     public function transferPlayback(User $user, string $deviceId, bool $play = true): bool;
 }

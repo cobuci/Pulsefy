@@ -40,6 +40,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('previous', [PlayerControlController::class, 'previous'])->name('previous');
         Route::post('seek', [PlayerControlController::class, 'seek'])->name('seek');
         Route::post('volume', [PlayerControlController::class, 'volume'])->name('volume');
+        Route::post('shuffle', [PlayerControlController::class, 'shuffle'])->name('shuffle');
+        Route::post('repeat', [PlayerControlController::class, 'repeat'])->name('repeat');
         Route::get('device-token', DeviceTokenController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');

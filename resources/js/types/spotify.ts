@@ -56,6 +56,7 @@ export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
 export interface NowPlaying {
     is_playing: boolean;
     shuffle_state: boolean;
+    repeat_state: 'off' | 'track' | 'context';
     progress_ms: number;
     volume_percent: number | null;
     track: SpotifyTrack;

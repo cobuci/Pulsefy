@@ -173,7 +173,16 @@ async function handlePlay(track: SpotifyTrack) {
         return;
     }
 
-    await playTrack(uri);
+    const queueUris = (props.topTracks ?? [])
+        .map((item) => trackUri(item))
+        .filter((value): value is string => value !== null);
+
+    const trackIndex = queueUris.findIndex((value) => value === uri);
+
+    await playTrack(uri, {
+        uris: queueUris.length > 0 ? queueUris : undefined,
+        offsetPosition: trackIndex >= 0 ? trackIndex : undefined,
+    });
 }
 
 async function playTopTrack() {
@@ -276,6 +285,11 @@ async function playTopTrack() {
                 type="button"
                 class="shadow-glow bg-gradient-primary flex h-12 items-center gap-2 rounded-full px-6 font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
                 :disabled="!(topTracks?.length ?? 0)"
+                :class="
+                    (topTracks?.length ?? 0) > 0
+                        ? 'cursor-pointer'
+                        : 'cursor-not-allowed'
+                "
                 @click="playTopTrack"
             >
                 <Play class="size-4" />
@@ -283,13 +297,13 @@ async function playTopTrack() {
             </button>
             <button
                 type="button"
-                class="grid size-12 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                class="grid size-12 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
             >
                 <Shuffle class="size-4" />
             </button>
             <button
                 type="button"
-                class="grid size-12 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                class="grid size-12 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
             >
                 <Heart class="size-4" />
             </button>

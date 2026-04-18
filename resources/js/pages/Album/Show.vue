@@ -69,7 +69,16 @@ const primaryArtistName = computed(() => {
 const { isPlayingTrack, playTrack } = usePlayer();
 
 async function handlePlay(track: SpotifyTrack) {
-    await playTrack(`spotify:track:${track.id}`);
+    const queueUris = (props.tracks ?? [])
+        .map((item) => `spotify:track:${item.id}`)
+        .filter((value) => value !== 'spotify:track:');
+    const currentUri = `spotify:track:${track.id}`;
+    const trackIndex = queueUris.findIndex((value) => value === currentUri);
+
+    await playTrack(currentUri, {
+        uris: queueUris.length > 0 ? queueUris : undefined,
+        offsetPosition: trackIndex >= 0 ? trackIndex : undefined,
+    });
 }
 </script>
 
@@ -148,6 +157,11 @@ async function handlePlay(track: SpotifyTrack) {
                                         type="button"
                                         class="shadow-glow bg-gradient-primary flex h-11 items-center gap-2 rounded-full px-5 font-semibold text-primary-foreground"
                                         :disabled="!tracks?.length"
+                                        :class="
+                                            (tracks?.length ?? 0) > 0
+                                                ? 'cursor-pointer'
+                                                : 'cursor-not-allowed'
+                                        "
                                         @click="
                                             tracks?.[0] && handlePlay(tracks[0])
                                         "
@@ -157,13 +171,13 @@ async function handlePlay(track: SpotifyTrack) {
                                     </button>
                                     <button
                                         type="button"
-                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                        class="grid size-11 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
                                     >
                                         <Shuffle class="size-4" />
                                     </button>
                                     <button
                                         type="button"
-                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                        class="grid size-11 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
                                     >
                                         <Heart class="size-4" />
                                     </button>
@@ -224,6 +238,12 @@ async function handlePlay(track: SpotifyTrack) {
                                     v-for="(track, index) in tracks"
                                     :key="track.id"
                                     class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60"
+                                    :class="
+                                        track.id
+                                            ? 'cursor-pointer'
+                                            : 'cursor-default'
+                                    "
+                                    @click="handlePlay(track)"
                                 >
                                     <button
                                         class="grid size-5 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
@@ -232,7 +252,7 @@ async function handlePlay(track: SpotifyTrack) {
                                                 ? 'Pause'
                                                 : 'Play'
                                         "
-                                        @click="handlePlay(track)"
+                                        @click.stop="handlePlay(track)"
                                     >
                                         <IconPause
                                             v-if="isPlayingTrack(track.id)"

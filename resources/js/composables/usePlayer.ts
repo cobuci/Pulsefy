@@ -11,7 +11,10 @@ export type UsePlayerReturn = {
     nowPlayingData: Ref<NowPlaying | null>;
     isPlayingTrack: ComputedRef<(trackId: string) => boolean>;
     fetchNowPlaying: () => Promise<void>;
-    playTrack: (spotifyUri: string) => Promise<void>;
+    playTrack: (
+        spotifyUri: string,
+        options?: { uris?: string[]; offsetPosition?: number },
+    ) => Promise<void>;
 };
 
 const nowPlayingData = ref<NowPlaying | null>(null);
@@ -50,8 +53,14 @@ async function fetchNowPlaying(): Promise<void> {
     }
 }
 
-async function playTrack(spotifyUri: string): Promise<void> {
+async function playTrack(
+    spotifyUri: string,
+    options?: { uris?: string[]; offsetPosition?: number },
+): Promise<void> {
     try {
+        const uris = options?.uris?.filter((value) => value !== '') ?? [];
+        const offsetPosition = options?.offsetPosition;
+
         const response = await fetch(playRoute.url(), {
             method: 'POST',
             headers: {
@@ -59,7 +68,14 @@ async function playTrack(spotifyUri: string): Promise<void> {
                 'X-CSRF-TOKEN': getCsrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify({ uri: spotifyUri }),
+            body: JSON.stringify(
+                uris.length > 0
+                    ? {
+                          uris,
+                          offset_position: offsetPosition,
+                      }
+                    : { uri: spotifyUri },
+            ),
         });
 
         const body = await response.json();
