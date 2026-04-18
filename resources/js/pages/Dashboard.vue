@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
-import {
-    ChevronRight,
-    Clock,
-    Music2,
-    Sparkles,
-    TrendingUp,
-} from 'lucide-vue-next';
+import { ChevronRight, Clock, Sparkles, TrendingUp } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
 import ActivityChart from '@/components/dashboard/ActivityChart.vue';
 import ArtistCard from '@/components/dashboard/ArtistCard.vue';
@@ -49,7 +43,6 @@ const props = defineProps<{
         activitySeries?: Array<{ label: string; value: number }>;
         genreMix?: Array<{ label: string; value: number; color: string }>;
         recommendations?: SpotifyTrack[];
-        listeningHeatmap?: Array<{ hour: number; value: number }>;
     };
 }>();
 
@@ -125,41 +118,6 @@ const recommendationTracks = computed(() => {
             : recentPlaysPreview.value.slice(0, 3).map((play) => play.track);
 
     return source;
-});
-
-const listeningHeatmap = computed(() => {
-    if (props.insights?.listeningHeatmap?.length) {
-        return props.insights.listeningHeatmap;
-    }
-
-    const buckets = Array.from({ length: 24 }, (_, hour) => ({
-        hour,
-        value: 0,
-    }));
-
-    if (!recentPlaysPreview.value.length) {
-        return buckets.map((bucket) => ({
-            ...bucket,
-            value: Math.round(
-                20 +
-                    Math.abs(Math.sin((bucket.hour / 24) * Math.PI * 2 + 1)) *
-                        80,
-            ),
-        }));
-    }
-
-    recentPlaysPreview.value.forEach((play) => {
-        const hour = new Date(play.played_at).getHours();
-
-        buckets[hour].value += 1;
-    });
-
-    const maxValue = Math.max(...buckets.map((bucket) => bucket.value), 1);
-
-    return buckets.map((bucket) => ({
-        ...bucket,
-        value: Math.round((bucket.value / maxValue) * 100),
-    }));
 });
 
 const headlineText = computed(() => {
@@ -479,34 +437,6 @@ async function handlePlay(track: SpotifyTrack) {
                     </div>
                 </template>
             </Deferred>
-        </section>
-
-        <section
-            class="rounded-2xl border border-border bg-card p-6 shadow-card"
-        >
-            <div class="mb-4 flex items-center gap-2">
-                <Music2 class="size-4 text-accent" />
-                <h2 class="font-display text-lg font-bold">When you listen</h2>
-            </div>
-
-            <div class="grid h-32 grid-cols-12 items-end gap-1.5">
-                <div
-                    v-for="(item, index) in listeningHeatmap"
-                    :key="item.hour"
-                    class="col-span-1 flex flex-col items-center gap-1"
-                >
-                    <div
-                        class="w-full rounded-t-md bg-gradient-to-t from-primary to-accent opacity-80 transition-opacity hover:opacity-100"
-                        :style="{ height: `${item.value}%` }"
-                    />
-                    <span
-                        v-if="index % 4 === 0"
-                        class="text-[9px] text-muted-foreground tabular-nums"
-                    >
-                        {{ item.hour.toString().padStart(2, '0') }}
-                    </span>
-                </div>
-            </div>
         </section>
     </div>
 </template>

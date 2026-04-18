@@ -12,11 +12,11 @@ defineProps<{
 
 <template>
     <div
-        class="relative overflow-hidden rounded-2xl border p-5"
+        class="group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300"
         :class="
             accent
-                ? 'shadow-glow border-accent/30 bg-gradient-to-br from-primary/15 to-accent/10'
-                : 'border-border bg-card shadow-card'
+                ? 'hover:shadow-glow border-border bg-card shadow-card hover:border-accent/30 hover:bg-gradient-to-br hover:from-primary/15 hover:to-accent/10'
+                : 'border-border bg-card shadow-card hover:border-accent/30 hover:bg-gradient-to-br hover:from-primary/12 hover:to-accent/8 hover:shadow-accent'
         "
     >
         <p
@@ -34,7 +34,11 @@ defineProps<{
 
         <div
             v-if="accent"
-            class="absolute -right-8 -bottom-8 size-24 rounded-full bg-accent/20 blur-2xl"
+            class="absolute -right-8 -bottom-8 size-24 rounded-full bg-accent/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+        />
+        <div
+            v-else
+            class="absolute -right-8 -bottom-8 size-24 rounded-full bg-accent/10 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
         />
     </div>
 </template>
