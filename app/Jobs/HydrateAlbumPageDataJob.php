@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Album;
 use App\Models\User;
 use App\Services\Spotify\Contracts\SpotifyArtistProvider;
+use App\Services\Spotify\Sync\SpotifyCatalogHydrationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -18,7 +19,7 @@ class HydrateAlbumPageDataJob implements ShouldQueue
 
     public function __construct(public int $userId, public string $albumSpotifyId) {}
 
-    public function handle(SpotifyArtistProvider $artists): void
+    public function handle(SpotifyArtistProvider $artists, SpotifyCatalogHydrationService $catalog): void
     {
         $user = User::query()->find($this->userId);
 
@@ -28,20 +29,22 @@ class HydrateAlbumPageDataJob implements ShouldQueue
 
         $profile = $artists->album($user, $this->albumSpotifyId);
 
+        $album = null;
+
         if (is_array($profile) && $profile !== []) {
-            Album::query()->updateOrCreate(
-                ['spotify_id' => $this->albumSpotifyId],
-                [
-                    'name' => (string) data_get($profile, 'name', ''),
-                    'album_type' => data_get($profile, 'album_type'),
-                    'release_date' => data_get($profile, 'release_date'),
-                    'images' => is_array(data_get($profile, 'images')) ? data_get($profile, 'images') : null,
-                    'total_tracks' => (int) data_get($profile, 'total_tracks', 0),
-                    'metadata_synced_at' => now(),
-                ],
-            );
+            $album = $catalog->hydrateAlbumProfile($profile);
+
+            if ($album) {
+                $catalog->hydrateAlbumArtists($album, $profile);
+            }
         }
 
-        $artists->albumTracks($user, $this->albumSpotifyId);
+        if (! $album) {
+            $album = Album::query()->where('spotify_id', $this->albumSpotifyId)->first();
+        }
+
+        $tracks = $artists->albumTracks($user, $this->albumSpotifyId);
+
+        $catalog->hydrateTracks($tracks, $album);
     }
 }

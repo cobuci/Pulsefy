@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Artist;
 use App\Models\User;
 use App\Services\Spotify\Contracts\SpotifyArtistProvider;
+use App\Services\Spotify\Sync\SpotifyCatalogHydrationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -18,7 +19,7 @@ class HydrateArtistPageDataJob implements ShouldQueue
 
     public function __construct(public int $userId, public string $artistSpotifyId) {}
 
-    public function handle(SpotifyArtistProvider $artists): void
+    public function handle(SpotifyArtistProvider $artists, SpotifyCatalogHydrationService $catalog): void
     {
         $user = User::query()->find($this->userId);
 
@@ -29,18 +30,18 @@ class HydrateArtistPageDataJob implements ShouldQueue
         $profile = $artists->artist($user, $this->artistSpotifyId);
 
         if (is_array($profile) && $profile !== []) {
-            Artist::query()->updateOrCreate(
-                ['artist_id' => $this->artistSpotifyId],
-                [
-                    'artist_name' => (string) data_get($profile, 'name', ''),
-                    'genres' => is_array(data_get($profile, 'genres')) ? data_get($profile, 'genres') : [],
-                    'fetched_at' => now(),
-                    'expires_at' => now()->addDays(7),
-                ],
-            );
+            $catalog->hydrateArtistProfile($profile);
         }
 
-        $artists->topTracks($user, $this->artistSpotifyId);
-        $artists->albums($user, $this->artistSpotifyId);
+        $topTracks = $artists->topTracks($user, $this->artistSpotifyId);
+        $albums = $artists->albums($user, $this->artistSpotifyId);
+
+        $artist = Artist::query()->where('artist_id', $this->artistSpotifyId)->first();
+
+        $catalog->hydrateTracks($topTracks);
+
+        if ($artist) {
+            $catalog->hydrateArtistAlbums($artist, $albums);
+        }
     }
 }
