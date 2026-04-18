@@ -16,10 +16,6 @@ return new class extends Migration
             $table->string('artist_id')->unique();
             $table->string('artist_name')->nullable();
             $table->json('genres');
-            $table->json('images')->nullable();
-            $table->unsignedTinyInteger('popularity')->nullable();
-            $table->string('uri')->nullable();
-            $table->json('external_urls')->nullable();
             $table->timestamp('fetched_at');
             $table->timestamp('expires_at');
             $table->timestamps();
