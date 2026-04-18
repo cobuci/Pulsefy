@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Spotify\Insights\SpotifyInsightsRefreshService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 class RefreshSpotifyInsightsJob implements ShouldQueue
 {
@@ -32,6 +33,18 @@ class RefreshSpotifyInsightsJob implements ShouldQueue
             return;
         }
 
+        Log::channel('queue')->info('Starting Spotify insights refresh job', [
+            'job' => self::class,
+            'user_id' => $user->id,
+            'queue' => 'insights',
+        ]);
+
         $refresh->refreshForUser($user);
+
+        Log::channel('queue')->info('Finished Spotify insights refresh job', [
+            'job' => self::class,
+            'user_id' => $user->id,
+            'queue' => 'insights',
+        ]);
     }
 }

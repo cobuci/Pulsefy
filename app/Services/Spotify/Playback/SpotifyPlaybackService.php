@@ -42,7 +42,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
                 'track' => $data['item'],
             ];
         } catch (\Throwable $e) {
-            Log::warning('Spotify currentlyPlaying failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify currentlyPlaying failed', ['error' => $e->getMessage()]);
 
             return null;
         }
@@ -59,7 +59,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return $response->throw()->json('devices', []);
         } catch (\Throwable $e) {
-            Log::warning('Spotify devices failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify devices failed', ['error' => $e->getMessage()]);
 
             return [];
         }
@@ -95,7 +95,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return false;
         } catch (\Throwable $e) {
-            Log::warning('Spotify play failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify play failed', ['error' => $e->getMessage()]);
 
             return false;
         }
@@ -138,7 +138,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return in_array($response->status(), [200, 202, 204], true);
         } catch (\Throwable $e) {
-            Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
             return false;
         }

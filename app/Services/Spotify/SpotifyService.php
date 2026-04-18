@@ -88,7 +88,7 @@ final readonly class SpotifyService implements SpotifyStatsProvider
 
             return $response->throw()->json($path, []);
         } catch (\Throwable $e) {
-            Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
             return [];
         }
