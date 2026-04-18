@@ -41,4 +41,10 @@ return [
         'redirect' => env('SPOTIFY_REDIRECT_URI'),
     ],
 
+    'lastfm' => [
+        'api_key' => env('LASTFM_API_KEY'),
+        'shared_secret' => env('LASTFM_SHARED_SECRET'),
+        'callback' => env('LASTFM_CALLBACK_URI'),
+    ],
+
 ];
