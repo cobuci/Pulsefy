@@ -10,11 +10,11 @@ trait CachesStats
 {
     private const RECENTLY_PLAYED_TTL = 15 * 60;
 
-    private const ARTIST_PROFILE_TTL = 30 * 60;
+    private const ARTIST_PROFILE_TTL = 6 * 3600;
 
-    private const ARTIST_TOP_TRACKS_TTL = 30 * 60;
+    private const ARTIST_TOP_TRACKS_TTL = 6 * 3600;
 
-    private const ARTIST_ALBUMS_TTL = 6 * 3600;
+    private const ARTIST_ALBUMS_TTL = 12 * 3600;
 
     private const ALBUM_PROFILE_TTL = 6 * 3600;
 
