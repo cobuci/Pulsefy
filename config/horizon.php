@@ -99,6 +99,7 @@ return [
     'waits' => [
         'redis:default' => 60,
         'redis:insights' => 120,
+        'redis:spotify-sync' => 180,
     ],
 
     /*
@@ -224,6 +225,19 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-spotify-sync' => [
+            'connection' => 'redis',
+            'queue' => ['spotify-sync'],
+            'balance' => 'simple',
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -237,6 +251,10 @@ return [
                 'minProcesses' => 1,
                 'maxProcesses' => 3,
             ],
+            'supervisor-spotify-sync' => [
+                'minProcesses' => 1,
+                'maxProcesses' => 2,
+            ],
         ],
 
         'local' => [
@@ -244,6 +262,9 @@ return [
                 'maxProcesses' => 3,
             ],
             'supervisor-insights' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-spotify-sync' => [
                 'maxProcesses' => 1,
             ],
         ],

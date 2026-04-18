@@ -2,6 +2,7 @@
 
 namespace App\Services\Spotify\Client;
 
+use App\Services\Spotify\Support\GlobalSpotifyRateLimit;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -10,7 +11,10 @@ final class SpotifyStatsClient
 {
     private const string BASE_URL = 'https://api.spotify.com/v1';
 
-    public function __construct(private readonly string $accessToken) {}
+    public function __construct(
+        private readonly string $accessToken,
+        private readonly ?GlobalSpotifyRateLimit $rateLimit = null,
+    ) {}
 
     public function profile(): Response
     {
@@ -81,6 +85,8 @@ final class SpotifyStatsClient
 
     private function get(string $path, array $query = []): Response
     {
+        ($this->rateLimit ?? app(GlobalSpotifyRateLimit::class))->throttle();
+
         return Http::withToken($this->accessToken)
             ->timeout(10)
             ->connectTimeout(5)
