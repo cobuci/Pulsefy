@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, onUnmounted, ref } from 'vue';
 import ActivityChart from '@/components/dashboard/ActivityChart.vue';
 import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
@@ -68,34 +68,48 @@ onUnmounted(() => {
 });
 
 const { isPlayingTrack, playTrack } = usePlayer();
-const page = usePage();
+const page = usePage<{
+    auth: {
+        user?: {
+            id: number;
+            name?: string;
+        };
+    };
+}>();
 
-const syncStatus = computed(() => {
-    return props.syncStatus ?? {
+const syncStatusRef = ref(
+    props.syncStatus ?? {
         isRunning: false,
         hasFailure: false,
         completed: 0,
         total: 3,
         progress: 0,
         updatedAt: null,
-    };
-});
-
-usePoll(
-    2500,
-    {
-        only: [
-            'syncStatus',
-            'topTracks',
-            'topArtists',
-            'recentPlays',
-            'insights',
-        ],
-    },
-    {
-        autoStart: true,
     },
 );
+
+const currentSyncStatus = computed(() => syncStatusRef.value);
+
+onUnmounted(() => {
+    if (page.props.auth?.user?.id && window.Echo) {
+        window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
+    }
+});
+
+if (page.props.auth?.user?.id && window.Echo) {
+    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
+        '.Spotify.SyncStatusUpdated',
+        (event: { status: typeof syncStatusRef.value }) => {
+            syncStatusRef.value = event.status;
+
+            if (!event.status.isRunning) {
+                router.reload({
+                    only: ['syncStatus', 'topTracks', 'topArtists', 'recentPlays', 'insights'],
+                });
+            }
+        },
+    );
+}
 
 const periodDescription = computed(() => {
     if (props.period === 'short_term') {
@@ -133,8 +147,7 @@ const topGenre = computed(() => {
 });
 
 const greetingName = computed(() => {
-    const fullName = (page.props.auth as { user?: { name?: string } })?.user
-        ?.name;
+    const fullName = page.props.auth?.user?.name;
 
     if (!fullName) {
         return 'Listener';
@@ -218,13 +231,13 @@ function refreshAllInsights() {
         <div class="flex items-center justify-end">
             <div class="flex items-center gap-2">
                 <span
-                    v-if="syncStatus.isRunning"
+                    v-if="currentSyncStatus.isRunning"
                     class="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent"
                 >
-                    Syncing {{ syncStatus.completed }}/{{ syncStatus.total }} · {{ syncStatus.progress }}%
+                    Syncing {{ currentSyncStatus.completed }}/{{ currentSyncStatus.total }} · {{ currentSyncStatus.progress }}%
                 </span>
                 <span
-                    v-else-if="syncStatus.hasFailure"
+                    v-else-if="currentSyncStatus.hasFailure"
                     class="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive"
                 >
                     Sync failed
@@ -232,7 +245,7 @@ function refreshAllInsights() {
                 <button
                     type="button"
                     class="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="isRefreshing || syncStatus.isRunning"
+                    :disabled="isRefreshing || currentSyncStatus.isRunning"
                     @click="refreshAllInsights"
                 >
                     {{ isRefreshing ? 'Refreshing…' : 'Refresh data' }}

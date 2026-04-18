@@ -2,6 +2,7 @@
 
 namespace App\Services\Spotify\Sync;
 
+use App\Events\Spotify\SyncStatusUpdated;
 use App\Models\Album;
 use App\Models\Artist;
 use App\Models\SpotifySyncRun;
@@ -21,6 +22,8 @@ final readonly class SpotifySyncService
 
     public function syncTopArtists(User $user): void
     {
+        SyncStatusUpdated::dispatch($user->id);
+
         $run = $this->startRun($user, 'top_artists');
         $meta = [
             'fetched' => 0,
@@ -109,15 +112,19 @@ final readonly class SpotifySyncService
             }
 
             $this->finishRun($run, 'completed', meta: $meta);
+            SyncStatusUpdated::dispatch($user->id);
         } catch (\Throwable $e) {
             $meta['exception'] = $e::class;
             $this->finishRun($run, 'failed', $e->getMessage(), $meta);
+            SyncStatusUpdated::dispatch($user->id);
             Log::channel('spotify')->warning('Spotify syncTopArtists failed', ['error' => $e->getMessage()]);
         }
     }
 
     public function syncTopTracks(User $user): void
     {
+        SyncStatusUpdated::dispatch($user->id);
+
         $run = $this->startRun($user, 'top_tracks');
         $meta = [
             'fetched' => 0,
@@ -208,15 +215,19 @@ final readonly class SpotifySyncService
             }
 
             $this->finishRun($run, 'completed', meta: $meta);
+            SyncStatusUpdated::dispatch($user->id);
         } catch (\Throwable $e) {
             $meta['exception'] = $e::class;
             $this->finishRun($run, 'failed', $e->getMessage(), $meta);
+            SyncStatusUpdated::dispatch($user->id);
             Log::channel('spotify')->warning('Spotify syncTopTracks failed', ['error' => $e->getMessage()]);
         }
     }
 
     public function syncRecentPlays(User $user): void
     {
+        SyncStatusUpdated::dispatch($user->id);
+
         $run = $this->startRun($user, 'recent_plays');
         $meta = [
             'fetched' => 0,
@@ -272,9 +283,11 @@ final readonly class SpotifySyncService
             }
 
             $this->finishRun($run, 'completed', meta: $meta);
+            SyncStatusUpdated::dispatch($user->id);
         } catch (\Throwable $e) {
             $meta['exception'] = $e::class;
             $this->finishRun($run, 'failed', $e->getMessage(), $meta);
+            SyncStatusUpdated::dispatch($user->id);
             Log::channel('spotify')->warning('Spotify syncRecentPlays failed', ['error' => $e->getMessage()]);
         }
     }

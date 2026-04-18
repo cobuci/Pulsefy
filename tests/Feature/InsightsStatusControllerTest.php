@@ -39,3 +39,23 @@ test('status route returns current sync status summary for authenticated user', 
         ->assertJsonPath('status.total', 3)
         ->assertJsonPath('status.progress', 33);
 });
+
+test('status route does not include sync runs from other users', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+
+    SpotifySyncRun::query()->create([
+        'user_id' => $other->id,
+        'type' => 'top_tracks',
+        'status' => 'completed',
+        'started_at' => now()->subMinute(),
+        'finished_at' => now()->subSeconds(30),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('insights.status'))
+        ->assertOk()
+        ->assertJsonPath('status.completed', 0)
+        ->assertJsonPath('status.progress', 0)
+        ->assertJsonPath('status.isRunning', false);
+});
