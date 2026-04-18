@@ -11,7 +11,9 @@ import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
+import { shuffle as shuffleRoute } from '@/routes/player';
 import type { SpotifyAlbum, SpotifyTrack } from '@/types/spotify';
+import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
 const props = defineProps<{
@@ -67,6 +69,7 @@ const primaryArtistName = computed(() => {
 });
 
 const { isPlayingTrack, playTrack } = usePlayer();
+const shuffleBusy = ref(false);
 
 async function handlePlay(track: SpotifyTrack) {
     const queueUris = (props.tracks ?? [])
@@ -79,6 +82,43 @@ async function handlePlay(track: SpotifyTrack) {
         uris: queueUris.length > 0 ? queueUris : undefined,
         offsetPosition: trackIndex >= 0 ? trackIndex : undefined,
     });
+}
+
+async function playShuffledTracks() {
+    if (shuffleBusy.value) {
+        return;
+    }
+
+    const queueUris = (props.tracks ?? [])
+        .map((item) => `spotify:track:${item.id}`)
+        .filter((value) => value !== 'spotify:track:');
+
+    if (queueUris.length === 0) {
+        return;
+    }
+
+    shuffleBusy.value = true;
+
+    try {
+        await fetch(shuffleRoute.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ state: true }),
+        });
+
+        const randomOffset = Math.floor(Math.random() * queueUris.length);
+
+        await playTrack(queueUris[randomOffset], {
+            uris: queueUris,
+            offsetPosition: randomOffset,
+        });
+    } finally {
+        shuffleBusy.value = false;
+    }
 }
 </script>
 
@@ -171,7 +211,11 @@ async function handlePlay(track: SpotifyTrack) {
                                     </button>
                                     <button
                                         type="button"
-                                        class="grid size-11 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                        :disabled="
+                                            shuffleBusy || !tracks?.length
+                                        "
+                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                                        @click="playShuffledTracks"
                                     >
                                         <Shuffle class="size-4" />
                                     </button>

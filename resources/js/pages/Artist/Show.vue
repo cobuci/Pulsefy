@@ -11,12 +11,14 @@ import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
+import { shuffle as shuffleRoute } from '@/routes/player';
 import type {
     SpotifyAlbum,
     SpotifyArtist,
     SpotifyArtistAlbum,
     SpotifyTrack,
 } from '@/types/spotify';
+import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
 const props = defineProps<{
@@ -90,6 +92,7 @@ const INITIAL_ALBUMS_COUNT = 6;
 
 const showAllTopTracks = ref(false);
 const showAllAlbums = ref(false);
+const shuffleBusy = ref(false);
 const albumFilter = ref<
     'all' | 'album' | 'single' | 'appears_on' | 'compilation'
 >('all');
@@ -190,6 +193,43 @@ async function playTopTrack() {
 
     if (firstTrack) {
         await handlePlay(firstTrack);
+    }
+}
+
+async function playShuffledTopTracks() {
+    if (shuffleBusy.value) {
+        return;
+    }
+
+    const queueUris = (props.topTracks ?? [])
+        .map((item) => trackUri(item))
+        .filter((value): value is string => value !== null);
+
+    if (queueUris.length === 0) {
+        return;
+    }
+
+    shuffleBusy.value = true;
+
+    try {
+        await fetch(shuffleRoute.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ state: true }),
+        });
+
+        const randomOffset = Math.floor(Math.random() * queueUris.length);
+
+        await playTrack(queueUris[randomOffset], {
+            uris: queueUris,
+            offsetPosition: randomOffset,
+        });
+    } finally {
+        shuffleBusy.value = false;
     }
 }
 </script>
@@ -297,7 +337,9 @@ async function playTopTrack() {
             </button>
             <button
                 type="button"
-                class="grid size-12 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                :disabled="shuffleBusy || !(topTracks?.length ?? 0)"
+                class="grid size-12 place-items-center rounded-full border border-border transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                @click="playShuffledTopTracks"
             >
                 <Shuffle class="size-4" />
             </button>
