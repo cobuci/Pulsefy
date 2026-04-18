@@ -7,17 +7,19 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
-window.Pusher = Pusher;
+if (typeof window !== 'undefined') {
+    window.Pusher = Pusher;
 
-window.Echo = new Echo({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: Number(import.meta.env.VITE_REVERB_PORT || 80),
-    wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
-    enabledTransports: ['ws', 'wss'],
-});
+    window.Echo = new Echo({
+        broadcaster: 'reverb',
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: Number(import.meta.env.VITE_REVERB_PORT || 80),
+        wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
+}
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

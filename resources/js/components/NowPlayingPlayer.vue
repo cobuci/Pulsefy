@@ -66,9 +66,7 @@ const webPlayer = useSpotifyWebPlayer(
     (message) => {
         localStatus.value = message;
     },
-    () => {
-        void devices.refreshDevices();
-    },
+    () => {},
 );
 
 const devices = useSpotifyDevices(
@@ -168,7 +166,6 @@ onMounted(() => {
             'Your browser has limited DRM capability. Spotify Web Player controls may not be available.';
     }
 
-    void devices.refreshDevices();
 });
 
 onUnmounted(() => {
@@ -790,7 +787,7 @@ function onLyricLineClick(timeMs: number) {
                                     devices.devicesOpen.value =
                                         !devices.devicesOpen.value;
                                     if (devices.devicesOpen.value)
-                                        devices.refreshDevices();
+                                        devices.refreshDevices(true);
                                 "
                             >
                                 <IconDevice class="size-4" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ActivityChart from '@/components/dashboard/ActivityChart.vue';
 import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
 import DashboardRecentPlaysSection from '@/components/dashboard/DashboardRecentPlaysSection.vue';
@@ -90,26 +90,28 @@ const syncStatusRef = ref(
 
 const currentSyncStatus = computed(() => syncStatusRef.value);
 
-onUnmounted(() => {
-    if (page.props.auth?.user?.id && window.Echo) {
-        window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
+onMounted(() => {
+    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+        window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
+            '.Spotify.SyncStatusUpdated',
+            (event: { status: typeof syncStatusRef.value }) => {
+                syncStatusRef.value = event.status;
+
+                if (!event.status.isRunning) {
+                    router.reload({
+                        only: ['syncStatus', 'topTracks', 'topArtists', 'recentPlays', 'insights'],
+                    });
+                }
+            },
+        );
     }
 });
 
-if (page.props.auth?.user?.id && window.Echo) {
-    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
-        '.Spotify.SyncStatusUpdated',
-        (event: { status: typeof syncStatusRef.value }) => {
-            syncStatusRef.value = event.status;
-
-            if (!event.status.isRunning) {
-                router.reload({
-                    only: ['syncStatus', 'topTracks', 'topArtists', 'recentPlays', 'insights'],
-                });
-            }
-        },
-    );
-}
+onUnmounted(() => {
+    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+        window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
+    }
+});
 
 const periodDescription = computed(() => {
     if (props.period === 'short_term') {
