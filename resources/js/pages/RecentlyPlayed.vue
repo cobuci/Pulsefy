@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Deferred, Head } from '@inertiajs/vue3';
+import { Deferred, Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { usePlayer } from '@/composables/usePlayer';
+import { show as artistShow } from '@/routes/artists';
 import { dashboard, recentlyPlayed } from '@/routes';
 import type { RecentPlay, SpotifyTrack } from '@/types/spotify';
 
@@ -249,11 +250,29 @@ function albumImageUrl(track: SpotifyTrack): string | null {
                                     <p
                                         class="mt-0.5 truncate text-xs text-muted-foreground"
                                     >
-                                        {{
-                                            entry.track.artists
-                                                .map((a) => a.name)
-                                                .join(', ')
-                                        }}
+                                        <template
+                                            v-for="(
+                                                artist, artistIndex
+                                            ) in entry.track.artists"
+                                            :key="artist.id"
+                                        >
+                                            <Link
+                                                :href="
+                                                    artistShow(artist.id).url
+                                                "
+                                                class="hover:text-foreground"
+                                            >
+                                                {{ artist.name }}
+                                            </Link>
+                                            <span
+                                                v-if="
+                                                    artistIndex <
+                                                    entry.track.artists.length -
+                                                        1
+                                                "
+                                                >,
+                                            </span>
+                                        </template>
                                         <span class="mx-1 opacity-40">·</span>
                                         {{ formatTime(entry.lastPlayedAt) }}
                                     </p>

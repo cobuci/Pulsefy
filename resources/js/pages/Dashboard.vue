@@ -7,6 +7,7 @@ import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import TrackListItem from '@/components/dashboard/TrackListItem.vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard, recentlyPlayed } from '@/routes';
+import { show as artistShow } from '@/routes/artists';
 import type {
     RecentPlay,
     SpotifyArtist,
@@ -137,15 +138,16 @@ async function handlePlay(track: SpotifyTrack) {
                         class="mt-3 grid grid-cols-2 gap-3 transition-opacity duration-300 sm:grid-cols-3 md:grid-cols-5"
                         :class="{ 'opacity-40': reloading }"
                     >
-                        <ArtistCard
+                        <Link
                             v-for="(artist, i) in topArtists!.slice(
                                 0,
                                 SKELETON_COUNT,
                             )"
                             :key="artist.id"
-                            :rank="i + 1"
-                            :artist="artist"
-                        />
+                            :href="artistShow(artist.id).url"
+                        >
+                            <ArtistCard :rank="i + 1" :artist="artist" />
+                        </Link>
                     </div>
                 </template>
             </Deferred>

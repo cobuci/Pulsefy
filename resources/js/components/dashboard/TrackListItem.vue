@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';
 
@@ -104,7 +106,18 @@ function handlePlay() {
                     {{ track.name }}
                 </p>
                 <p class="truncate text-xs text-muted-foreground">
-                    {{ track.artists.map((a) => a.name).join(', ') }}
+                    <template
+                        v-for="(artist, index) in track.artists"
+                        :key="artist.id"
+                    >
+                        <Link
+                            :href="artistShow(artist.id).url"
+                            class="hover:text-foreground"
+                        >
+                            {{ artist.name }}
+                        </Link>
+                        <span v-if="index < track.artists.length - 1">, </span>
+                    </template>
                 </p>
             </div>
             <span class="shrink-0 text-xs text-muted-foreground tabular-nums">

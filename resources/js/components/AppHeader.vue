@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, Menu } from 'lucide-vue-next';
+import { Disc3, LayoutGrid, Menu } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
@@ -29,6 +29,7 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
 import { dashboard } from '@/routes';
+import { index as artistsIndex } from '@/routes/artists';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
@@ -59,6 +60,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Artists',
+        href: artistsIndex(),
+        icon: Disc3,
     },
 ];
 </script>

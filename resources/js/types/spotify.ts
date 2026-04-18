@@ -18,7 +18,13 @@ export interface SpotifyAlbum {
     name: string;
     images: SpotifyImage[];
     release_date: string;
+    album_type?: string;
+    total_tracks?: number;
     external_urls: { spotify: string };
+}
+
+export interface SpotifyArtistAlbum extends SpotifyAlbum {
+    album_group?: string;
 }
 
 export interface SpotifyTrack {
