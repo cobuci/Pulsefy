@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Skeleton } from '@/components/ui/skeleton';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';
@@ -40,7 +40,7 @@ function handlePlay() {
 
 <template>
     <div
-        class="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent/30"
+        class="group flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary/60"
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
     >
@@ -53,7 +53,11 @@ function handlePlay() {
             <!-- Rank number — shown when not hovered and not playing -->
             <span
                 class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-muted-foreground transition-opacity duration-150"
-                :class="showPlayButton ? 'opacity-0' : 'opacity-100'"
+                :class="
+                    showPlayButton
+                        ? 'opacity-0 group-hover:opacity-0'
+                        : 'opacity-100 group-hover:opacity-0'
+                "
                 aria-hidden="true"
             >
                 {{ rank }}
@@ -63,7 +67,11 @@ function handlePlay() {
             <IconPlay
                 v-if="!isPlaying"
                 class="absolute inset-0 m-auto size-4 text-foreground transition-opacity duration-150"
-                :class="showPlayButton ? 'opacity-100' : 'opacity-0'"
+                :class="
+                    showPlayButton
+                        ? 'opacity-100'
+                        : 'opacity-0 group-hover:opacity-100'
+                "
                 aria-hidden="true"
             />
 

@@ -21,12 +21,11 @@ final class RecentlyPlayedController extends Controller
 
     /**
      * @param  array<int, array<string, mixed>>  $plays
-     * @return array<int, array{label: string, entries: array<int, array{track: array<string, mixed>, lastPlayedAt: string, count: int, rank: int}>}>
+     * @return array<int, array{label: string, entries: array<int, array{track: array<string, mixed>, lastPlayedAt: string, count: int}>}>
      */
     private function groupPlaysByDay(array $plays): array
     {
         $grouped = [];
-        $globalRank = 0;
 
         foreach ($plays as $play) {
             $playedAt = (string) ($play['played_at'] ?? '');
@@ -43,12 +42,10 @@ final class RecentlyPlayedController extends Controller
             }
 
             if (! isset($grouped[$label][$trackId])) {
-                $globalRank++;
                 $grouped[$label][$trackId] = [
                     'track' => $play['track'],
                     'lastPlayedAt' => $playedAt,
                     'count' => 1,
-                    'rank' => $globalRank,
                 ];
 
                 continue;

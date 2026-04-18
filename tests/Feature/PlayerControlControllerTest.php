@@ -17,6 +17,8 @@ test('guests cannot access player control endpoints', function (string $route) {
     'player.pause',
     'player.next',
     'player.previous',
+    'player.shuffle',
+    'player.repeat',
 ]);
 
 // ── Successful commands ───────────────────────────────────────────────────────
@@ -43,6 +45,25 @@ test('play returns ok when spotify accepts the command with uri (202)', function
 
     $this->actingAs($user)
         ->postJson(route('player.play'), ['uri' => 'spotify:track:4iV5W9uYEdYUVa79Axb7Rh'])
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+});
+
+test('play returns ok when spotify accepts the command with uris queue and offset', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/play*' => Http::response(null, 204),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('player.play'), [
+            'uris' => [
+                'spotify:track:one',
+                'spotify:track:two',
+            ],
+            'offset_position' => 1,
+        ])
         ->assertOk()
         ->assertJson(['ok' => true]);
 });
@@ -84,6 +105,43 @@ test('previous returns ok when spotify accepts the command (204)', function () {
         ->postJson(route('player.previous'))
         ->assertOk()
         ->assertJson(['ok' => true]);
+});
+
+test('shuffle returns ok when spotify accepts the command (204)', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/shuffle*' => Http::response(null, 204),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('player.shuffle'), ['state' => true])
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+});
+
+test('repeat returns ok when spotify accepts the command (204)', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/repeat*' => Http::response(null, 204),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('player.repeat'), ['state' => 'context'])
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+});
+
+test('repeat returns ok:false for invalid mode', function () {
+    $user = User::factory()->create();
+
+    Http::fake();
+
+    $this->actingAs($user)
+        ->postJson(route('player.repeat'), ['state' => 'invalid'])
+        ->assertOk()
+        ->assertJson(['ok' => false]);
 });
 
 // ── Premium required (403) ────────────────────────────────────────────────────

@@ -29,6 +29,7 @@ export interface SpotifyArtistAlbum extends SpotifyAlbum {
 
 export interface SpotifyTrack {
     id: string;
+    uri?: string;
     name: string;
     artists: Pick<SpotifyArtist, 'id' | 'name' | 'external_urls'>[];
     album: SpotifyAlbum;
@@ -56,6 +57,7 @@ export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
 export interface NowPlaying {
     is_playing: boolean;
     shuffle_state: boolean;
+    repeat_state: 'off' | 'track' | 'context';
     progress_ms: number;
     volume_percent: number | null;
     track: SpotifyTrack;

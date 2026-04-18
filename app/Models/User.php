@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -44,6 +45,40 @@ class User extends Authenticatable
     public function spotifyStats(): HasMany
     {
         return $this->hasMany(SpotifyStat::class);
+    }
+
+    public function topArtists(): HasMany
+    {
+        return $this->hasMany(UserTopArtist::class);
+    }
+
+    public function topTracks(): HasMany
+    {
+        return $this->hasMany(UserTopTrack::class);
+    }
+
+    public function recentPlays(): HasMany
+    {
+        return $this->hasMany(UserRecentPlay::class);
+    }
+
+    public function syncRuns(): HasMany
+    {
+        return $this->hasMany(SpotifySyncRun::class);
+    }
+
+    public function artists(): BelongsToMany
+    {
+        return $this->belongsToMany(Artist::class, 'user_top_artists', 'user_id', 'artist_model_id')
+            ->withPivot(['time_range', 'rank', 'score', 'synced_at'])
+            ->withTimestamps();
+    }
+
+    public function tracks(): BelongsToMany
+    {
+        return $this->belongsToMany(Track::class, 'user_top_tracks', 'user_id', 'track_id')
+            ->withPivot(['time_range', 'rank', 'score', 'synced_at'])
+            ->withTimestamps();
     }
 
     public function isSpotifyTokenExpired(): bool

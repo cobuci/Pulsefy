@@ -26,8 +26,13 @@ defineOptions({
         <Heading
             variant="small"
             title="Appearance settings"
-            description="Update your account's appearance settings"
+            description="Choose how Pulsefy looks for your daily sessions"
         />
-        <AppearanceTabs />
+
+        <div
+            class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card"
+        >
+            <AppearanceTabs />
+        </div>
     </div>
 </template>

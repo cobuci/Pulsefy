@@ -19,6 +19,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
         'api.spotify.com/v1/me/player*' => Http::response([
             'is_playing' => true,
             'shuffle_state' => true,
+            'repeat_state' => 'context',
             'progress_ms' => 30000,
             'currently_playing_type' => 'track',
             'item' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
@@ -31,6 +32,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
     expect($result)->toBe([
         'is_playing' => true,
         'shuffle_state' => true,
+        'repeat_state' => 'context',
         'progress_ms' => 30000,
         'volume_percent' => null,
         'track' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
@@ -162,4 +164,60 @@ test('next returns false gracefully when network request fails', function () {
     $service = new SpotifyPlaybackService($tokenService);
 
     expect($service->next($user))->toBeFalse();
+});
+
+test('playMany returns true when spotify accepts context queue play', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/play*' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->playMany($user, ['spotify:track:1', 'spotify:track:2'], 1))->toBeTrue();
+});
+
+test('setShuffle returns true when spotify responds with 204', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/shuffle*' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->setShuffle($user, true))->toBeTrue();
+});
+
+test('setRepeat returns false for invalid mode', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->never();
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->setRepeat($user, 'invalid-mode'))->toBeFalse();
+});
+
+test('setRepeat returns true when spotify responds with 204', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/repeat*' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->setRepeat($user, 'track'))->toBeTrue();
 });

@@ -73,6 +73,38 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'spotify' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/spotify.log'),
+            'level' => env('LOG_SPOTIFY_LEVEL', 'warning'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'browser' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/browser.log'),
+            'level' => env('LOG_BROWSER_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'queue' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/queue.log'),
+            'level' => env('LOG_QUEUE_LEVEL', 'info'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        'frontend' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/frontend.log'),
+            'level' => env('LOG_FRONTEND_LEVEL', 'warning'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

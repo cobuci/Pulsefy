@@ -15,4 +15,16 @@ interface SpotifyArtistProvider
     public function album(User $user, string $albumId): ?array;
 
     public function albumTracks(User $user, string $albumId): array;
+
+    public function isArtistFollowed(User $user, string $artistId): bool;
+
+    public function followArtist(User $user, string $artistId): bool;
+
+    public function unfollowArtist(User $user, string $artistId): bool;
+
+    public function isAlbumSaved(User $user, string $albumId): bool;
+
+    public function saveAlbum(User $user, string $albumId): bool;
+
+    public function unsaveAlbum(User $user, string $albumId): bool;
 }

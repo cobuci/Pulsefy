@@ -7,6 +7,7 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
+import { edit as editReverbTest } from '@/routes/reverb-test';
 import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
@@ -18,22 +19,26 @@ const sidebarNavItems: NavItem[] = [
         title: 'Appearance',
         href: editAppearance(),
     },
+    {
+        title: 'Reverb test',
+        href: editReverbTest(),
+    },
 ];
 
 const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
+    <div class="mx-auto w-full max-w-7xl px-6 py-8">
         <Heading
             title="Settings"
             description="Manage your profile and account settings"
         />
 
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
+        <div class="grid gap-6 lg:grid-cols-[220px_1fr]">
+            <aside class="w-full">
                 <nav
-                    class="flex flex-col space-y-1 space-x-0"
+                    class="glass rounded-2xl border border-border/60 p-2"
                     aria-label="Settings"
                 >
                     <Button
@@ -41,8 +46,11 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                         :key="toUrl(item.href)"
                         variant="ghost"
                         :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
+                            'w-full justify-start rounded-xl px-3',
+                            {
+                                'bg-secondary text-foreground':
+                                    isCurrentOrParentUrl(item.href),
+                            },
                         ]"
                         as-child
                     >
@@ -56,8 +64,10 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 
             <Separator class="my-6 lg:hidden" />
 
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+            <div class="min-w-0">
+                <section
+                    class="glass-strong max-w-3xl rounded-2xl border border-border/60 p-6 shadow-card"
+                >
                     <slot />
                 </section>
             </div>

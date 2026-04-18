@@ -13,4 +13,6 @@ interface SpotifyStatsProvider
     public function recentlyPlayed(User $user): array;
 
     public function recentlyPlayedUnique(User $user): array;
+
+    public function topItemsSnapshot(User $user): array;
 }

@@ -4,7 +4,6 @@ import { redirect } from '@/actions/App/Http/Controllers/Auth/SpotifyController'
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 
 defineOptions({
-    inheritAttrs: false,
     layout: false,
 });
 </script>
@@ -13,13 +12,18 @@ defineOptions({
     <Head title="Sign in" />
 
     <div
-        class="flex min-h-dvh flex-col items-center justify-center bg-background px-6"
+        class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-6"
     >
+        <div
+            class="pointer-events-none absolute inset-0 -z-10 opacity-80"
+            style="background: var(--gradient-hero)"
+        />
+
         <div class="w-full max-w-sm">
             <div class="flex flex-col items-center gap-8">
                 <div class="flex flex-col items-center gap-3">
                     <div
-                        class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg"
+                        class="bg-gradient-primary shadow-glow flex h-14 w-14 items-center justify-center rounded-2xl"
                     >
                         <AppLogoIcon
                             class="size-8 fill-current text-primary-foreground"
@@ -27,7 +31,7 @@ defineOptions({
                     </div>
                     <div class="space-y-1 text-center">
                         <h1
-                            class="text-2xl font-semibold tracking-tight text-foreground"
+                            class="font-display text-3xl font-bold tracking-tight text-foreground"
                         >
                             Welcome to Pulsefy
                         </h1>
@@ -38,7 +42,7 @@ defineOptions({
                 </div>
 
                 <div
-                    class="w-full rounded-2xl border border-border bg-card p-8 shadow-sm"
+                    class="glass-strong w-full rounded-2xl border border-border/60 p-8 shadow-card"
                 >
                     <div class="flex flex-col gap-4">
                         <p class="text-center text-sm text-muted-foreground">
@@ -47,7 +51,7 @@ defineOptions({
 
                         <a
                             :href="redirect.url()"
-                            class="flex w-full items-center justify-center gap-3 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary-dark focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            class="bg-gradient-primary shadow-glow flex w-full items-center justify-center gap-3 rounded-xl px-6 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                             <svg
                                 class="size-5 shrink-0"

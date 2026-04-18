@@ -1,6 +1,6 @@
+import { useHttp } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { deviceToken } from '@/routes/player';
-import { useHttp } from '@inertiajs/vue3';
 import type {
     SpotifyPlayer,
     SpotifyWebPlaybackState,
@@ -12,6 +12,7 @@ export type UseSpotifyWebPlayerReturn = {
     localPlayerReady: ReturnType<typeof ref<boolean>>;
     localPlaybackActive: ReturnType<typeof ref<boolean>>;
     localPlayerInitializing: ReturnType<typeof ref<boolean>>;
+    localPlayerSupported: ReturnType<typeof ref<boolean>>;
     initLocalPlayer: () => Promise<void>;
     syncFromLocalState: (
         state: SpotifyWebPlaybackState | null,
@@ -32,6 +33,7 @@ export function useSpotifyWebPlayer(
     const localPlayerReady = ref(false);
     const localPlaybackActive = ref(false);
     const localPlayerInitializing = ref(false);
+    const localPlayerSupported = ref(true);
 
     const deviceTokenHttp = useHttp<{ token: string }>();
 
@@ -39,7 +41,10 @@ export function useSpotifyWebPlayer(
         try {
             await deviceTokenHttp.get(deviceToken.url());
 
-            return deviceTokenHttp.response?.token ?? null;
+            return (
+                (deviceTokenHttp.response as { token?: string } | undefined)
+                    ?.token ?? null
+            );
         } catch {
             return null;
         }
@@ -83,6 +88,15 @@ export function useSpotifyWebPlayer(
         localPlayerInitializing.value = true;
 
         try {
+            if (!('mediaCapabilities' in navigator)) {
+                localPlayerSupported.value = false;
+                onStatus(
+                    'Your browser may not fully support secure playback capabilities for Spotify Web Player.',
+                );
+
+                return;
+            }
+
             await loadSpotifySdk();
 
             if (!window.Spotify) {
@@ -118,8 +132,9 @@ export function useSpotifyWebPlayer(
 
             player.addListener('initialization_error', () => {
                 localPlayerReady.value = false;
+                localPlayerSupported.value = false;
                 onStatus(
-                    'Spotify Web Playback failed to initialize for this account.',
+                    'Spotify Web Playback failed to initialize. Browser DRM support may be restricted.',
                 );
             });
 
@@ -187,6 +202,7 @@ export function useSpotifyWebPlayer(
         localPlayerReady,
         localPlaybackActive,
         localPlayerInitializing,
+        localPlayerSupported,
         initLocalPlayer,
         syncFromLocalState,
         disconnect,

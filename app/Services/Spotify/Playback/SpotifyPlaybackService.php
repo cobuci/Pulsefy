@@ -9,7 +9,7 @@ use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, progress_ms: int, volume_percent: ?int, track: array<string, mixed>}
+ * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, repeat_state: string, progress_ms: int, volume_percent: ?int, track: array<string, mixed>}
  */
 final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 {
@@ -37,12 +37,13 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
             return [
                 'is_playing' => $data['is_playing'] ?? false,
                 'shuffle_state' => $data['shuffle_state'] ?? false,
+                'repeat_state' => $data['repeat_state'] ?? 'off',
                 'progress_ms' => $data['progress_ms'] ?? 0,
                 'volume_percent' => $data['device']['volume_percent'] ?? null,
                 'track' => $data['item'],
             ];
         } catch (\Throwable $e) {
-            Log::warning('Spotify currentlyPlaying failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify currentlyPlaying failed', ['error' => $e->getMessage()]);
 
             return null;
         }
@@ -59,7 +60,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return $response->throw()->json('devices', []);
         } catch (\Throwable $e) {
-            Log::warning('Spotify devices failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify devices failed', ['error' => $e->getMessage()]);
 
             return [];
         }
@@ -95,7 +96,38 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return false;
         } catch (\Throwable $e) {
-            Log::warning('Spotify play failed', ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning('Spotify play failed', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    public function playMany(User $user, array $uris, ?int $offsetPosition = null): bool
+    {
+        try {
+            $client = $this->client($user);
+            $response = $client->playContext($uris, $offsetPosition);
+
+            if (in_array($response->status(), [200, 202, 204], true)) {
+                return true;
+            }
+
+            if ($response->status() === 404) {
+                $deviceId = collect($client->devices()->json('devices', []))
+                    ->whereNotNull('id')
+                    ->where('is_restricted', false)
+                    ->value('id');
+
+                if ($deviceId) {
+                    $retry = $client->playContext($uris, $offsetPosition, $deviceId);
+
+                    return in_array($retry->status(), [200, 202, 204], true);
+                }
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify playMany failed', ['error' => $e->getMessage()]);
 
             return false;
         }
@@ -126,6 +158,20 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         return $this->statusOk(fn () => $this->client($user)->setVolume($volumePercent), 'setVolume');
     }
 
+    public function setShuffle(User $user, bool $state): bool
+    {
+        return $this->statusOk(fn () => $this->client($user)->shuffle($state), 'setShuffle');
+    }
+
+    public function setRepeat(User $user, string $mode): bool
+    {
+        if (! in_array($mode, ['off', 'context', 'track'], true)) {
+            return false;
+        }
+
+        return $this->statusOk(fn () => $this->client($user)->repeat($mode), 'setRepeat');
+    }
+
     public function transferPlayback(User $user, string $deviceId, bool $play = true): bool
     {
         return $this->statusOk(fn () => $this->client($user)->transferPlayback($deviceId, $play), 'transferPlayback');
@@ -138,7 +184,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
             return in_array($response->status(), [200, 202, 204], true);
         } catch (\Throwable $e) {
-            Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
             return false;
         }

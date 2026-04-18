@@ -29,6 +29,23 @@ final class SpotifyPlaybackClient
         return $this->putJson('/me/player/play'.$query, $payload);
     }
 
+    public function playContext(array $uris, ?int $offsetPosition = null, ?string $deviceId = null): Response
+    {
+        $payload = [
+            'uris' => $uris,
+        ];
+
+        if ($offsetPosition !== null) {
+            $payload['offset'] = [
+                'position' => $offsetPosition,
+            ];
+        }
+
+        $query = $deviceId !== null ? '?device_id='.urlencode($deviceId) : '';
+
+        return $this->putJson('/me/player/play'.$query, $payload);
+    }
+
     public function pause(): Response
     {
         return $this->putJson('/me/player/pause');
@@ -57,6 +74,11 @@ final class SpotifyPlaybackClient
     public function shuffle(bool $state): Response
     {
         return $this->put('/me/player/shuffle', ['state' => $state ? 'true' : 'false']);
+    }
+
+    public function repeat(string $state): Response
+    {
+        return $this->put('/me/player/repeat', ['state' => $state]);
     }
 
     public function transferPlayback(string $deviceId, bool $play = true): Response

@@ -17,6 +17,18 @@ final class ControlController extends Controller
     public function play(Request $request): JsonResponse
     {
         $uri = $request->string('uri')->toString();
+        $uris = collect($request->input('uris', []))
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->values()
+            ->all();
+        $offset = $request->input('offset_position');
+        $offsetPosition = is_numeric($offset) ? max((int) $offset, 0) : null;
+
+        if ($uris !== []) {
+            $success = $this->playback->playMany($request->user(), $uris, $offsetPosition);
+
+            return $this->respondOperation($success);
+        }
 
         $success = $uri === ''
             ? $this->playback->resumePlay($request->user())
@@ -50,5 +62,15 @@ final class ControlController extends Controller
         $volumePercent = clamp($request->integer('volume_percent', 50), 0, 100);
 
         return $this->respondOperation($this->playback->setVolume($request->user(), $volumePercent));
+    }
+
+    public function shuffle(Request $request): JsonResponse
+    {
+        return $this->respondOperation($this->playback->setShuffle($request->user(), $request->boolean('state')));
+    }
+
+    public function repeat(Request $request): JsonResponse
+    {
+        return $this->respondOperation($this->playback->setRepeat($request->user(), $request->string('state', 'off')->toString()));
     }
 }

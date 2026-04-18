@@ -1,8 +1,8 @@
-import { computed, ref } from 'vue';
 import { useHttp } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import { devices, transfer } from '@/routes/player';
-import { getCsrfToken } from '@/utils/csrf';
 import type { SpotifyDevice } from '@/types/spotify';
+import { getCsrfToken } from '@/utils/csrf';
 
 export function useSpotifyDevices(
     localPlayerReady: ReturnType<typeof ref<boolean>>,
@@ -14,10 +14,13 @@ export function useSpotifyDevices(
     isPlaying: () => boolean,
     onRefreshed: () => void,
 ) {
+    const DEVICES_TTL_MS = 10_000;
+
     const devicesHttp = useHttp<{ devices: SpotifyDevice[] }>();
     const selectedDeviceId = ref<string>('');
     const transferBusy = ref(false);
     const devicesOpen = ref(false);
+    const lastFetchedAt = ref<number>(0);
 
     const availableDevices = computed(
         () => devicesHttp.response?.devices ?? [],
@@ -55,9 +58,16 @@ export function useSpotifyDevices(
         ];
     });
 
-    async function refreshDevices() {
+    async function refreshDevices(force = false) {
+        const now = Date.now();
+
+        if (!force && now - lastFetchedAt.value < DEVICES_TTL_MS) {
+            return;
+        }
+
         try {
             await devicesHttp.get(devices.url());
+            lastFetchedAt.value = now;
             onStatus('');
 
             const active = selectableDevices.value.find(
@@ -115,7 +125,7 @@ export function useSpotifyDevices(
             }
 
             onStatus('Playback device updated.');
-            await refreshDevices();
+            await refreshDevices(true);
             onRefreshed();
             devicesOpen.value = false;
         } catch {

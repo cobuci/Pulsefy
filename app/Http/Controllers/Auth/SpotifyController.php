@@ -10,18 +10,37 @@ use Laravel\Socialite\Facades\Socialite;
 
 final class SpotifyController extends Controller
 {
+    /**
+     * @var array<int, string>
+     */
+    private const array SPOTIFY_SCOPES = [
+        'app-remote-control',
+        'playlist-modify-private',
+        'playlist-modify-public',
+        'playlist-read-collaborative',
+        'playlist-read-private',
+        'streaming',
+        'ugc-image-upload',
+        'user-follow-modify',
+        'user-follow-read',
+        'user-library-modify',
+        'user-library-read',
+        'user-modify-playback-state',
+        'user-read-currently-playing',
+        'user-read-email',
+        'user-read-playback-position',
+        'user-read-playback-state',
+        'user-read-private',
+        'user-read-recently-played',
+        'user-top-read',
+    ];
+
     public function redirect(): RedirectResponse
     {
         return Socialite::driver('spotify')
-            ->scopes([
-                'user-read-email',
-                'user-read-private',
-                'user-top-read',
-                'user-read-recently-played',
-                'user-read-playback-state',
-                'user-read-currently-playing',
-                'user-modify-playback-state',
-                'streaming',
+            ->scopes(self::SPOTIFY_SCOPES)
+            ->with([
+                'show_dialog' => 'true',
             ])
             ->redirect();
     }

@@ -1,9 +1,7 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
+import { Repeat, Repeat1, Shuffle } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { usePlayer } from '@/composables/usePlayer';
-import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
-import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
-import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
@@ -13,7 +11,21 @@ import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
 import VolumeControl from '@/components/player/VolumeControl.vue';
-import { next, pause, play, previous, seek } from '@/routes/player';
+import { usePlayer } from '@/composables/usePlayer';
+import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
+import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
+import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
+import { show as albumShow } from '@/routes/albums';
+import { show as artistShow } from '@/routes/artists';
+import {
+    next,
+    pause,
+    play,
+    previous,
+    repeat as repeatRoute,
+    seek,
+    shuffle as shuffleRoute,
+} from '@/routes/player';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
@@ -25,29 +37,36 @@ const data = computed(() => nowPlayingData.value);
 const hasTrack = computed(() => !!data.value?.track);
 const isPlaying = computed(() => data.value?.is_playing ?? false);
 const isBusy = ref(false);
+const isShuffleBusy = ref(false);
+const isRepeatBusy = ref(false);
 const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
 
 const progressPct = ref(0);
+const seekSliderPct = ref(0);
+const isScrubbing = ref(false);
+const seekBusy = ref(false);
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const displayedProgressPct = computed(() => {
+    return isScrubbing.value ? seekSliderPct.value : progressPct.value;
+});
 
 const progressMs = computed(() => {
     if (!data.value?.track) {
         return 0;
     }
 
-    return (progressPct.value / 100) * data.value.track.duration_ms;
+    return (displayedProgressPct.value / 100) * data.value.track.duration_ms;
 });
 
 const webPlayer = useSpotifyWebPlayer(
     (message) => {
         localStatus.value = message;
     },
-    () => {
-        void devices.refreshDevices();
-    },
+    () => {},
 );
 
 const devices = useSpotifyDevices(
@@ -87,6 +106,8 @@ watch(data, (val) => {
 
     if (!val?.track) {
         progressPct.value = 0;
+        seekSliderPct.value = 0;
+        isScrubbing.value = false;
         activeTrackId.value = null;
         lyrics.lyricsOpen.value = false;
 
@@ -102,12 +123,20 @@ watch(data, (val) => {
     const duration = val.track.duration_ms;
     progressPct.value = duration > 0 ? (val.progress_ms / duration) * 100 : 0;
 
+    if (!isScrubbing.value) {
+        seekSliderPct.value = progressPct.value;
+    }
+
     if (val.is_playing && duration > 0) {
         progressTimer = setInterval(() => {
             progressPct.value = Math.min(
                 progressPct.value + (100 / duration) * 500,
                 100,
             );
+
+            if (!isScrubbing.value) {
+                seekSliderPct.value = progressPct.value;
+            }
         }, 500);
     }
 });
@@ -123,11 +152,20 @@ onMounted(() => {
             () => data.value?.track?.id,
             (pct) => {
                 progressPct.value = pct;
+
+                if (!isScrubbing.value) {
+                    seekSliderPct.value = pct;
+                }
             },
             () => data.value?.track?.duration_ms ?? 0,
         );
     });
-    void devices.refreshDevices();
+
+    if (!webPlayer.localPlayerSupported.value) {
+        localStatus.value =
+            'Your browser has limited DRM capability. Spotify Web Player controls may not be available.';
+    }
+
 });
 
 onUnmounted(() => {
@@ -143,6 +181,26 @@ onUnmounted(() => {
     webPlayer.disconnect();
 });
 
+async function postPlayerCommand(url: string, body?: Record<string, unknown>) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+        return false;
+    }
+
+    const payload = (await response.json()) as { ok?: boolean };
+
+    return payload.ok ?? true;
+}
+
 async function sendCommand(url: string, body?: Record<string, unknown>) {
     if (isBusy.value) {
         return;
@@ -151,15 +209,7 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
     isBusy.value = true;
 
     try {
-        await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: body ? JSON.stringify(body) : undefined,
-        });
+        await postPlayerCommand(url, body);
         await new Promise((r) => setTimeout(r, 600));
         await fetchNowPlaying();
     } finally {
@@ -204,9 +254,11 @@ function onPrevious() {
             webPlayer.localPlayer.value
         ) {
             void webPlayer.localPlayer.value.seek(0);
-        } else {
-            sendCommand(seek.url(), { position_ms: 0 });
+
+            return;
         }
+
+        sendCommand(seek.url(), { position_ms: 0 });
 
         return;
     }
@@ -218,6 +270,132 @@ function onPrevious() {
     }
 
     sendCommand(previous.url());
+}
+
+function onToggleShuffle() {
+    if (isShuffleBusy.value || !data.value) {
+        return;
+    }
+
+    isShuffleBusy.value = true;
+
+    const nextState = !data.value.shuffle_state;
+
+    void sendCommand(shuffleRoute.url(), { state: nextState }).finally(() => {
+        isShuffleBusy.value = false;
+    });
+}
+
+function nextRepeatState(
+    current: 'off' | 'track' | 'context',
+): 'off' | 'track' | 'context' {
+    if (current === 'off') {
+        return 'context';
+    }
+
+    if (current === 'context') {
+        return 'track';
+    }
+
+    return 'off';
+}
+
+function onToggleRepeat() {
+    if (isRepeatBusy.value || !data.value) {
+        return;
+    }
+
+    isRepeatBusy.value = true;
+    const nextState = nextRepeatState(data.value.repeat_state ?? 'off');
+
+    void sendCommand(repeatRoute.url(), { state: nextState }).finally(() => {
+        isRepeatBusy.value = false;
+    });
+}
+
+function onSeekInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const value = Number(target.value);
+
+    if (!Number.isFinite(value)) {
+        return;
+    }
+
+    isScrubbing.value = true;
+    seekSliderPct.value = Math.max(0, Math.min(100, value));
+}
+
+async function seekToPosition(positionMs: number) {
+    if (!data.value?.track) {
+        return;
+    }
+
+    const clampedPositionMs = Math.max(
+        0,
+        Math.min(positionMs, data.value.track.duration_ms),
+    );
+    const pct =
+        data.value.track.duration_ms > 0
+            ? (clampedPositionMs / data.value.track.duration_ms) * 100
+            : 0;
+
+    seekBusy.value = true;
+    progressPct.value = pct;
+    seekSliderPct.value = pct;
+    isScrubbing.value = false;
+
+    try {
+        if (
+            webPlayer.localPlaybackActive.value &&
+            webPlayer.localPlayer.value
+        ) {
+            await webPlayer.localPlayer.value.seek(clampedPositionMs);
+
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            await fetchNowPlaying();
+
+            return;
+        }
+
+        await postPlayerCommand(seek.url(), {
+            position_ms: clampedPositionMs,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await fetchNowPlaying();
+    } finally {
+        seekBusy.value = false;
+    }
+}
+
+async function onSeekChange(event: Event) {
+    if (!data.value?.track) {
+        return;
+    }
+
+    const target = event.target as HTMLInputElement;
+    const value = Number(target.value);
+
+    if (!Number.isFinite(value) || seekBusy.value) {
+        isScrubbing.value = false;
+
+        return;
+    }
+
+    const pct = Math.max(0, Math.min(100, value));
+    const positionMs = Math.floor((pct / 100) * data.value.track.duration_ms);
+
+    isScrubbing.value = false;
+
+    await seekToPosition(positionMs);
+}
+
+function onLyricLineClick(timeMs: number) {
+    if (!hasTrack.value || seekBusy.value) {
+        return;
+    }
+
+    void seekToPosition(timeMs);
 }
 </script>
 
@@ -233,7 +411,7 @@ function onPrevious() {
         >
             <div
                 v-if="hasTrack && lyrics.lyricsOpen.value"
-                class="mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-t-xl border border-b-0 border-border bg-card/95 px-4 pb-4 backdrop-blur-md"
+                class="glass-strong mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-t-2xl border border-b-0 border-border/60 px-4 pb-4"
             >
                 <div class="flex items-center justify-between py-3">
                     <p
@@ -251,7 +429,7 @@ function onPrevious() {
                 </div>
 
                 <div
-                    class="h-[55vh] overflow-y-auto rounded-md bg-muted/20 px-2 py-2"
+                    class="h-[55vh] overflow-y-auto rounded-xl bg-muted/20 px-2 py-2"
                 >
                     <div v-if="lyrics.lyricsHttp.processing" class="space-y-2">
                         <div class="h-5 w-2/3 animate-pulse rounded bg-muted" />
@@ -262,23 +440,26 @@ function onPrevious() {
                     <template
                         v-else-if="lyrics.lyricsData.value?.type === 'synced'"
                     >
-                        <p
+                        <button
                             v-for="(line, index) in lyrics.parsedSyncedLyrics
                                 .value"
                             :key="`${line.timeMs}-${index}`"
+                            type="button"
                             :ref="
                                 (element) =>
                                     lyrics.setLyricLineRef(element, index)
                             "
+                            :disabled="seekBusy || !hasTrack"
                             :class="[
-                                'w-full rounded-md px-3 py-2 text-sm transition-all hover:bg-muted/60',
+                                'w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm transition-all hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50',
                                 index === lyrics.activeLyricLineIndex.value
                                     ? 'bg-muted/60 font-semibold text-foreground'
                                     : 'text-muted-foreground',
                             ]"
+                            @click="onLyricLineClick(line.timeMs)"
                         >
                             {{ line.text || '♪' }}
-                        </p>
+                        </button>
                     </template>
 
                     <pre
@@ -327,56 +508,90 @@ function onPrevious() {
             </div>
         </Transition>
 
-        <div class="border-t border-border bg-card/95 backdrop-blur-md">
-            <div class="h-0.5 w-full bg-muted">
+        <div class="glass-strong border-t border-border/60">
+            <div
+                class="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
+            />
+
+            <div class="h-0.5 w-full bg-secondary/90">
                 <div
-                    class="h-full bg-primary transition-[width] duration-500 ease-linear"
-                    :style="{ width: `${progressPct}%` }"
+                    class="bg-gradient-primary h-full transition-[width] duration-500 ease-linear"
+                    :style="{ width: `${displayedProgressPct}%` }"
                 />
             </div>
 
             <div
-                class="mx-auto grid h-[72px] max-w-7xl grid-cols-3 items-center px-4"
+                class="mx-auto flex h-20 max-w-7xl items-center gap-4 px-4 sm:px-6"
             >
-                <div class="flex min-w-0 flex-1 items-center gap-3">
+                <div class="flex w-1/3 min-w-0 items-center gap-3 lg:w-1/4">
                     <template v-if="hasTrack">
                         <div class="relative shrink-0">
                             <img
                                 v-if="data?.track?.album?.images?.[0]"
                                 :src="data?.track?.album?.images?.[0]?.url"
                                 :alt="data?.track?.album?.name"
-                                class="size-10 rounded-md object-cover shadow-sm"
+                                class="shadow-glow size-12 rounded-md object-cover"
                             />
-                            <div v-else class="size-10 rounded-md bg-muted" />
+                            <div v-else class="size-12 rounded-md bg-muted" />
 
-                            <span
+                            <div
                                 v-if="isPlaying"
-                                class="absolute -top-1 -right-1 flex size-3 items-center justify-center"
+                                class="absolute inset-0 grid place-items-center bg-background/40"
                             >
-                                <span
-                                    class="absolute inline-flex size-3 animate-ping rounded-full bg-primary opacity-75"
-                                />
-                                <span
-                                    class="relative inline-flex size-2 rounded-full bg-primary"
-                                />
-                            </span>
+                                <div class="flex items-end gap-0.5">
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                    />
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                        style="animation-delay: 0.15s"
+                                    />
+                                    <span
+                                        class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                        style="animation-delay: 0.3s"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div class="min-w-0">
-                            <a
-                                :href="data?.track?.external_urls?.spotify"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                v-if="data?.track?.album?.id"
+                                :href="albumShow(data.track.album.id).url"
                                 class="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
                             >
                                 {{ data?.track?.name }}
-                            </a>
+                            </Link>
+                            <p
+                                v-else
+                                class="block truncate text-sm font-semibold text-foreground"
+                            >
+                                {{ data?.track?.name }}
+                            </p>
                             <p class="truncate text-xs text-muted-foreground">
-                                {{
-                                    (data?.track?.artists ?? [])
-                                        .map((a) => a.name)
-                                        .join(', ')
-                                }}
+                                <template
+                                    v-for="(artist, index) in data?.track
+                                        ?.artists ?? []"
+                                    :key="artist.id"
+                                >
+                                    <Link
+                                        v-if="artist.id"
+                                        :href="artistShow(artist.id).url"
+                                        class="hover:text-foreground"
+                                    >
+                                        {{ artist.name }}
+                                    </Link>
+                                    <span v-else>{{ artist.name }}</span>
+                                    <span
+                                        v-if="
+                                            index <
+                                            (data?.track?.artists?.length ??
+                                                0) -
+                                                1
+                                        "
+                                        >,
+                                    </span>
+                                </template>
                             </p>
                         </div>
                     </template>
@@ -386,16 +601,32 @@ function onPrevious() {
                     </p>
                 </div>
 
-                <div
-                    class="flex flex-col items-center justify-center gap-0.5 justify-self-center"
-                >
+                <div class="flex flex-1 flex-col items-center gap-1.5">
                     <div class="flex items-center gap-1">
+                        <button
+                            type="button"
+                            title="Shuffle"
+                            :disabled="isShuffleBusy || !hasTrack"
+                            :class="[
+                                'grid size-8 place-items-center rounded-full transition-colors',
+                                data?.shuffle_state
+                                    ? 'text-accent'
+                                    : 'text-muted-foreground hover:text-foreground',
+                                isShuffleBusy || !hasTrack
+                                    ? 'cursor-not-allowed opacity-40'
+                                    : 'cursor-pointer',
+                            ]"
+                            @click="onToggleShuffle"
+                        >
+                            <Shuffle class="size-3.5" />
+                        </button>
+
                         <button
                             type="button"
                             title="Previous"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-8 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground',
+                                'grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-40'
                                     : 'cursor-pointer',
@@ -410,7 +641,7 @@ function onPrevious() {
                             :title="isPlaying ? 'Pause' : 'Play'"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 active:scale-95',
+                                'shadow-glow grid size-9 place-items-center rounded-full bg-foreground text-background transition-all hover:scale-105 active:scale-95',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-60'
                                     : 'cursor-pointer',
@@ -426,7 +657,7 @@ function onPrevious() {
                             title="Next"
                             :disabled="isBusy"
                             :class="[
-                                'flex size-8 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground',
+                                'grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
                                 isBusy
                                     ? 'cursor-not-allowed opacity-40'
                                     : 'cursor-pointer',
@@ -435,111 +666,80 @@ function onPrevious() {
                         >
                             <IconNext class="size-5" />
                         </button>
+
+                        <button
+                            type="button"
+                            title="Repeat"
+                            :disabled="isRepeatBusy || !hasTrack"
+                            :class="[
+                                'grid size-8 place-items-center rounded-full transition-colors',
+                                data?.repeat_state &&
+                                data.repeat_state !== 'off'
+                                    ? 'text-accent'
+                                    : 'text-muted-foreground hover:text-foreground',
+                                isRepeatBusy || !hasTrack
+                                    ? 'cursor-not-allowed opacity-40'
+                                    : 'cursor-pointer',
+                            ]"
+                            @click="onToggleRepeat"
+                        >
+                            <Repeat1
+                                v-if="data?.repeat_state === 'track'"
+                                class="size-3.5"
+                            />
+                            <Repeat v-else class="size-3.5" />
+                        </button>
                     </div>
 
-                    <div
-                        class="flex w-full items-center justify-center gap-1 text-[10px] text-muted-foreground tabular-nums"
-                    >
-                        <span>{{ formatDuration(progressMs) }}</span>
-                        <span class="opacity-40">/</span>
-                        <span>{{
-                            hasTrack && data?.track?.duration_ms
-                                ? formatDuration(data.track.duration_ms)
-                                : '--:--'
-                        }}</span>
+                    <div class="flex w-full max-w-md items-center gap-2">
+                        <span
+                            class="text-[10px] text-muted-foreground tabular-nums"
+                            >{{ formatDuration(progressMs) }}</span
+                        >
+                        <div class="relative h-4 flex-1">
+                            <div
+                                class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary"
+                            >
+                                <div
+                                    class="bg-gradient-primary h-full transition-[width] duration-150 ease-linear"
+                                    :style="{
+                                        width: `${displayedProgressPct}%`,
+                                    }"
+                                />
+                            </div>
+                            <div
+                                class="pointer-events-none absolute top-1/2 z-10 size-2 -translate-y-1/2 rounded-full bg-accent shadow"
+                                :style="{
+                                    left: `calc(${displayedProgressPct}% - 4px)`,
+                                }"
+                            />
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                :value="displayedProgressPct"
+                                :disabled="!hasTrack || seekBusy"
+                                aria-label="Seek position"
+                                class="absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                                @input="onSeekInput"
+                                @change="onSeekChange"
+                            />
+                        </div>
+                        <span
+                            class="text-[10px] text-muted-foreground tabular-nums"
+                            >{{
+                                hasTrack && data?.track?.duration_ms
+                                    ? formatDuration(data.track.duration_ms)
+                                    : '--:--'
+                            }}</span
+                        >
                     </div>
                 </div>
 
                 <div
-                    class="flex items-center justify-end gap-2 justify-self-end"
+                    class="ml-auto hidden items-center justify-end gap-2 md:flex"
                 >
-                    <div class="relative hidden md:block">
-                        <button
-                            type="button"
-                            title="Choose playback device"
-                            :disabled="
-                                devices.devicesHttp.processing ||
-                                devices.transferBusy.value
-                            "
-                            :class="[
-                                'flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
-                                devices.devicesOpen.value
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            ]"
-                            @click="
-                                devices.devicesOpen.value =
-                                    !devices.devicesOpen.value;
-                                if (devices.devicesOpen.value)
-                                    devices.refreshDevices();
-                            "
-                        >
-                            <IconDevice class="size-4" />
-                        </button>
-
-                        <div
-                            v-if="devices.devicesOpen.value"
-                            class="absolute right-0 bottom-full z-20 mb-2 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
-                        >
-                            <p
-                                class="mb-2 text-[11px] font-medium text-muted-foreground"
-                            >
-                                Select playback device
-                            </p>
-
-                            <div class="max-h-52 space-y-1 overflow-auto pr-1">
-                                <button
-                                    v-for="device in devices.selectableDevices
-                                        .value"
-                                    :key="device.id ?? device.name"
-                                    type="button"
-                                    class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
-                                    :class="
-                                        devices.selectedDeviceId.value ===
-                                        device.id
-                                            ? 'bg-muted'
-                                            : ''
-                                    "
-                                    :disabled="
-                                        devices.transferBusy.value || !device.id
-                                    "
-                                    @click="
-                                        devices.selectedDeviceId.value =
-                                            device.id ?? '';
-                                        devices.onTransferToSelectedDevice();
-                                    "
-                                >
-                                    <span class="truncate">{{
-                                        device.name
-                                    }}</span>
-                                    <span
-                                        class="text-[10px] text-muted-foreground"
-                                        >{{ device.type }}</span
-                                    >
-                                </button>
-
-                                <p
-                                    v-if="
-                                        !devices.selectableDevices.value
-                                            .length &&
-                                        !webPlayer.localPlayerReady.value
-                                    "
-                                    class="px-2 py-1 text-[11px] text-muted-foreground"
-                                >
-                                    No available devices.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <VolumeControl
-                        :initial-volume="data?.volume_percent ?? null"
-                        :local-player="webPlayer.localPlayer.value"
-                        :local-playback-active="
-                            webPlayer.localPlaybackActive.value
-                        "
-                    />
-
                     <button
                         type="button"
                         :disabled="lyrics.lyricsHttp.processing"
@@ -549,10 +749,13 @@ function onPrevious() {
                                 : 'Show lyrics'
                         "
                         :class="[
-                            'flex size-8 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50',
+                            'grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50',
                             lyrics.lyricsOpen.value
                                 ? 'text-primary'
                                 : 'text-muted-foreground hover:text-foreground',
+                            lyrics.lyricsHttp.processing
+                                ? 'cursor-not-allowed'
+                                : 'cursor-pointer',
                         ]"
                         @click="
                             lyrics.lyricsOpen.value = !lyrics.lyricsOpen.value
@@ -560,12 +763,110 @@ function onPrevious() {
                     >
                         <IconKaraoke class="size-4" />
                     </button>
+
+                    <div class="hidden items-center justify-end gap-2 lg:flex">
+                        <div class="relative">
+                            <button
+                                type="button"
+                                title="Choose playback device"
+                                :disabled="
+                                    devices.devicesHttp.processing ||
+                                    devices.transferBusy.value
+                                "
+                                :class="[
+                                    'grid size-8 place-items-center rounded-md transition-colors disabled:opacity-50',
+                                    devices.devicesOpen.value
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground hover:text-foreground',
+                                    devices.devicesHttp.processing ||
+                                    devices.transferBusy.value
+                                        ? 'cursor-not-allowed'
+                                        : 'cursor-pointer',
+                                ]"
+                                @click="
+                                    devices.devicesOpen.value =
+                                        !devices.devicesOpen.value;
+                                    if (devices.devicesOpen.value)
+                                        devices.refreshDevices(true);
+                                "
+                            >
+                                <IconDevice class="size-4" />
+                            </button>
+
+                            <div
+                                v-if="devices.devicesOpen.value"
+                                class="absolute right-0 bottom-full z-20 mb-2 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
+                            >
+                                <p
+                                    class="mb-2 text-[11px] font-medium text-muted-foreground"
+                                >
+                                    Select playback device
+                                </p>
+
+                                <div
+                                    class="max-h-52 space-y-1 overflow-auto pr-1"
+                                >
+                                    <button
+                                        v-for="device in devices
+                                            .selectableDevices.value"
+                                        :key="device.id ?? device.name"
+                                        type="button"
+                                        class="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
+                                        :class="
+                                            devices.selectedDeviceId.value ===
+                                            device.id
+                                                ? 'bg-muted'
+                                                : ''
+                                        "
+                                        :disabled="
+                                            devices.transferBusy.value ||
+                                            !device.id
+                                        "
+                                        @click="
+                                            devices.selectedDeviceId.value =
+                                                device.id ?? '';
+                                            devices.onTransferToSelectedDevice();
+                                        "
+                                    >
+                                        <span class="truncate">{{
+                                            device.name
+                                        }}</span>
+                                        <span
+                                            class="text-[10px] text-muted-foreground"
+                                            >{{ device.type }}</span
+                                        >
+                                    </button>
+
+                                    <p
+                                        v-if="
+                                            !devices.selectableDevices.value
+                                                .length &&
+                                            !webPlayer.localPlayerReady.value
+                                        "
+                                        class="px-2 py-1 text-[11px] text-muted-foreground"
+                                    >
+                                        No available devices.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <VolumeControl
+                            :initial-volume="data?.volume_percent ?? null"
+                            :local-player="webPlayer.localPlayer.value"
+                            :local-playback-active="
+                                webPlayer.localPlaybackActive.value
+                            "
+                            orientation="horizontal"
+                            :show-icon="true"
+                        />
+                    </div>
                 </div>
             </div>
 
             <p
                 v-if="localStatus && hasTrack"
-                class="mx-auto max-w-7xl px-4 pb-2 text-[11px] text-muted-foreground"
+                class="mx-auto max-w-7xl px-4 pb-2 text-[11px] text-muted-foreground sm:px-6"
             >
                 {{ localStatus }}
             </p>
