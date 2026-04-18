@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { edit } from '@/routes/profile';
+import { edit, update as updateProfile } from '@/routes/profile';
 
 defineOptions({
     layout: {
@@ -60,7 +59,8 @@ const user = computed(() => page.props.auth.user);
         </div>
 
         <Form
-            v-bind="ProfileController.update.form()"
+            :action="updateProfile.url()"
+            method="patch"
             class="space-y-6"
             v-slot="{ errors, processing }"
         >
