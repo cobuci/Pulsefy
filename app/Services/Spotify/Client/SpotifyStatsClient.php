@@ -11,6 +11,8 @@ final class SpotifyStatsClient
 {
     private const string BASE_URL = 'https://api.spotify.com/v1';
 
+    private const int MAX_ATTEMPTS = 3;
+
     public function __construct(
         private readonly string $accessToken,
         private readonly ?GlobalSpotifyRateLimit $rateLimit = null,
@@ -85,12 +87,43 @@ final class SpotifyStatsClient
 
     private function get(string $path, array $query = []): Response
     {
-        ($this->rateLimit ?? app(GlobalSpotifyRateLimit::class))->throttle();
+        $rateLimit = $this->rateLimit ?? app(GlobalSpotifyRateLimit::class);
 
-        return Http::withToken($this->accessToken)
-            ->timeout(10)
-            ->connectTimeout(5)
-            ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429))
-            ->get(self::BASE_URL.$path, $query);
+        $lastResponse = Http::response(status: 429);
+
+        for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            $rateLimit->throttle();
+
+            $response = Http::withToken($this->accessToken)
+                ->timeout(10)
+                ->connectTimeout(5)
+                ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429), throw: false)
+                ->get(self::BASE_URL.$path, $query);
+
+            $lastResponse = $response;
+
+            if ($response->status() !== 429) {
+                return $response;
+            }
+
+            if ($attempt < self::MAX_ATTEMPTS) {
+                usleep($this->retryAfterMilliseconds($response, $attempt) * 1000);
+            }
+        }
+
+        return $lastResponse;
+    }
+
+    private function retryAfterMilliseconds(Response $response, int $attempt): int
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (is_string($retryAfter) && is_numeric($retryAfter)) {
+            return max(0, min(5000, ((int) $retryAfter) * 1000));
+        }
+
+        $baseDelayMs = 200;
+
+        return min(5000, $baseDelayMs * (2 ** ($attempt - 1)));
     }
 }
