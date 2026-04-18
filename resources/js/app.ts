@@ -8,16 +8,21 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 if (typeof window !== 'undefined') {
+    const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+    const reverbPort = Number(import.meta.env.VITE_REVERB_PORT || 8080);
+    const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase();
+    const useTls = import.meta.env.DEV ? false : reverbScheme === 'https';
+
     window.Pusher = Pusher;
 
     window.Echo = new Echo({
         broadcaster: 'reverb',
         key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: Number(import.meta.env.VITE_REVERB_PORT || 80),
-        wssPort: Number(import.meta.env.VITE_REVERB_PORT || 443),
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
-        enabledTransports: ['ws', 'wss'],
+        wsHost: reverbHost,
+        wsPort: reverbPort,
+        wssPort: reverbPort,
+        forceTLS: useTls,
+        enabledTransports: useTls ? ['wss', 'ws'] : ['ws', 'wss'],
     });
 }
 
