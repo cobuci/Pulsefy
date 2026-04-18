@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Deferred, Head, Link, setLayoutProps } from '@inertiajs/vue3';
-import { computed, ref, watchEffect } from 'vue';
 import { Heart, Play, Shuffle } from 'lucide-vue-next';
+import { computed, ref, watchEffect } from 'vue';
+import StatCard from '@/components/dashboard/StatCard.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
-import StatCard from '@/components/dashboard/StatCard.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
-import { index as artistsIndex, show as artistShow } from '@/routes/artists';
 import { show as albumShow } from '@/routes/albums';
+import { index as artistsIndex, show as artistShow } from '@/routes/artists';
 import type {
     SpotifyAlbum,
     SpotifyArtist,
@@ -86,6 +86,8 @@ function albumImage(album: SpotifyAlbum): string | null {
 
 const { isPlayingTrack, playTrack } = usePlayer();
 
+const INITIAL_ALBUMS_COUNT = 6;
+
 const showAllTopTracks = ref(false);
 const showAllAlbums = ref(false);
 const albumFilter = ref<
@@ -135,20 +137,43 @@ const displayedAlbums = computed(() => {
         return albums;
     }
 
-    return albums.slice(0, 10);
+    return albums.slice(0, INITIAL_ALBUMS_COUNT);
 });
 
-const canExpandAlbums = computed(() => filteredAlbums.value.length > 10);
+const canExpandAlbums = computed(
+    () => filteredAlbums.value.length > INITIAL_ALBUMS_COUNT,
+);
 
 function setAlbumFilter(
     value: 'all' | 'album' | 'single' | 'appears_on' | 'compilation',
 ) {
     albumFilter.value = value;
-    showAllAlbums.value = false;
+}
+
+function trackUri(track: SpotifyTrack): string | null {
+    if (track.uri) {
+        return track.uri;
+    }
+
+    if (track.id) {
+        return `spotify:track:${track.id}`;
+    }
+
+    return null;
+}
+
+function canPlayTrack(track: SpotifyTrack): boolean {
+    return trackUri(track) !== null;
 }
 
 async function handlePlay(track: SpotifyTrack) {
-    await playTrack(`spotify:track:${track.id}`);
+    const uri = trackUri(track);
+
+    if (!uri) {
+        return;
+    }
+
+    await playTrack(uri);
 }
 
 async function playTopTrack() {
@@ -290,7 +315,7 @@ async function playTopTrack() {
         </section>
 
         <section class="grid gap-6 lg:grid-cols-3">
-            <div class="lg:col-span-2">
+            <div :class="showAllAlbums ? 'lg:col-span-3' : 'lg:col-span-2'">
                 <h2 class="mb-4 font-display text-2xl font-bold">Top tracks</h2>
                 <Deferred data="topTracks">
                     <template #fallback>
@@ -327,17 +352,28 @@ async function playTopTrack() {
                         >
                             <div
                                 v-for="(track, index) in displayedTopTracks"
-                                :key="track.id"
+                                :key="track.id ?? `${track.name}-${index}`"
                                 class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60"
+                                :class="
+                                    canPlayTrack(track)
+                                        ? 'cursor-pointer'
+                                        : 'cursor-default'
+                                "
+                                @click="
+                                    canPlayTrack(track)
+                                        ? handlePlay(track)
+                                        : null
+                                "
                             >
                                 <button
                                     class="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+                                    :disabled="!canPlayTrack(track)"
                                     :aria-label="
                                         isPlayingTrack(track.id)
                                             ? 'Pause'
                                             : 'Play'
                                     "
-                                    @click="handlePlay(track)"
+                                    @click.stop="handlePlay(track)"
                                 >
                                     <IconPause
                                         v-if="isPlayingTrack(track.id)"
@@ -406,8 +442,19 @@ async function playTopTrack() {
                 </Deferred>
             </div>
 
-            <div>
-                <h2 class="mb-4 font-display text-2xl font-bold">Albums</h2>
+            <div :class="showAllAlbums ? 'lg:col-span-3' : ''">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <h2 class="font-display text-2xl font-bold">Albums</h2>
+
+                    <button
+                        v-if="canExpandAlbums"
+                        type="button"
+                        class="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                        @click="showAllAlbums = !showAllAlbums"
+                    >
+                        {{ showAllAlbums ? 'Show less' : 'Show all albums' }}
+                    </button>
+                </div>
 
                 <div class="mb-3 flex flex-wrap gap-1.5">
                     <button
@@ -451,7 +498,15 @@ async function playTopTrack() {
                             No albums found for this filter.
                         </div>
 
-                        <div v-else class="grid grid-cols-2 gap-4">
+                        <div
+                            v-else
+                            class="grid grid-cols-2 gap-4"
+                            :class="
+                                showAllAlbums
+                                    ? 'sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                                    : ''
+                            "
+                        >
                             <Link
                                 v-for="album in displayedAlbums"
                                 :key="album.id"
@@ -484,23 +539,6 @@ async function playTopTrack() {
                                     {{ album.release_date }}
                                 </p>
                             </Link>
-
-                            <div
-                                v-if="canExpandAlbums"
-                                class="col-span-full pt-2"
-                            >
-                                <button
-                                    type="button"
-                                    class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                                    @click="showAllAlbums = !showAllAlbums"
-                                >
-                                    {{
-                                        showAllAlbums
-                                            ? 'Show less'
-                                            : 'Show more'
-                                    }}
-                                </button>
-                            </div>
                         </div>
                     </template>
                 </Deferred>
