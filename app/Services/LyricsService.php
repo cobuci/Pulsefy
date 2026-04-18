@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 
 class LyricsService
 {
-    private const LRCLIB_BASE = 'https://lrclib.net/api';
+    private const string LRCLIB_BASE = 'https://lrclib.net/api';
 
     /**
      * Get lyrics for a track, returning from cache when available.

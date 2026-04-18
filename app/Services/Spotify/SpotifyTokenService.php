@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Http;
 
 class SpotifyTokenService
 {
-    private const TOKEN_URL = 'https://accounts.spotify.com/api/token';
+    private const string TOKEN_URL = 'https://accounts.spotify.com/api/token';
 
-    private const APP_TOKEN_CACHE_KEY = 'spotify_app_access_token';
+    private const string APP_TOKEN_CACHE_KEY = 'spotify_app_access_token';
 
     public function ensureFreshToken(User $user): string
     {

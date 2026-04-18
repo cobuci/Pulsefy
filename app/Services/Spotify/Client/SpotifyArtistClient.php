@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 
 final class SpotifyArtistClient
 {
-    private const BASE_URL = 'https://api.spotify.com/v1';
+    private const string BASE_URL = 'https://api.spotify.com/v1';
 
     public function __construct(private readonly string $accessToken) {}
 
