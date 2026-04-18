@@ -20,6 +20,12 @@ trait CachesStats
 
     private const ALBUM_TRACKS_TTL = 6 * 3600;
 
+    private const INSIGHTS_DASHBOARD_TTL = 30 * 60;
+
+    private const INSIGHTS_ARTIST_TTL = 30 * 60;
+
+    private const INSIGHTS_ALBUM_TTL = 30 * 60;
+
     private const DEFAULT_TTL = 24 * 3600;
 
     private const LONG_TERM_TTL = 72 * 3600;
@@ -66,6 +72,18 @@ trait CachesStats
 
         if ($type === 'album_tracks') {
             return self::ALBUM_TRACKS_TTL;
+        }
+
+        if ($type === 'insights_dashboard') {
+            return self::INSIGHTS_DASHBOARD_TTL;
+        }
+
+        if ($type === 'insights_artist') {
+            return self::INSIGHTS_ARTIST_TTL;
+        }
+
+        if ($type === 'insights_album') {
+            return self::INSIGHTS_ALBUM_TTL;
         }
 
         return match ($timeRange) {

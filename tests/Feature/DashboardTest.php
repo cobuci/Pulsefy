@@ -77,10 +77,12 @@ test('dashboard response includes deferred spotify prop keys', function () {
             ->missing('topTracks')
             ->missing('topArtists')
             ->missing('recentPlays')
+            ->missing('insights')
             ->loadDeferredProps(fn (AssertableInertia $reload) => $reload
                 ->has('topTracks')
                 ->has('topArtists')
                 ->has('recentPlays')
+                ->has('insights')
             )
         );
 });

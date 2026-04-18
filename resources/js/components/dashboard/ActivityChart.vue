@@ -1,28 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-const points = [
-    { day: 'Mon', minutes: 72 },
-    { day: 'Tue', minutes: 88 },
-    { day: 'Wed', minutes: 54 },
-    { day: 'Thu', minutes: 96 },
-    { day: 'Fri', minutes: 76 },
-    { day: 'Sat', minutes: 112 },
-    { day: 'Sun', minutes: 84 },
-];
+const props = defineProps<{
+    points?: Array<{ label: string; value: number }>;
+    trendLabel?: string;
+}>();
+
+const points = computed(() => props.points ?? []);
 
 const width = 520;
 const height = 220;
 const padding = 24;
 
 const chartPoints = computed(() => {
-    const max = Math.max(...points.map((point) => point.minutes), 1);
-    const stepX = (width - padding * 2) / (points.length - 1);
+    if (!points.value.length) {
+        return [];
+    }
 
-    return points.map((point, index) => {
+    const max = Math.max(...points.value.map((point) => point.value), 1);
+    const stepX =
+        points.value.length > 1
+            ? (width - padding * 2) / (points.value.length - 1)
+            : 0;
+
+    return points.value.map((point, index) => {
         const x = padding + index * stepX;
         const y =
-            height - padding - (point.minutes / max) * (height - padding * 2);
+            height - padding - (point.value / max) * (height - padding * 2);
 
         return { ...point, x, y };
     });
@@ -62,10 +66,13 @@ const areaPath = computed(() => {
                 </p>
                 <p class="mt-1 font-display text-xl font-bold">This week</p>
             </div>
-            <p class="text-xs font-medium text-accent">+18% vs last week</p>
+            <p class="text-xs font-medium text-accent">
+                {{ trendLabel ?? 'Live data' }}
+            </p>
         </div>
 
         <svg
+            v-if="chartPoints.length"
             viewBox="0 0 520 220"
             class="h-48 w-full"
             preserveAspectRatio="none"
@@ -113,9 +120,16 @@ const areaPath = computed(() => {
                     text-anchor="middle"
                     class="fill-muted-foreground text-[10px]"
                 >
-                    {{ point.day }}
+                    {{ point.label }}
                 </text>
             </g>
         </svg>
+
+        <div
+            v-else
+            class="grid h-48 place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground"
+        >
+            Not enough listening data yet.
+        </div>
     </div>
 </template>

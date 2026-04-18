@@ -44,6 +44,13 @@ const props = defineProps<{
     topTracks?: SpotifyTrack[];
     topArtists?: SpotifyArtist[];
     recentPlays?: RecentPlay[];
+    insights?: {
+        headline?: string;
+        activitySeries?: Array<{ label: string; value: number }>;
+        genreMix?: Array<{ label: string; value: number; color: string }>;
+        recommendations?: SpotifyTrack[];
+        listeningHeatmap?: Array<{ hour: number; value: number }>;
+    };
 }>();
 
 const SKELETON_COUNT = 5;
@@ -108,6 +115,10 @@ const greetingName = computed(() => {
 });
 
 const recommendationTracks = computed(() => {
+    if (props.insights?.recommendations?.length) {
+        return props.insights.recommendations;
+    }
+
     const source =
         topTracksPreview.value.length > 3
             ? topTracksPreview.value.slice(3, 6)
@@ -117,6 +128,10 @@ const recommendationTracks = computed(() => {
 });
 
 const listeningHeatmap = computed(() => {
+    if (props.insights?.listeningHeatmap?.length) {
+        return props.insights.listeningHeatmap;
+    }
+
     const buckets = Array.from({ length: 24 }, (_, hour) => ({
         hour,
         value: 0,
@@ -146,6 +161,13 @@ const listeningHeatmap = computed(() => {
         value: Math.round((bucket.value / maxValue) * 100),
     }));
 });
+
+const headlineText = computed(() => {
+    return props.insights?.headline ?? 'Your recent listening kept evolving.';
+});
+
+const activitySeries = computed(() => props.insights?.activitySeries ?? []);
+const genreMix = computed(() => props.insights?.genreMix ?? []);
 
 const recentlyPlayedAlbums = computed(() => {
     const uniqueByAlbum = new Map<string, RecentPlay>();
@@ -180,8 +202,7 @@ async function handlePlay(track: SpotifyTrack) {
                 <h1
                     class="mt-2 max-w-2xl font-display text-4xl font-bold sm:text-5xl"
                 >
-                    Your week in sound was
-                    <span class="text-gradient">vivid & eclectic</span>.
+                    {{ headlineText }}
                 </h1>
             </div>
 
@@ -209,9 +230,12 @@ async function handlePlay(track: SpotifyTrack) {
 
         <section class="grid gap-4 lg:grid-cols-3">
             <div class="lg:col-span-2">
-                <ActivityChart />
+                <ActivityChart
+                    :points="activitySeries"
+                    trend-label="Recent activity"
+                />
             </div>
-            <GenreChart />
+            <GenreChart :genres="genreMix" />
         </section>
 
         <section>
@@ -281,7 +305,7 @@ async function handlePlay(track: SpotifyTrack) {
                         <h2 class="font-display text-lg font-bold">For you</h2>
                     </div>
                     <p class="mb-4 text-xs text-muted-foreground">
-                        Hand-picked from patterns we noticed this week.
+                        Recommended from your top and recent listening.
                     </p>
 
                     <div class="space-y-3">
@@ -317,7 +341,7 @@ async function handlePlay(track: SpotifyTrack) {
                             <span
                                 class="text-[10px] font-bold tracking-wider text-accent uppercase"
                             >
-                                New
+                                Pick
                             </span>
                         </button>
                     </div>

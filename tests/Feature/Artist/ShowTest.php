@@ -53,6 +53,19 @@ test('authenticated users can visit artist show page with deferred props', funct
         'api.spotify.com/v1/search*' => Http::response([
             'tracks' => ['items' => []],
         ]),
+        'api.spotify.com/v1/me/top/artists*' => Http::response([
+            'items' => [[
+                'id' => 'artist-1',
+                'name' => 'Artist One',
+                'images' => [],
+                'genres' => ['alt pop'],
+                'popularity' => 50,
+                'external_urls' => ['spotify' => 'https://open.spotify.com/artist/artist-1'],
+            ]],
+        ]),
+        'api.spotify.com/v1/me/player/recently-played*' => Http::response([
+            'items' => [],
+        ]),
         'api.spotify.com/v1/artists/artist-1/albums*' => Http::response([
             'items' => [],
         ]),
@@ -66,10 +79,14 @@ test('authenticated users can visit artist show page with deferred props', funct
             ->missing('artist')
             ->missing('topTracks')
             ->missing('albums')
+            ->missing('insights')
             ->loadDeferredProps(fn (AssertableInertia $reload) => $reload
                 ->has('artist')
                 ->has('topTracks')
                 ->has('albums')
+                ->has('insights')
+                ->where('insights.rankLabel', '#1')
+                ->where('insights.firstListenLabel', 'Not enough history')
             )
         );
 });

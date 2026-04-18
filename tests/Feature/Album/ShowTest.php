@@ -39,9 +39,14 @@ test('authenticated users can visit album show page with deferred props', functi
             ->where('albumId', 'album-1')
             ->missing('album')
             ->missing('tracks')
+            ->missing('insights')
             ->loadDeferredProps(fn (AssertableInertia $reload) => $reload
                 ->has('album')
                 ->has('tracks')
+                ->has('insights')
+                ->where('insights.playsLabel', '0')
+                ->where('insights.timeLabel', '0m')
+                ->where('insights.affinityLabel', '0%')
             )
         );
 });

@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Services\Spotify\Artist\SpotifyArtistService;
 use App\Services\Spotify\Contracts\SpotifyArtistProvider;
+use App\Services\Spotify\Contracts\SpotifyInsightsProvider;
 use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
 use App\Services\Spotify\Contracts\SpotifyStatsProvider;
+use App\Services\Spotify\Insights\SpotifyInsightsService;
 use App\Services\Spotify\Playback\SpotifyPlaybackService;
 use App\Services\Spotify\SpotifyService;
 use Carbon\CarbonImmutable;
@@ -24,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(SpotifyStatsProvider::class, SpotifyService::class);
         $this->app->bind(SpotifyArtistProvider::class, SpotifyArtistService::class);
+        $this->app->bind(SpotifyInsightsProvider::class, SpotifyInsightsService::class);
         $this->app->bind(SpotifyPlaybackProvider::class, SpotifyPlaybackService::class);
     }
 

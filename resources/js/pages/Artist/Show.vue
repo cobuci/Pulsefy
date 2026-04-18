@@ -24,6 +24,12 @@ const props = defineProps<{
     artist?: SpotifyArtist | null;
     topTracks?: SpotifyTrack[];
     albums?: SpotifyArtistAlbum[];
+    insights?: {
+        rankLabel?: string;
+        firstListenLabel?: string;
+        hoursLabel?: string;
+        genreLabel?: string | null;
+    };
 }>();
 
 defineOptions({
@@ -46,6 +52,10 @@ const coverImage = computed(() => props.artist?.images?.[0]?.url ?? null);
 const primaryGenre = computed(() => props.artist?.genres?.[0] ?? 'Unknown');
 const albumsCount = computed(() => props.albums?.length ?? 0);
 const listenedHours = computed(() => {
+    if (props.insights?.hoursLabel) {
+        return props.insights.hoursLabel;
+    }
+
     const totalMs = (props.topTracks ?? []).reduce(
         (carry, track) => carry + track.duration_ms,
         0,
@@ -55,12 +65,19 @@ const listenedHours = computed(() => {
 
     return `${hours}h`;
 });
+const genreLabel = computed(() => {
+    return props.insights?.genreLabel ?? primaryGenre.value;
+});
 const artistRank = computed(() => {
-    if (!props.artist?.popularity) {
-        return '#—';
+    if (props.insights?.rankLabel) {
+        return props.insights.rankLabel;
     }
 
-    return `#${Math.max(1, Math.round((100 - props.artist.popularity) / 5))}`;
+    return '#—';
+});
+
+const firstListenLabel = computed(() => {
+    return props.insights?.firstListenLabel ?? 'Not enough history';
 });
 
 function albumImage(album: SpotifyAlbum): string | null {
@@ -202,8 +219,7 @@ async function playTopTrack() {
                                     class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
                                 >
                                     {{ artistRank }} this month ·
-                                    {{ primaryGenre }}
-                                    >
+                                    {{ genreLabel }}
                                 </p>
 
                                 <h1
@@ -268,8 +284,8 @@ async function playTopTrack() {
             />
             <StatCard
                 label="First listen"
-                value="Mar 2022"
-                hint="2 years ago"
+                :value="firstListenLabel"
+                hint="Earliest available in recent history"
             />
         </section>
 

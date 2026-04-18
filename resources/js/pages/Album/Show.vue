@@ -20,6 +20,11 @@ const props = defineProps<{
     artistName?: string | null;
     album?: SpotifyAlbum | null;
     tracks?: SpotifyTrack[];
+    insights?: {
+        playsLabel?: string;
+        timeLabel?: string;
+        affinityLabel?: string;
+    };
 }>();
 
 const albumName = computed(() => props.album?.name ?? 'Album');
@@ -266,15 +271,19 @@ async function handlePlay(track: SpotifyTrack) {
                 <section class="grid gap-4 sm:grid-cols-3">
                     <StatCard
                         label="Your plays"
-                        value="128"
-                        hint="This month"
+                        :value="insights?.playsLabel ?? '0'"
+                        hint="Recent window"
                     />
-                    <StatCard label="Time" value="9.2h" hint="Listening time" />
+                    <StatCard
+                        label="Time"
+                        :value="insights?.timeLabel ?? '0m'"
+                        hint="Recent window"
+                    />
                     <StatCard
                         accent
-                        label="Mood match"
-                        value="94%"
-                        hint="Based on your history"
+                        label="Affinity"
+                        :value="insights?.affinityLabel ?? '0%'"
+                        hint="Share of recent plays"
                     />
                 </section>
             </div>
