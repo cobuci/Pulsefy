@@ -188,3 +188,75 @@ test('albumTracks returns items payload', function () {
     expect($service->albumTracks($user, 'album-1'))
         ->toBe([['id' => 'track-1', 'name' => 'Track One']]);
 });
+
+test('isArtistFollowed returns true when spotify contains endpoint returns true', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library/contains*' => Http::response([true]),
+    ]);
+
+    $service = new SpotifyArtistService($tokenService);
+
+    expect($service->isArtistFollowed($user, 'artist-1'))->toBeTrue();
+});
+
+test('followArtist returns true when spotify accepts follow', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library*' => Http::response(null, 200),
+    ]);
+
+    $service = new SpotifyArtistService($tokenService);
+
+    expect($service->followArtist($user, 'artist-1'))->toBeTrue();
+});
+
+test('isAlbumSaved returns true when spotify contains endpoint returns true', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library/contains*' => Http::response([true]),
+    ]);
+
+    $service = new SpotifyArtistService($tokenService);
+
+    expect($service->isAlbumSaved($user, 'album-1'))->toBeTrue();
+});
+
+test('saveAlbum returns true when spotify accepts save', function () {
+    $user = User::factory()->create([
+        'spotify_token' => 'user-token',
+        'spotify_token_expires_at' => now()->addHour(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('user-token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library*' => Http::response(null, 200),
+    ]);
+
+    $service = new SpotifyArtistService($tokenService);
+
+    expect($service->saveAlbum($user, 'album-1'))->toBeTrue();
+});

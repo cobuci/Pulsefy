@@ -20,6 +20,7 @@ final class ShowController extends Controller
             'artist' => Inertia::defer(fn () => $artistService->artist($user, $artistId)),
             'topTracks' => Inertia::defer(fn () => $artistService->topTracks($user, $artistId)),
             'albums' => Inertia::defer(fn () => $artistService->albums($user, $artistId)),
+            'isFavorite' => Inertia::defer(fn () => $artistService->isArtistFollowed($user, $artistId)),
             'insights' => Inertia::defer(fn () => $insights->artist($user, $artistId)),
         ]);
     }

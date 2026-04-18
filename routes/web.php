@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Album\FavoriteController as AlbumFavoriteController;
 use App\Http\Controllers\Album\ShowController as AlbumShowController;
+use App\Http\Controllers\Artist\FavoriteController as ArtistFavoriteController;
 use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
 use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
@@ -28,7 +30,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('recently-played', RecentlyPlayedController::class)->name('recently-played');
     Route::get('artists', ArtistIndexController::class)->name('artists.index');
     Route::get('artists/{artistId}', ArtistShowController::class)->name('artists.show');
+    Route::post('artists/{artistId}/favorite', ArtistFavoriteController::class)->name('artists.favorite');
     Route::get('albums/{albumId}', AlbumShowController::class)->name('albums.show');
+    Route::post('albums/{albumId}/favorite', AlbumFavoriteController::class)->name('albums.favorite');
     Route::post('insights/refresh', InsightsRefreshController::class)->name('insights.refresh');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');

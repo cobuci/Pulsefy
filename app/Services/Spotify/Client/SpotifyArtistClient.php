@@ -60,6 +60,27 @@ final class SpotifyArtistClient
         ]);
     }
 
+    public function libraryContains(array $uris): Response
+    {
+        return $this->get('/me/library/contains', [
+            'uris' => implode(',', $uris),
+        ]);
+    }
+
+    public function saveToLibrary(array $uris): Response
+    {
+        return $this->put('/me/library', [
+            'uris' => implode(',', $uris),
+        ]);
+    }
+
+    public function removeFromLibrary(array $uris): Response
+    {
+        return $this->delete('/me/library', [
+            'uris' => implode(',', $uris),
+        ]);
+    }
+
     private function get(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)
@@ -67,5 +88,23 @@ final class SpotifyArtistClient
             ->connectTimeout(5)
             ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429))
             ->get(self::BASE_URL.$path, $query);
+    }
+
+    private function put(string $path, array $query = []): Response
+    {
+        return Http::withToken($this->accessToken)
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429))
+            ->send('PUT', self::BASE_URL.$path, ['query' => $query]);
+    }
+
+    private function delete(string $path, array $query = []): Response
+    {
+        return Http::withToken($this->accessToken)
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429))
+            ->send('DELETE', self::BASE_URL.$path, ['query' => $query]);
     }
 }

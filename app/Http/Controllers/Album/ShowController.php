@@ -21,6 +21,7 @@ final class ShowController extends Controller
             'artistName' => $request->string('artistName')->toString() ?: null,
             'album' => Inertia::defer(fn () => $artistService->album($user, $albumId)),
             'tracks' => Inertia::defer(fn () => $artistService->albumTracks($user, $albumId)),
+            'isFavorite' => Inertia::defer(fn () => $artistService->isAlbumSaved($user, $albumId)),
             'insights' => Inertia::defer(fn () => $insights->album($user, $albumId)),
         ]);
     }

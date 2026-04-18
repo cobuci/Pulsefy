@@ -2,6 +2,7 @@
 import { Deferred, Head, Link, setLayoutProps } from '@inertiajs/vue3';
 import { Heart, Play, Shuffle } from 'lucide-vue-next';
 import { computed, ref, watchEffect } from 'vue';
+import { toast } from 'vue-sonner';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconPause from '@/components/icons/IconPause.vue';
@@ -11,6 +12,7 @@ import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
+import { favorite as favoriteArtist } from '@/routes/artists';
 import { shuffle as shuffleRoute } from '@/routes/player';
 import type {
     SpotifyAlbum,
@@ -26,6 +28,7 @@ const props = defineProps<{
     artist?: SpotifyArtist | null;
     topTracks?: SpotifyTrack[];
     albums?: SpotifyArtistAlbum[];
+    isFavorite?: boolean;
     insights?: {
         rankLabel?: string;
         firstListenLabel?: string;
@@ -92,6 +95,8 @@ const INITIAL_ALBUMS_COUNT = 6;
 
 const showAllTopTracks = ref(false);
 const showAllAlbums = ref(false);
+const favorite = ref<boolean>(props.isFavorite ?? false);
+const favoriteBusy = ref(false);
 const shuffleBusy = ref(false);
 const albumFilter = ref<
     'all' | 'album' | 'single' | 'appears_on' | 'compilation'
@@ -147,6 +152,12 @@ const canExpandAlbums = computed(
     () => filteredAlbums.value.length > INITIAL_ALBUMS_COUNT,
 );
 
+watchEffect(() => {
+    if (typeof props.isFavorite === 'boolean') {
+        favorite.value = props.isFavorite;
+    }
+});
+
 function setAlbumFilter(
     value: 'all' | 'album' | 'single' | 'appears_on' | 'compilation',
 ) {
@@ -193,6 +204,49 @@ async function playTopTrack() {
 
     if (firstTrack) {
         await handlePlay(firstTrack);
+    }
+}
+
+async function toggleFavorite() {
+    if (favoriteBusy.value) {
+        return;
+    }
+
+    favoriteBusy.value = true;
+
+    try {
+        const response = await fetch(favoriteArtist(props.artistId).url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ favorite: !favorite.value }),
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const payload = (await response.json()) as {
+            ok?: boolean;
+            favorite?: boolean;
+            requires_reauth?: boolean;
+            message?: string;
+        };
+
+        if (payload.ok && typeof payload.favorite === 'boolean') {
+            favorite.value = payload.favorite;
+
+            return;
+        }
+
+        if (payload.requires_reauth && payload.message) {
+            toast.error(payload.message);
+        }
+    } finally {
+        favoriteBusy.value = false;
     }
 }
 
@@ -345,9 +399,16 @@ async function playShuffledTopTracks() {
             </button>
             <button
                 type="button"
-                class="grid size-12 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                :disabled="favoriteBusy"
+                class="grid size-12 place-items-center rounded-full border border-border transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                @click="toggleFavorite"
             >
-                <Heart class="size-4" />
+                <Heart
+                    :class="[
+                        'size-4',
+                        favorite ? 'fill-current text-accent' : '',
+                    ]"
+                />
             </button>
         </div>
 

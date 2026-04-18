@@ -21,7 +21,14 @@ final class SpotifyController extends Controller
                 'user-read-playback-state',
                 'user-read-currently-playing',
                 'user-modify-playback-state',
+                'user-follow-modify',
+                'user-follow-read',
+                'user-library-modify',
+                'user-library-read',
                 'streaming',
+            ])
+            ->with([
+                'show_dialog' => 'true',
             ])
             ->redirect();
     }

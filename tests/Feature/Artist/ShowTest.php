@@ -88,6 +88,7 @@ test('authenticated users can visit artist show page with deferred props', funct
         'api.spotify.com/v1/artists/artist-1/albums*' => Http::response([
             'items' => [],
         ]),
+        'api.spotify.com/v1/me/library/contains*' => Http::response([false]),
     ]);
 
     $this->actingAs($user)
@@ -98,11 +99,13 @@ test('authenticated users can visit artist show page with deferred props', funct
             ->missing('artist')
             ->missing('topTracks')
             ->missing('albums')
+            ->missing('isFavorite')
             ->missing('insights')
             ->loadDeferredProps(fn (AssertableInertia $reload) => $reload
                 ->has('artist')
                 ->has('topTracks')
                 ->has('albums')
+                ->where('isFavorite', false)
                 ->has('insights')
                 ->where('insights.rankLabel', '#1')
                 ->where('insights.firstListenLabel', 'Not enough history')

@@ -199,6 +199,81 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
         });
     }
 
+    public function isArtistFollowed(User $user, string $artistId): bool
+    {
+        return $this->libraryContains($user, $this->artistUri($artistId), 'isArtistFollowed', ['artist_id' => $artistId]);
+    }
+
+    public function followArtist(User $user, string $artistId): bool
+    {
+        return $this->saveLibraryItem($user, $this->artistUri($artistId), 'followArtist', ['artist_id' => $artistId]);
+    }
+
+    public function unfollowArtist(User $user, string $artistId): bool
+    {
+        return $this->removeLibraryItem($user, $this->artistUri($artistId), 'unfollowArtist', ['artist_id' => $artistId]);
+    }
+
+    public function isAlbumSaved(User $user, string $albumId): bool
+    {
+        return $this->libraryContains($user, $this->albumUri($albumId), 'isAlbumSaved', ['album_id' => $albumId]);
+    }
+
+    public function saveAlbum(User $user, string $albumId): bool
+    {
+        return $this->saveLibraryItem($user, $this->albumUri($albumId), 'saveAlbum', ['album_id' => $albumId]);
+    }
+
+    public function unsaveAlbum(User $user, string $albumId): bool
+    {
+        return $this->removeLibraryItem($user, $this->albumUri($albumId), 'unsaveAlbum', ['album_id' => $albumId]);
+    }
+
+    private function artistUri(string $artistId): string
+    {
+        return 'spotify:artist:'.$artistId;
+    }
+
+    private function albumUri(string $albumId): string
+    {
+        return 'spotify:album:'.$albumId;
+    }
+
+    private function libraryContains(User $user, string $uri, string $operation, array $context = []): bool
+    {
+        try {
+            $response = $this->userArtistClient($user)->libraryContains([$uri]);
+
+            if (in_array($response->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
+                return false;
+            }
+
+            return (bool) data_get($response->throw()->json(), '0', false);
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage(), ...$context]);
+
+            return false;
+        }
+    }
+
+    private function saveLibraryItem(User $user, string $uri, string $operation, array $context = []): bool
+    {
+        return $this->saveMutation(
+            operation: $operation,
+            request: fn (): Response => $this->userArtistClient($user)->saveToLibrary([$uri]),
+            context: $context,
+        );
+    }
+
+    private function removeLibraryItem(User $user, string $uri, string $operation, array $context = []): bool
+    {
+        return $this->saveMutation(
+            operation: $operation,
+            request: fn (): Response => $this->userArtistClient($user)->removeFromLibrary([$uri]),
+            context: $context,
+        );
+    }
+
     private function fetchArrayPayload(User $user, string $operation, Closure $appRequest, Closure $userRequest, string $path = 'items'): array
     {
         try {
@@ -242,6 +317,23 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
         }
 
         return $response;
+    }
+
+    private function saveMutation(string $operation, Closure $request, array $context = []): bool
+    {
+        try {
+            $response = $request();
+
+            if (in_array($response->status(), [200, 202, 204], true)) {
+                return true;
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning("Spotify {$operation} failed", ['error' => $e->getMessage(), ...$context]);
+
+            return false;
+        }
     }
 
     private function appArtistClient(): SpotifyArtistClient

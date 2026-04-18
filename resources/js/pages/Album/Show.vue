@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Deferred, Head, setLayoutProps } from '@inertiajs/vue3';
 import { Clock, Heart, Play, Shuffle } from 'lucide-vue-next';
-import { computed, watchEffect } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
+import { toast } from 'vue-sonner';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconPause from '@/components/icons/IconPause.vue';
@@ -9,6 +10,7 @@ import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard } from '@/routes';
+import { favorite as favoriteAlbum } from '@/routes/albums';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
 import { shuffle as shuffleRoute } from '@/routes/player';
@@ -22,6 +24,7 @@ const props = defineProps<{
     artistName?: string | null;
     album?: SpotifyAlbum | null;
     tracks?: SpotifyTrack[];
+    isFavorite?: boolean;
     insights?: {
         playsLabel?: string;
         timeLabel?: string;
@@ -69,7 +72,15 @@ const primaryArtistName = computed(() => {
 });
 
 const { isPlayingTrack, playTrack } = usePlayer();
+const favorite = ref<boolean>(props.isFavorite ?? false);
+const favoriteBusy = ref(false);
 const shuffleBusy = ref(false);
+
+watchEffect(() => {
+    if (typeof props.isFavorite === 'boolean') {
+        favorite.value = props.isFavorite;
+    }
+});
 
 async function handlePlay(track: SpotifyTrack) {
     const queueUris = (props.tracks ?? [])
@@ -82,6 +93,49 @@ async function handlePlay(track: SpotifyTrack) {
         uris: queueUris.length > 0 ? queueUris : undefined,
         offsetPosition: trackIndex >= 0 ? trackIndex : undefined,
     });
+}
+
+async function toggleFavorite() {
+    if (favoriteBusy.value) {
+        return;
+    }
+
+    favoriteBusy.value = true;
+
+    try {
+        const response = await fetch(favoriteAlbum(props.albumId).url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ favorite: !favorite.value }),
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const payload = (await response.json()) as {
+            ok?: boolean;
+            favorite?: boolean;
+            requires_reauth?: boolean;
+            message?: string;
+        };
+
+        if (payload.ok && typeof payload.favorite === 'boolean') {
+            favorite.value = payload.favorite;
+
+            return;
+        }
+
+        if (payload.requires_reauth && payload.message) {
+            toast.error(payload.message);
+        }
+    } finally {
+        favoriteBusy.value = false;
+    }
 }
 
 async function playShuffledTracks() {
@@ -221,9 +275,18 @@ async function playShuffledTracks() {
                                     </button>
                                     <button
                                         type="button"
-                                        class="grid size-11 cursor-pointer place-items-center rounded-full border border-border transition-colors hover:bg-secondary"
+                                        :disabled="favoriteBusy"
+                                        class="grid size-11 place-items-center rounded-full border border-border transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                                        @click="toggleFavorite"
                                     >
-                                        <Heart class="size-4" />
+                                        <Heart
+                                            :class="[
+                                                'size-4',
+                                                favorite
+                                                    ? 'fill-current text-accent'
+                                                    : '',
+                                            ]"
+                                        />
                                     </button>
                                 </div>
                             </div>
