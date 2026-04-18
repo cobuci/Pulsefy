@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Services\Spotify\Contracts\SpotifyInsightsProvider;
 use App\Services\Spotify\Contracts\SpotifyStatsProvider;
+use App\Services\Spotify\Sync\SpotifySyncStatusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class DashboardController extends Controller
 {
-    public function __invoke(Request $request, SpotifyStatsProvider $spotify, SpotifyInsightsProvider $insights): Response
-    {
+    public function __invoke(
+        Request $request,
+        SpotifyStatsProvider $spotify,
+        SpotifyInsightsProvider $insights,
+        SpotifySyncStatusService $syncStatus,
+    ): Response {
         $user = $request->user();
         $timeRange = in_array($request->get('period'), ['short_term', 'medium_term', 'long_term'])
             ? $request->get('period')
@@ -23,6 +28,7 @@ final class DashboardController extends Controller
             'topArtists' => Inertia::defer(fn () => $spotify->topArtists($user, $timeRange)),
             'recentPlays' => Inertia::defer(fn () => $spotify->recentlyPlayedUnique($user)),
             'insights' => Inertia::defer(fn () => $insights->dashboard($user, $timeRange)),
+            'syncStatus' => $syncStatus->forUser($user),
         ]);
     }
 }

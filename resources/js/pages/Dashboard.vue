@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronRight, Clock, Sparkles, TrendingUp } from 'lucide-vue-next';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { computed, onUnmounted, ref } from 'vue';
 import ActivityChart from '@/components/dashboard/ActivityChart.vue';
-import ArtistCard from '@/components/dashboard/ArtistCard.vue';
+import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
+import DashboardRecentPlaysSection from '@/components/dashboard/DashboardRecentPlaysSection.vue';
+import DashboardRecommendationsPanel from '@/components/dashboard/DashboardRecommendationsPanel.vue';
+import DashboardTopArtistsSection from '@/components/dashboard/DashboardTopArtistsSection.vue';
+import DashboardTopTracksSection from '@/components/dashboard/DashboardTopTracksSection.vue';
 import GenreChart from '@/components/dashboard/GenreChart.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
-import StatCard from '@/components/dashboard/StatCard.vue';
-import TrackListItem from '@/components/dashboard/TrackListItem.vue';
-import IconPlay from '@/components/icons/IconPlay.vue';
-import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
-import { dashboard, recentlyPlayed } from '@/routes';
-import { show as albumShow } from '@/routes/albums';
-import { index as artistsIndex, show as artistShow } from '@/routes/artists';
+import { dashboard } from '@/routes';
 import { refresh as refreshInsights } from '@/routes/insights';
 import type {
     RecentPlay,
@@ -47,6 +44,14 @@ const props = defineProps<{
         genreMix?: Array<{ label: string; value: number; color: string }>;
         recommendations?: SpotifyTrack[];
     };
+    syncStatus?: {
+        isRunning: boolean;
+        hasFailure: boolean;
+        completed: number;
+        total: number;
+        progress: number;
+        updatedAt: string | null;
+    };
 }>();
 
 const SKELETON_COUNT = 5;
@@ -64,6 +69,33 @@ onUnmounted(() => {
 
 const { isPlayingTrack, playTrack } = usePlayer();
 const page = usePage();
+
+const syncStatus = computed(() => {
+    return props.syncStatus ?? {
+        isRunning: false,
+        hasFailure: false,
+        completed: 0,
+        total: 3,
+        progress: 0,
+        updatedAt: null,
+    };
+});
+
+usePoll(
+    2500,
+    {
+        only: [
+            'syncStatus',
+            'topTracks',
+            'topArtists',
+            'recentPlays',
+            'insights',
+        ],
+    },
+    {
+        autoStart: true,
+    },
+);
 
 const periodDescription = computed(() => {
     if (props.period === 'short_term') {
@@ -175,44 +207,32 @@ function refreshAllInsights() {
     <Head title="Dashboard" />
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-10 py-4">
-        <section class="grid gap-4 lg:grid-cols-3">
-            <div class="mb-2 lg:col-span-3">
-                <p
-                    class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
-                >
-                    Good evening, {{ greetingName }}
-                </p>
-                <h1
-                    class="mt-2 max-w-2xl font-display text-4xl font-bold sm:text-5xl"
-                >
-                    {{ headlineText }}
-                </h1>
-            </div>
-
-            <StatCard
-                accent
-                label="Listening time"
-                :value="totalHours"
-                hint="Based on your top tracks"
-            />
-            <StatCard
-                label="Unique tracks"
-                :value="uniqueTrackCount"
-                hint="In this selected range"
-            />
-            <StatCard
-                label="Top genre"
-                :value="topGenre"
-                hint="Artist-led estimate"
-            />
-        </section>
+        <DashboardHeroStats
+            :greeting-name="greetingName"
+            :headline-text="headlineText"
+            :total-hours="totalHours"
+            :unique-track-count="uniqueTrackCount"
+            :top-genre="topGenre"
+        />
 
         <div class="flex items-center justify-end">
             <div class="flex items-center gap-2">
+                <span
+                    v-if="syncStatus.isRunning"
+                    class="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent"
+                >
+                    Syncing {{ syncStatus.completed }}/{{ syncStatus.total }} · {{ syncStatus.progress }}%
+                </span>
+                <span
+                    v-else-if="syncStatus.hasFailure"
+                    class="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive"
+                >
+                    Sync failed
+                </span>
                 <button
                     type="button"
                     class="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="isRefreshing"
+                    :disabled="isRefreshing || syncStatus.isRunning"
                     @click="refreshAllInsights"
                 >
                     {{ isRefreshing ? 'Refreshing…' : 'Refresh data' }}
@@ -237,255 +257,29 @@ function refreshAllInsights() {
                 :description="periodDescription"
             />
             <div class="grid gap-6 lg:grid-cols-3">
-                <div
-                    class="rounded-2xl border border-border bg-card p-5 shadow-card lg:col-span-2"
-                >
-                    <div class="mb-3 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <TrendingUp class="size-4 text-accent" />
-                            <h2 class="font-display text-lg font-bold">
-                                Top Tracks
-                            </h2>
-                        </div>
-                        <span
-                            class="flex items-center gap-1 text-xs text-muted-foreground"
-                        >
-                            <Clock class="size-3" />
-                            {{ periodDescription }}
-                        </span>
-                    </div>
+                <DashboardTopTracksSection
+                    :period-description="periodDescription"
+                    :top-tracks-preview="topTracksPreview"
+                    :is-playing-track="isPlayingTrack"
+                    :handle-play="handlePlay"
+                    :skeleton-count="SKELETON_COUNT"
+                />
 
-                    <Deferred data="topTracks">
-                        <template #fallback>
-                            <TrackListItem
-                                v-for="n in SKELETON_COUNT"
-                                :key="n"
-                                :rank="n"
-                                :loading="true"
-                            />
-                        </template>
-
-                        <template #default="{ reloading }">
-                            <div
-                                class="space-y-1 transition-opacity duration-300"
-                                :class="{ 'opacity-40': reloading }"
-                            >
-                                <TrackListItem
-                                    v-for="(track, i) in topTracksPreview"
-                                    :key="track.id"
-                                    :rank="i + 1"
-                                    :track="track"
-                                    :is-playing="isPlayingTrack(track.id)"
-                                    @play="handlePlay"
-                                />
-                                <p
-                                    v-if="topTracksPreview.length === 0"
-                                    class="py-6 text-center text-sm text-muted-foreground"
-                                >
-                                    No tracks found for this period.
-                                </p>
-                            </div>
-                        </template>
-                    </Deferred>
-                </div>
-
-                <div
-                    class="rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/10 to-accent/5 p-5"
-                >
-                    <div class="mb-3 flex items-center gap-2">
-                        <Sparkles class="size-4 text-accent" />
-                        <h2 class="font-display text-lg font-bold">For you</h2>
-                    </div>
-                    <p class="mb-4 text-xs text-muted-foreground">
-                        Recommended from your top and recent listening.
-                    </p>
-
-                    <div class="space-y-3">
-                        <button
-                            v-for="track in recommendationTracks"
-                            :key="track.id"
-                            type="button"
-                            class="-mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-background/40"
-                            @click="handlePlay(track)"
-                        >
-                            <img
-                                v-if="track.album.images?.[0]?.url"
-                                :src="track.album.images[0].url"
-                                :alt="track.name"
-                                class="size-12 rounded-lg object-cover"
-                            />
-                            <div v-else class="size-12 rounded-lg bg-muted" />
-
-                            <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-medium">
-                                    {{ track.name }}
-                                </p>
-                                <p
-                                    class="truncate text-xs text-muted-foreground"
-                                >
-                                    {{
-                                        track.artists
-                                            .map((artist) => artist.name)
-                                            .join(', ')
-                                    }}
-                                </p>
-                            </div>
-                            <span
-                                class="text-[10px] font-bold tracking-wider text-accent uppercase"
-                            >
-                                Pick
-                            </span>
-                        </button>
-                    </div>
-                </div>
+                <DashboardRecommendationsPanel
+                    :recommendation-tracks="recommendationTracks"
+                    :handle-play="handlePlay"
+                />
             </div>
         </section>
 
-        <section>
-            <SectionHeader title="Top Artists" :description="periodDescription">
-                <Link
-                    :href="artistsIndex()"
-                    class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-accent"
-                >
-                    See all
-                    <ChevronRight class="size-3" />
-                </Link>
-            </SectionHeader>
-            <Deferred data="topArtists">
-                <template #fallback>
-                    <div
-                        class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
-                    >
-                        <ArtistCard
-                            v-for="n in 4"
-                            :key="n"
-                            :rank="n"
-                            :loading="true"
-                        />
-                    </div>
-                </template>
+        <DashboardTopArtistsSection
+            :period-description="periodDescription"
+            :top-artists-preview="topArtistsPreview"
+        />
 
-                <template #default="{ reloading }">
-                    <div
-                        class="grid grid-cols-2 gap-4 transition-opacity duration-300 sm:grid-cols-3 lg:grid-cols-4"
-                        :class="{ 'opacity-40': reloading }"
-                    >
-                        <Link
-                            v-for="(artist, i) in topArtistsPreview"
-                            :key="artist.id"
-                            :href="artistShow(artist.id).url"
-                        >
-                            <ArtistCard :rank="i + 1" :artist="artist" />
-                        </Link>
-                    </div>
-                </template>
-            </Deferred>
-        </section>
-
-        <section>
-            <SectionHeader title="Recently Played">
-                <Link
-                    :href="recentlyPlayed()"
-                    class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-accent"
-                >
-                    See all
-                    <ChevronRight class="size-3" />
-                </Link>
-            </SectionHeader>
-            <Deferred data="recentPlays">
-                <template #fallback>
-                    <div
-                        class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
-                    >
-                        <div
-                            v-for="n in 6"
-                            :key="n"
-                            class="rounded-xl border border-border bg-card p-3 shadow-card"
-                        >
-                            <Skeleton class="aspect-square w-full rounded-lg" />
-                            <Skeleton class="mt-3 h-4 w-3/4" />
-                            <Skeleton class="mt-2 h-3 w-1/2" />
-                        </div>
-                    </div>
-                </template>
-
-                <template #default>
-                    <div
-                        v-if="!recentlyPlayedTracks.length"
-                        class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
-                    >
-                        No recent plays found.
-                    </div>
-
-                    <div
-                        v-else
-                        class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
-                    >
-                        <div
-                            v-for="play in recentlyPlayedTracks"
-                            :key="`${play.track.id}-${play.played_at}`"
-                            class="group"
-                        >
-                            <div
-                                class="relative mb-3 aspect-square overflow-hidden rounded-xl shadow-card"
-                            >
-                                <img
-                                    v-if="play.track.album.images?.[0]?.url"
-                                    :src="play.track.album.images[0].url"
-                                    :alt="play.track.album.name"
-                                    class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                                <div v-else class="size-full bg-muted" />
-                                <div
-                                    class="absolute inset-0 grid place-items-center bg-background/0 transition-colors group-hover:bg-background/30"
-                                >
-                                    <button
-                                        type="button"
-                                        class="bg-gradient-primary shadow-glow grid size-12 scale-75 cursor-pointer place-items-center rounded-full opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100"
-                                        @click="handlePlay(play.track)"
-                                    >
-                                        <IconPlay
-                                            class="ml-0.5 size-5 text-primary-foreground"
-                                        />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="min-w-0">
-                                <Link
-                                    :href="albumShow(play.track.album.id).url"
-                                    class="block max-w-full truncate text-sm font-medium transition-colors group-hover:text-accent hover:text-accent"
-                                >
-                                    {{ play.track.name }}
-                                </Link>
-                                <p
-                                    class="truncate text-xs text-muted-foreground"
-                                >
-                                    <template
-                                        v-for="(artist, artistIndex) in play
-                                            .track.artists"
-                                        :key="artist.id"
-                                    >
-                                        <Link
-                                            :href="artistShow(artist.id).url"
-                                            class="cursor-pointer hover:text-foreground"
-                                        >
-                                            {{ artist.name }}
-                                        </Link>
-                                        <span
-                                            v-if="
-                                                artistIndex <
-                                                play.track.artists.length - 1
-                                            "
-                                            >,
-                                        </span>
-                                    </template>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </Deferred>
-        </section>
+        <DashboardRecentPlaysSection
+            :recently-played-tracks="recentlyPlayedTracks"
+            :handle-play="handlePlay"
+        />
     </div>
 </template>

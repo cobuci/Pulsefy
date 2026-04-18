@@ -22,6 +22,13 @@ final readonly class SpotifySyncService
     public function syncTopArtists(User $user): void
     {
         $run = $this->startRun($user, 'top_artists');
+        $meta = [
+            'fetched' => 0,
+            'upserted' => 0,
+            'skipped' => 0,
+            'pruned' => 0,
+            'ranges' => [],
+        ];
 
         try {
             $client = $this->client($user);
@@ -30,15 +37,33 @@ final readonly class SpotifySyncService
                 $items = $client->topArtistsPage($timeRange, 50, 0)->throw()->json('items', []);
 
                 if (! is_array($items)) {
+                    $meta['ranges'][$timeRange] = [
+                        'fetched' => 0,
+                        'upserted' => 0,
+                        'skipped' => 0,
+                        'pruned' => 0,
+                    ];
+
                     continue;
                 }
+
+                $rangeMeta = [
+                    'fetched' => count($items),
+                    'upserted' => 0,
+                    'skipped' => 0,
+                    'pruned' => 0,
+                ];
 
                 foreach ($items as $index => $item) {
                     $artist = $this->upsertArtist($item);
 
                     if ($artist === null) {
+                        $rangeMeta['skipped']++;
+
                         continue;
                     }
+
+                    $rangeMeta['upserted']++;
 
                     UserTopArtist::query()->updateOrCreate(
                         [
@@ -53,11 +78,40 @@ final readonly class SpotifySyncService
                         ],
                     );
                 }
+
+                $currentArtistIds = $this->existingArtistModelIds($items);
+
+                $staleQuery = UserTopArtist::query()
+                    ->where('user_id', $user->id)
+                    ->where('time_range', $timeRange);
+
+                if ($currentArtistIds === []) {
+                    $rangeMeta['pruned'] += $staleQuery->delete();
+
+                    $meta['fetched'] += $rangeMeta['fetched'];
+                    $meta['upserted'] += $rangeMeta['upserted'];
+                    $meta['skipped'] += $rangeMeta['skipped'];
+                    $meta['pruned'] += $rangeMeta['pruned'];
+                    $meta['ranges'][$timeRange] = $rangeMeta;
+
+                    continue;
+                }
+
+                $rangeMeta['pruned'] += $staleQuery
+                    ->whereNotIn('artist_model_id', $currentArtistIds)
+                    ->delete();
+
+                $meta['fetched'] += $rangeMeta['fetched'];
+                $meta['upserted'] += $rangeMeta['upserted'];
+                $meta['skipped'] += $rangeMeta['skipped'];
+                $meta['pruned'] += $rangeMeta['pruned'];
+                $meta['ranges'][$timeRange] = $rangeMeta;
             }
 
-            $this->finishRun($run, 'completed');
+            $this->finishRun($run, 'completed', meta: $meta);
         } catch (\Throwable $e) {
-            $this->finishRun($run, 'failed', $e->getMessage());
+            $meta['exception'] = $e::class;
+            $this->finishRun($run, 'failed', $e->getMessage(), $meta);
             Log::channel('spotify')->warning('Spotify syncTopArtists failed', ['error' => $e->getMessage()]);
         }
     }
@@ -65,6 +119,13 @@ final readonly class SpotifySyncService
     public function syncTopTracks(User $user): void
     {
         $run = $this->startRun($user, 'top_tracks');
+        $meta = [
+            'fetched' => 0,
+            'upserted' => 0,
+            'skipped' => 0,
+            'pruned' => 0,
+            'ranges' => [],
+        ];
 
         try {
             $client = $this->client($user);
@@ -73,15 +134,33 @@ final readonly class SpotifySyncService
                 $items = $client->topTracksPage($timeRange, 50, 0)->throw()->json('items', []);
 
                 if (! is_array($items)) {
+                    $meta['ranges'][$timeRange] = [
+                        'fetched' => 0,
+                        'upserted' => 0,
+                        'skipped' => 0,
+                        'pruned' => 0,
+                    ];
+
                     continue;
                 }
+
+                $rangeMeta = [
+                    'fetched' => count($items),
+                    'upserted' => 0,
+                    'skipped' => 0,
+                    'pruned' => 0,
+                ];
 
                 foreach ($items as $index => $item) {
                     $track = $this->upsertTrack($item);
 
                     if ($track === null) {
+                        $rangeMeta['skipped']++;
+
                         continue;
                     }
+
+                    $rangeMeta['upserted']++;
 
                     UserTopTrack::query()->updateOrCreate(
                         [
@@ -98,11 +177,40 @@ final readonly class SpotifySyncService
 
                     $this->syncTrackArtists($item, $track->id);
                 }
+
+                $currentTrackIds = $this->existingTrackIds($items);
+
+                $staleQuery = UserTopTrack::query()
+                    ->where('user_id', $user->id)
+                    ->where('time_range', $timeRange);
+
+                if ($currentTrackIds === []) {
+                    $rangeMeta['pruned'] += $staleQuery->delete();
+
+                    $meta['fetched'] += $rangeMeta['fetched'];
+                    $meta['upserted'] += $rangeMeta['upserted'];
+                    $meta['skipped'] += $rangeMeta['skipped'];
+                    $meta['pruned'] += $rangeMeta['pruned'];
+                    $meta['ranges'][$timeRange] = $rangeMeta;
+
+                    continue;
+                }
+
+                $rangeMeta['pruned'] += $staleQuery
+                    ->whereNotIn('track_id', $currentTrackIds)
+                    ->delete();
+
+                $meta['fetched'] += $rangeMeta['fetched'];
+                $meta['upserted'] += $rangeMeta['upserted'];
+                $meta['skipped'] += $rangeMeta['skipped'];
+                $meta['pruned'] += $rangeMeta['pruned'];
+                $meta['ranges'][$timeRange] = $rangeMeta;
             }
 
-            $this->finishRun($run, 'completed');
+            $this->finishRun($run, 'completed', meta: $meta);
         } catch (\Throwable $e) {
-            $this->finishRun($run, 'failed', $e->getMessage());
+            $meta['exception'] = $e::class;
+            $this->finishRun($run, 'failed', $e->getMessage(), $meta);
             Log::channel('spotify')->warning('Spotify syncTopTracks failed', ['error' => $e->getMessage()]);
         }
     }
@@ -110,28 +218,41 @@ final readonly class SpotifySyncService
     public function syncRecentPlays(User $user): void
     {
         $run = $this->startRun($user, 'recent_plays');
+        $meta = [
+            'fetched' => 0,
+            'upserted' => 0,
+            'skipped' => 0,
+        ];
 
         try {
             $client = $this->client($user);
             $items = $client->recentlyPlayed(50)->throw()->json('items', []);
 
             if (is_array($items)) {
+                $meta['fetched'] = count($items);
+
                 foreach ($items as $item) {
                     $trackPayload = data_get($item, 'track');
 
                     if (! is_array($trackPayload)) {
+                        $meta['skipped']++;
+
                         continue;
                     }
 
                     $track = $this->upsertTrack($trackPayload);
 
                     if ($track === null) {
+                        $meta['skipped']++;
+
                         continue;
                     }
 
                     $playedAt = data_get($item, 'played_at');
 
                     if (! is_string($playedAt) || $playedAt === '') {
+                        $meta['skipped']++;
+
                         continue;
                     }
 
@@ -144,13 +265,16 @@ final readonly class SpotifySyncService
                         [],
                     );
 
+                    $meta['upserted']++;
+
                     $this->syncTrackArtists($trackPayload, $track->id);
                 }
             }
 
-            $this->finishRun($run, 'completed');
+            $this->finishRun($run, 'completed', meta: $meta);
         } catch (\Throwable $e) {
-            $this->finishRun($run, 'failed', $e->getMessage());
+            $meta['exception'] = $e::class;
+            $this->finishRun($run, 'failed', $e->getMessage(), $meta);
             Log::channel('spotify')->warning('Spotify syncRecentPlays failed', ['error' => $e->getMessage()]);
         }
     }
@@ -253,6 +377,52 @@ final readonly class SpotifySyncService
         }
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, int>
+     */
+    private function existingArtistModelIds(array $items): array
+    {
+        $spotifyIds = collect($items)
+            ->pluck('id')
+            ->filter(fn (mixed $id): bool => is_string($id) && $id !== '')
+            ->values()
+            ->all();
+
+        if ($spotifyIds === []) {
+            return [];
+        }
+
+        return Artist::query()
+            ->whereIn('artist_id', $spotifyIds)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, int>
+     */
+    private function existingTrackIds(array $items): array
+    {
+        $spotifyIds = collect($items)
+            ->pluck('id')
+            ->filter(fn (mixed $id): bool => is_string($id) && $id !== '')
+            ->values()
+            ->all();
+
+        if ($spotifyIds === []) {
+            return [];
+        }
+
+        return Track::query()
+            ->whereIn('spotify_id', $spotifyIds)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
     private function startRun(User $user, string $type): SpotifySyncRun
     {
         return SpotifySyncRun::query()->create([
@@ -263,12 +433,22 @@ final readonly class SpotifySyncService
         ]);
     }
 
-    private function finishRun(SpotifySyncRun $run, string $status, ?string $error = null): void
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function finishRun(SpotifySyncRun $run, string $status, ?string $error = null, array $meta = []): void
     {
+        $durationMs = $run->started_at?->diffInMilliseconds(now());
+
+        if ($durationMs !== null) {
+            $meta['duration_ms'] = $durationMs;
+        }
+
         $run->update([
             'status' => $status,
             'finished_at' => now(),
             'error' => $error,
+            'meta' => $meta,
         ]);
     }
 }

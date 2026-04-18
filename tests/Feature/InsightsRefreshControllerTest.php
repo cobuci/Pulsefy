@@ -17,3 +17,8 @@ test('refresh route dispatches spotify sync job on spotify-sync queue', function
         return $job->userId === $user->id && $job->queue === 'spotify-sync';
     });
 });
+
+test('status route is protected by auth middleware', function () {
+    $this->get(route('insights.status'))
+        ->assertRedirect(route('login'));
+});
