@@ -17,12 +17,13 @@ final class SpotifyArtistClient
         return $this->get('/artists/'.$artistId);
     }
 
-    public function artistAlbums(string $artistId, int $limit = 10, string $market = 'US'): Response
+    public function artistAlbums(string $artistId, int $limit = 10, int $offset = 0, string $market = 'US'): Response
     {
         return $this->get('/artists/'.$artistId.'/albums', [
             'market' => $market,
             'include_groups' => 'album,single,appears_on,compilation',
             'limit' => $limit,
+            'offset' => $offset,
         ]);
     }
 

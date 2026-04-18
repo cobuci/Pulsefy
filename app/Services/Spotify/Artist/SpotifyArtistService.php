@@ -54,8 +54,8 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
                 $response = $this->requestWithFallback(
                     user: $user,
-                    appRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name']),
-                    userRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name']),
+                    appRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name'], 50),
+                    userRequest: fn (SpotifyArtistClient $client): Response => $client->searchTracksByArtist($artist['name'], 50),
                 );
 
                 if (in_array($response->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
@@ -76,12 +76,40 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
     public function albums(User $user, string $artistId): array
     {
         return $this->cached($user, 'artist_albums', 'v1:'.$artistId, function () use ($user, $artistId) {
-            return $this->fetchArrayPayload(
-                user: $user,
-                operation: 'artistAlbums',
-                appRequest: fn (SpotifyArtistClient $client): Response => $client->artistAlbums($artistId),
-                userRequest: fn (SpotifyArtistClient $client): Response => $client->artistAlbums($artistId),
-            );
+            try {
+                $albums = [];
+                $limit = 10;
+
+                for ($offset = 0; $offset < 50; $offset += $limit) {
+                    $response = $this->requestWithFallback(
+                        user: $user,
+                        appRequest: fn (SpotifyArtistClient $client): Response => $client->artistAlbums($artistId, $limit, $offset),
+                        userRequest: fn (SpotifyArtistClient $client): Response => $client->artistAlbums($artistId, $limit, $offset),
+                    );
+
+                    if (in_array($response->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
+                        return [];
+                    }
+
+                    $items = $response->throw()->json('items', []);
+
+                    if ($items === []) {
+                        break;
+                    }
+
+                    $albums = [...$albums, ...$items];
+
+                    if (count($items) < $limit) {
+                        break;
+                    }
+                }
+
+                return $albums;
+            } catch (\Throwable $e) {
+                Log::warning('Spotify artistAlbums failed', ['artist_id' => $artistId, 'error' => $e->getMessage()]);
+
+                return [];
+            }
         });
     }
 

@@ -49,6 +49,10 @@ function albumImage(album: SpotifyAlbum): string | null {
 const { isPlayingTrack, playTrack } = usePlayer();
 
 const showAllTopTracks = ref(false);
+const showAllAlbums = ref(false);
+const albumFilter = ref<
+    'all' | 'album' | 'single' | 'appears_on' | 'compilation'
+>('all');
 
 const displayedTopTracks = computed(() => {
     const tracks = props.topTracks ?? [];
@@ -61,6 +65,38 @@ const displayedTopTracks = computed(() => {
 });
 
 const canExpandTopTracks = computed(() => (props.topTracks?.length ?? 0) > 5);
+
+const filteredAlbums = computed(() => {
+    const albums = props.albums ?? [];
+
+    if (albumFilter.value === 'all') {
+        return albums;
+    }
+
+    return albums.filter(
+        (album) =>
+            (album.album_group ?? album.album_type) === albumFilter.value,
+    );
+});
+
+const displayedAlbums = computed(() => {
+    const albums = filteredAlbums.value;
+
+    if (showAllAlbums.value) {
+        return albums;
+    }
+
+    return albums.slice(0, 10);
+});
+
+const canExpandAlbums = computed(() => filteredAlbums.value.length > 10);
+
+function setAlbumFilter(
+    value: 'all' | 'album' | 'single' | 'appears_on' | 'compilation',
+) {
+    albumFilter.value = value;
+    showAllAlbums.value = false;
+}
 
 async function handlePlay(track: SpotifyTrack) {
     await playTrack(`spotify:track:${track.id}`);
@@ -254,6 +290,70 @@ async function handlePlay(track: SpotifyTrack) {
 
         <section>
             <h2 class="mb-3 text-base font-semibold text-foreground">Albums</h2>
+
+            <div class="mb-3 flex flex-wrap gap-1.5">
+                <button
+                    type="button"
+                    :class="[
+                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                        albumFilter === 'all'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setAlbumFilter('all')"
+                >
+                    All
+                </button>
+                <button
+                    type="button"
+                    :class="[
+                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                        albumFilter === 'album'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setAlbumFilter('album')"
+                >
+                    Albums
+                </button>
+                <button
+                    type="button"
+                    :class="[
+                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                        albumFilter === 'single'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setAlbumFilter('single')"
+                >
+                    Singles
+                </button>
+                <button
+                    type="button"
+                    :class="[
+                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                        albumFilter === 'appears_on'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setAlbumFilter('appears_on')"
+                >
+                    Appears On
+                </button>
+                <button
+                    type="button"
+                    :class="[
+                        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                        albumFilter === 'compilation'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="setAlbumFilter('compilation')"
+                >
+                    Compilations
+                </button>
+            </div>
+
             <Deferred data="albums">
                 <template #fallback>
                     <div
@@ -273,10 +373,10 @@ async function handlePlay(track: SpotifyTrack) {
 
                 <template #default>
                     <div
-                        v-if="!albums?.length"
+                        v-if="!displayedAlbums.length"
                         class="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-sm"
                     >
-                        No albums found.
+                        No albums found for this filter.
                     </div>
 
                     <div
@@ -284,7 +384,7 @@ async function handlePlay(track: SpotifyTrack) {
                         class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5"
                     >
                         <Link
-                            v-for="album in albums"
+                            v-for="album in displayedAlbums"
                             :key="album.id"
                             :href="
                                 albumShow(album.id, {
@@ -315,6 +415,16 @@ async function handlePlay(track: SpotifyTrack) {
                                 {{ album.release_date }}
                             </p>
                         </Link>
+
+                        <div v-if="canExpandAlbums" class="col-span-full pt-2">
+                            <button
+                                type="button"
+                                class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                @click="showAllAlbums = !showAllAlbums"
+                            >
+                                {{ showAllAlbums ? 'Show less' : 'Show more' }}
+                            </button>
+                        </div>
                     </div>
                 </template>
             </Deferred>
