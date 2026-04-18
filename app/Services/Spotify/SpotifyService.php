@@ -9,6 +9,9 @@ use App\Services\Spotify\Contracts\SpotifyStatsProvider;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @phpstan-type SpotifyPayloadList array<int, array<string, mixed>>
+ */
 final readonly class SpotifyService implements SpotifyStatsProvider
 {
     use CachesStats;
@@ -79,7 +82,7 @@ final readonly class SpotifyService implements SpotifyStatsProvider
         try {
             $response = $request($this->statsClient($user));
 
-            if (in_array($response->status(), [401, 403])) {
+            if (in_array($response->status(), [401, 403], true)) {
                 return [];
             }
 

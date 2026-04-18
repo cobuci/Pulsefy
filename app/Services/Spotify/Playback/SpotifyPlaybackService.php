@@ -8,6 +8,9 @@ use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
 use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, progress_ms: int, volume_percent: int|null, track: array<string, mixed>}
+ */
 final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 {
     public function __construct(
@@ -19,7 +22,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         try {
             $response = $this->client($user)->playbackState();
 
-            if (in_array($response->status(), [204, 401, 403]) || $response->body() === '') {
+            if (in_array($response->status(), [204, 401, 403], true) || $response->body() === '') {
                 return null;
             }
 
@@ -50,7 +53,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         try {
             $response = $this->client($user)->devices();
 
-            if (in_array($response->status(), [401, 403])) {
+            if (in_array($response->status(), [401, 403], true)) {
                 return [];
             }
 
@@ -73,7 +76,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
             $client = $this->client($user);
             $response = $client->play([$uri]);
 
-            if (in_array($response->status(), [200, 202, 204])) {
+            if (in_array($response->status(), [200, 202, 204], true)) {
                 return true;
             }
 
@@ -86,7 +89,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
                 if ($deviceId) {
                     $retry = $client->play([$uri], $deviceId);
 
-                    return in_array($retry->status(), [200, 202, 204]);
+                    return in_array($retry->status(), [200, 202, 204], true);
                 }
             }
 
@@ -133,7 +136,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         try {
             $response = $callback();
 
-            return in_array($response->status(), [200, 202, 204]);
+            return in_array($response->status(), [200, 202, 204], true);
         } catch (\Throwable $e) {
             Log::warning("Spotify {$operation} failed", ['error' => $e->getMessage()]);
 
