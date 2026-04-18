@@ -34,20 +34,51 @@ trait CachesStats
 
     private function cached(User $user, string $type, string $timeRange, Closure $fetch): array
     {
-        $stat = SpotifyStat::firstOrNew([
+        $stat = SpotifyStat::query()->where([
             'user_id' => $user->id,
             'type' => $type,
             'time_range' => $timeRange,
-        ]);
+        ])->first();
 
-        if (! $stat->exists || $stat->isExpired()) {
-            $stat->payload = $fetch();
-            $stat->fetched_at = now();
-            $stat->expires_at = now()->addSeconds($this->ttl($type, $timeRange));
-            $stat->save();
+        if ($stat !== null && ! $stat->isExpired()) {
+            return $stat->payload;
         }
 
-        return $stat->payload;
+        $payload = $fetch();
+
+        if ($payload === [] && ! $this->shouldPersistEmptyPayload($type)) {
+            if ($stat !== null) {
+                return $stat->payload;
+            }
+
+            return [];
+        }
+
+        $now = now();
+
+        SpotifyStat::query()->upsert(
+            [
+                [
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'time_range' => $timeRange,
+                    'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
+                    'fetched_at' => $now,
+                    'expires_at' => $now->copy()->addSeconds($this->ttl($type, $timeRange)),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+            ],
+            ['user_id', 'type', 'time_range'],
+            ['payload', 'fetched_at', 'expires_at', 'updated_at'],
+        );
+
+        return $payload;
+    }
+
+    private function shouldPersistEmptyPayload(string $type): bool
+    {
+        return ! in_array($type, ['artist_profile', 'album_profile'], true);
     }
 
     private function ttl(string $type, string $timeRange): int

@@ -2,6 +2,7 @@
 
 namespace App\Services\Spotify\Artist;
 
+use App\Models\SpotifyStat;
 use App\Models\User;
 use App\Services\Spotify\Client\SpotifyArtistClient;
 use App\Services\Spotify\Concerns\CachesStats;
@@ -19,7 +20,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 {
     use CachesStats;
 
-    private const int FALLBACK_STATUS = 403;
+    private const array FALLBACK_STATUSES = [403, 429];
 
     private const array EMPTY_PAYLOAD_STATUSES = [401, 403, 404];
 
@@ -29,7 +30,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
 
     public function artist(User $user, string $artistId): ?array
     {
-        $payload = $this->cached($user, 'artist_profile', 'v1:'.$artistId, function () use ($user, $artistId) {
+        $payload = $this->cached($user, 'artist_profile', 'v2:'.$artistId, function () use ($user, $artistId) {
             return $this->fetchNullablePayload(
                 user: $user,
                 operation: 'artist',
@@ -38,7 +39,42 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
             );
         });
 
+        if ($payload === []) {
+            $snapshotArtist = $this->artistFromTopItemsSnapshot($user, $artistId);
+
+            if ($snapshotArtist !== null) {
+                return $snapshotArtist;
+            }
+        }
+
         return $payload === [] ? null : $payload;
+    }
+
+    private function artistFromTopItemsSnapshot(User $user, string $artistId): ?array
+    {
+        $snapshot = SpotifyStat::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'top_items_snapshot')
+            ->where('time_range', 'v2')
+            ->latest('id')
+            ->first();
+
+        if ($snapshot === null) {
+            return null;
+        }
+
+        $artists = collect((array) $snapshot->payload)
+            ->flatMap(fn (array $range): array => (array) data_get($range, 'artists', []));
+
+        $artist = $artists->first(
+            fn (array $item): bool => (string) data_get($item, 'id') === $artistId,
+        );
+
+        if (! is_array($artist)) {
+            return null;
+        }
+
+        return $artist;
     }
 
     public function topTracks(User $user, string $artistId): array
@@ -312,7 +348,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
     {
         $response = $appRequest($this->appArtistClient());
 
-        if ($response->status() === self::FALLBACK_STATUS && $userRequest !== null) {
+        if (in_array($response->status(), self::FALLBACK_STATUSES, true) && $userRequest !== null) {
             return $userRequest($this->userArtistClient($user));
         }
 
