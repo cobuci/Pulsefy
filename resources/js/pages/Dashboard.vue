@@ -145,7 +145,9 @@ const totalHours = computed(() => {
 const uniqueTrackCount = computed(() => topTracksPreview.value.length);
 
 const topGenre = computed(() => {
-    return props.insights?.topGenre ?? topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
+    const label = props.insights?.topGenre ?? topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
+
+    return label.charAt(0).toUpperCase() + label.slice(1);
 });
 
 const greetingName = computed(() => {
