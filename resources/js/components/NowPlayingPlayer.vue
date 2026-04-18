@@ -44,15 +44,22 @@ const playerRootRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
 
 const progressPct = ref(0);
+const seekSliderPct = ref(0);
+const isScrubbing = ref(false);
+const seekBusy = ref(false);
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const displayedProgressPct = computed(() => {
+    return isScrubbing.value ? seekSliderPct.value : progressPct.value;
+});
 
 const progressMs = computed(() => {
     if (!data.value?.track) {
         return 0;
     }
 
-    return (progressPct.value / 100) * data.value.track.duration_ms;
+    return (displayedProgressPct.value / 100) * data.value.track.duration_ms;
 });
 
 const webPlayer = useSpotifyWebPlayer(
@@ -101,6 +108,8 @@ watch(data, (val) => {
 
     if (!val?.track) {
         progressPct.value = 0;
+        seekSliderPct.value = 0;
+        isScrubbing.value = false;
         activeTrackId.value = null;
         lyrics.lyricsOpen.value = false;
 
@@ -116,12 +125,20 @@ watch(data, (val) => {
     const duration = val.track.duration_ms;
     progressPct.value = duration > 0 ? (val.progress_ms / duration) * 100 : 0;
 
+    if (!isScrubbing.value) {
+        seekSliderPct.value = progressPct.value;
+    }
+
     if (val.is_playing && duration > 0) {
         progressTimer = setInterval(() => {
             progressPct.value = Math.min(
                 progressPct.value + (100 / duration) * 500,
                 100,
             );
+
+            if (!isScrubbing.value) {
+                seekSliderPct.value = progressPct.value;
+            }
         }, 500);
     }
 });
@@ -137,6 +154,10 @@ onMounted(() => {
             () => data.value?.track?.id,
             (pct) => {
                 progressPct.value = pct;
+
+                if (!isScrubbing.value) {
+                    seekSliderPct.value = pct;
+                }
             },
             () => data.value?.track?.duration_ms ?? 0,
         );
@@ -163,6 +184,26 @@ onUnmounted(() => {
     webPlayer.disconnect();
 });
 
+async function postPlayerCommand(url: string, body?: Record<string, unknown>) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+        return false;
+    }
+
+    const payload = (await response.json()) as { ok?: boolean };
+
+    return payload.ok ?? true;
+}
+
 async function sendCommand(url: string, body?: Record<string, unknown>) {
     if (isBusy.value) {
         return;
@@ -171,15 +212,7 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
     isBusy.value = true;
 
     try {
-        await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: body ? JSON.stringify(body) : undefined,
-        });
+        await postPlayerCommand(url, body);
         await new Promise((r) => setTimeout(r, 600));
         await fetchNowPlaying();
     } finally {
@@ -224,9 +257,11 @@ function onPrevious() {
             webPlayer.localPlayer.value
         ) {
             void webPlayer.localPlayer.value.seek(0);
-        } else {
-            sendCommand(seek.url(), { position_ms: 0 });
+
+            return;
         }
+
+        sendCommand(seek.url(), { position_ms: 0 });
 
         return;
     }
@@ -280,6 +315,91 @@ function onToggleRepeat() {
         isRepeatBusy.value = false;
     });
 }
+
+function onSeekInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const value = Number(target.value);
+
+    if (!Number.isFinite(value)) {
+        return;
+    }
+
+    isScrubbing.value = true;
+    seekSliderPct.value = Math.max(0, Math.min(100, value));
+}
+
+async function seekToPosition(positionMs: number) {
+    if (!data.value?.track) {
+        return;
+    }
+
+    const clampedPositionMs = Math.max(
+        0,
+        Math.min(positionMs, data.value.track.duration_ms),
+    );
+    const pct =
+        data.value.track.duration_ms > 0
+            ? (clampedPositionMs / data.value.track.duration_ms) * 100
+            : 0;
+
+    seekBusy.value = true;
+    progressPct.value = pct;
+    seekSliderPct.value = pct;
+    isScrubbing.value = false;
+
+    try {
+        if (
+            webPlayer.localPlaybackActive.value &&
+            webPlayer.localPlayer.value
+        ) {
+            await webPlayer.localPlayer.value.seek(clampedPositionMs);
+
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            await fetchNowPlaying();
+
+            return;
+        }
+
+        await postPlayerCommand(seek.url(), {
+            position_ms: clampedPositionMs,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await fetchNowPlaying();
+    } finally {
+        seekBusy.value = false;
+    }
+}
+
+async function onSeekChange(event: Event) {
+    if (!data.value?.track) {
+        return;
+    }
+
+    const target = event.target as HTMLInputElement;
+    const value = Number(target.value);
+
+    if (!Number.isFinite(value) || seekBusy.value) {
+        isScrubbing.value = false;
+
+        return;
+    }
+
+    const pct = Math.max(0, Math.min(100, value));
+    const positionMs = Math.floor((pct / 100) * data.value.track.duration_ms);
+
+    isScrubbing.value = false;
+
+    await seekToPosition(positionMs);
+}
+
+function onLyricLineClick(timeMs: number) {
+    if (!hasTrack.value || seekBusy.value) {
+        return;
+    }
+
+    void seekToPosition(timeMs);
+}
 </script>
 
 <template>
@@ -323,23 +443,26 @@ function onToggleRepeat() {
                     <template
                         v-else-if="lyrics.lyricsData.value?.type === 'synced'"
                     >
-                        <p
+                        <button
                             v-for="(line, index) in lyrics.parsedSyncedLyrics
                                 .value"
                             :key="`${line.timeMs}-${index}`"
+                            type="button"
                             :ref="
                                 (element) =>
                                     lyrics.setLyricLineRef(element, index)
                             "
+                            :disabled="seekBusy || !hasTrack"
                             :class="[
-                                'w-full rounded-md px-3 py-2 text-sm transition-all hover:bg-muted/60',
+                                'w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm transition-all hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50',
                                 index === lyrics.activeLyricLineIndex.value
                                     ? 'bg-muted/60 font-semibold text-foreground'
                                     : 'text-muted-foreground',
                             ]"
+                            @click="onLyricLineClick(line.timeMs)"
                         >
                             {{ line.text || '♪' }}
-                        </p>
+                        </button>
                     </template>
 
                     <pre
@@ -396,7 +519,7 @@ function onToggleRepeat() {
             <div class="h-0.5 w-full bg-secondary/90">
                 <div
                     class="bg-gradient-primary h-full transition-[width] duration-500 ease-linear"
-                    :style="{ width: `${progressPct}%` }"
+                    :style="{ width: `${displayedProgressPct}%` }"
                 />
             </div>
 
@@ -576,12 +699,34 @@ function onToggleRepeat() {
                             class="text-[10px] text-muted-foreground tabular-nums"
                             >{{ formatDuration(progressMs) }}</span
                         >
-                        <div
-                            class="h-1 flex-1 overflow-hidden rounded-full bg-secondary"
-                        >
+                        <div class="relative h-4 flex-1">
                             <div
-                                class="bg-gradient-primary h-full transition-[width] duration-500 ease-linear"
-                                :style="{ width: `${progressPct}%` }"
+                                class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-secondary"
+                            >
+                                <div
+                                    class="bg-gradient-primary h-full transition-[width] duration-150 ease-linear"
+                                    :style="{
+                                        width: `${displayedProgressPct}%`,
+                                    }"
+                                />
+                            </div>
+                            <div
+                                class="pointer-events-none absolute top-1/2 z-10 size-2 -translate-y-1/2 rounded-full bg-accent shadow"
+                                :style="{
+                                    left: `calc(${displayedProgressPct}% - 4px)`,
+                                }"
+                            />
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                :value="displayedProgressPct"
+                                :disabled="!hasTrack || seekBusy"
+                                aria-label="Seek position"
+                                class="absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                                @input="onSeekInput"
+                                @change="onSeekChange"
                             />
                         </div>
                         <span
