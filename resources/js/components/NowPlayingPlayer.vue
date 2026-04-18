@@ -128,6 +128,12 @@ onMounted(() => {
             () => data.value?.track?.duration_ms ?? 0,
         );
     });
+
+    if (!webPlayer.localPlayerSupported.value) {
+        localStatus.value =
+            'Your browser has limited DRM capability. Spotify Web Player controls may not be available.';
+    }
+
     void devices.refreshDevices();
 });
 
