@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import ActivityChart from '@/components/dashboard/ActivityChart.vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
 import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
 import DashboardRecentPlaysSection from '@/components/dashboard/DashboardRecentPlaysSection.vue';
 import DashboardRecommendationsPanel from '@/components/dashboard/DashboardRecommendationsPanel.vue';
 import DashboardTopArtistsSection from '@/components/dashboard/DashboardTopArtistsSection.vue';
 import DashboardTopTracksSection from '@/components/dashboard/DashboardTopTracksSection.vue';
-import GenreChart from '@/components/dashboard/GenreChart.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import { usePlayer } from '@/composables/usePlayer';
@@ -19,6 +17,13 @@ import type {
     SpotifyTrack,
     TimeRange,
 } from '@/types/spotify';
+
+const ActivityChart = defineAsyncComponent(
+    () => import('@/components/dashboard/ActivityChart.vue'),
+);
+const GenreChart = defineAsyncComponent(
+    () => import('@/components/dashboard/GenreChart.vue'),
+);
 
 defineOptions({
     layout: {

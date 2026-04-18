@@ -1,13 +1,21 @@
 import { createInertiaApp } from '@inertiajs/vue3';
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
-if (typeof window !== 'undefined') {
+async function initializeRealtime(): Promise<void> {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const [{ default: Echo }, { default: Pusher }] = await Promise.all([
+        import('laravel-echo'),
+        import('pusher-js'),
+    ]);
+
     const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
     const reverbPort = Number(import.meta.env.VITE_REVERB_PORT || 8080);
     const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase();
@@ -30,6 +38,11 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.vue`,
+            import.meta.glob('./pages/**/*.vue'),
+        ),
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
@@ -52,3 +65,5 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+void initializeRealtime();

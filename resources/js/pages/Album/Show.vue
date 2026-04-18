@@ -180,7 +180,7 @@ async function playShuffledTracks() {
     <Head :title="albumName" />
 
     <div class="mx-auto max-w-7xl px-6 py-8">
-        <div class="grid gap-8 lg:grid-cols-3">
+        <div class="grid items-start gap-8 lg:grid-cols-3">
             <div class="lg:col-span-1">
                 <Deferred data="album">
                     <template #fallback>
@@ -302,24 +302,49 @@ async function playShuffledTracks() {
                 </Deferred>
             </div>
 
-            <div class="space-y-6 lg:col-span-2">
+            <div
+                class="space-y-6 lg:col-span-2 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
+            >
+                <section class="grid gap-4 sm:grid-cols-3">
+                    <StatCard
+                        label="Your plays"
+                        :value="insights?.playsLabel ?? '0'"
+                        hint="Recent window"
+                    />
+                    <StatCard
+                        label="Time"
+                        :value="insights?.timeLabel ?? '0m'"
+                        hint="Recent window"
+                    />
+                    <StatCard
+                        accent
+                        label="Affinity"
+                        :value="insights?.affinityLabel ?? '0%'"
+                        hint="Share of recent plays"
+                    />
+                </section>
+
                 <Deferred data="tracks">
                     <template #fallback>
                         <div
-                            class="rounded-2xl border border-border bg-card p-5 shadow-card"
+                            class="min-h-[28rem] max-h-[28rem] lg:min-h-[calc(100vh-24rem)] lg:max-h-[calc(100vh-24rem)]"
                         >
-                            <Skeleton class="mb-4 h-8 w-32" />
-                            <div class="space-y-1">
-                                <div
-                                    v-for="n in 8"
-                                    :key="n"
-                                    class="flex items-center gap-3 rounded-lg px-2 py-2"
-                                >
-                                    <Skeleton class="h-4 w-4" />
-                                    <div class="flex-1 space-y-1">
-                                        <Skeleton class="h-4 w-40" />
+                            <div
+                                class="h-full rounded-2xl border border-border bg-card p-5 shadow-card"
+                            >
+                                <Skeleton class="mb-4 h-8 w-32" />
+                                <div class="space-y-1">
+                                    <div
+                                        v-for="n in 12"
+                                        :key="n"
+                                        class="flex items-center gap-3 rounded-lg px-2 py-2"
+                                    >
+                                        <Skeleton class="h-4 w-4" />
+                                        <div class="flex-1 space-y-1">
+                                            <Skeleton class="h-4 w-40" />
+                                        </div>
+                                        <Skeleton class="h-3 w-8" />
                                     </div>
-                                    <Skeleton class="h-3 w-8" />
                                 </div>
                             </div>
                         </div>
@@ -328,7 +353,7 @@ async function playShuffledTracks() {
                     <template #default>
                         <div
                             v-if="!tracks?.length"
-                            class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
+                            class="min-h-[28rem] max-h-[28rem] rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card lg:min-h-[calc(100vh-24rem)] lg:max-h-[calc(100vh-24rem)]"
                         >
                             No tracks found.
                         </div>
@@ -394,25 +419,6 @@ async function playShuffledTracks() {
                         </div>
                     </template>
                 </Deferred>
-
-                <section class="grid gap-4 sm:grid-cols-3">
-                    <StatCard
-                        label="Your plays"
-                        :value="insights?.playsLabel ?? '0'"
-                        hint="Recent window"
-                    />
-                    <StatCard
-                        label="Time"
-                        :value="insights?.timeLabel ?? '0m'"
-                        hint="Recent window"
-                    />
-                    <StatCard
-                        accent
-                        label="Affinity"
-                        :value="insights?.affinityLabel ?? '0%'"
-                        hint="Share of recent plays"
-                    />
-                </section>
             </div>
         </div>
     </div>
