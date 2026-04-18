@@ -86,6 +86,8 @@ test('dashboard response includes deferred spotify prop keys', function () {
                 ->has('topArtists')
                 ->has('recentPlays')
                 ->has('insights')
+                ->where('insights.topGenre', 'Mixed')
+                ->where('insights.topGenres', [])
             )
         );
 });

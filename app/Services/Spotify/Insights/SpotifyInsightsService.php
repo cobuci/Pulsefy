@@ -35,19 +35,36 @@ final readonly class SpotifyInsightsService implements SpotifyInsightsProvider
 
     public function dashboard(User $user, string $timeRange = 'medium_term'): array
     {
-        return $this->cached($user, 'insights_dashboard', 'v1:'.$timeRange, function () use ($user, $timeRange): array {
+        return $this->cached($user, 'insights_dashboard', 'v2:'.$timeRange, function () use ($user, $timeRange): array {
             $topTracks = $this->stats->topTracks($user, $timeRange);
             $topArtists = $this->stats->topArtists($user, $timeRange);
             $recentPlays = $this->stats->recentlyPlayed($user);
+            $snapshot = $this->stats->topItemsSnapshot($user);
+            $genreStats = $this->genreStats(
+                $this->artistsFromSnapshot($snapshot, $timeRange, $topArtists),
+            );
 
             return [
                 'headline' => $this->dashboardHeadline($timeRange, $topArtists),
                 'activitySeries' => $this->activitySeries($recentPlays),
-                'genreMix' => $this->genreMix($topArtists),
+                'topGenre' => $genreStats['topGenre'],
+                'topGenres' => $genreStats['items'],
+                'genreMix' => $genreStats['items'],
                 'recommendations' => $this->recommendations($topTracks, $recentPlays),
                 'listeningHeatmap' => $this->listeningHeatmap($recentPlays),
             ];
         });
+    }
+
+    private function artistsFromSnapshot(array $snapshot, string $timeRange, array $fallback): array
+    {
+        $artists = data_get($snapshot, $timeRange.'.artists', []);
+
+        if (! is_array($artists) || $artists === []) {
+            return $fallback;
+        }
+
+        return $artists;
     }
 
     public function artist(User $user, string $artistId): array
@@ -174,26 +191,43 @@ final readonly class SpotifyInsightsService implements SpotifyInsightsProvider
      */
     private function genreMix(array $topArtists): array
     {
-        $counts = [];
+        return $this->genreStats($topArtists)['items'];
+    }
 
-        foreach ($topArtists as $artist) {
-            foreach ((array) data_get($artist, 'genres', []) as $genre) {
-                if (! is_string($genre) || $genre === '') {
-                    continue;
-                }
+    private function genreStats(array $topArtists): array
+    {
+        $weightedGenres = [];
+        $maxRank = max(1, count($topArtists));
 
-                $counts[$genre] = ($counts[$genre] ?? 0) + 1;
+        foreach ($topArtists as $index => $artist) {
+            $genres = collect((array) data_get($artist, 'genres', []))
+                ->filter(fn (mixed $genre): bool => is_string($genre) && $genre !== '')
+                ->unique()
+                ->values();
+
+            if ($genres->isEmpty()) {
+                continue;
+            }
+
+            $weight = max(1, $maxRank - $index);
+            $share = $weight / $genres->count();
+
+            foreach ($genres as $genre) {
+                $weightedGenres[$genre] = ($weightedGenres[$genre] ?? 0.0) + $share;
             }
         }
 
-        if ($counts === []) {
-            return [];
+        if ($weightedGenres === []) {
+            return [
+                'topGenre' => 'Mixed',
+                'items' => [],
+            ];
         }
 
-        arsort($counts);
+        arsort($weightedGenres);
 
-        $topFive = array_slice($counts, 0, 5, true);
-        $sum = max(1, array_sum($topFive));
+        $topFive = array_slice($weightedGenres, 0, 5, true);
+        $sum = max(1.0, array_sum($topFive));
 
         $items = [];
         $index = 0;
@@ -207,7 +241,10 @@ final readonly class SpotifyInsightsService implements SpotifyInsightsProvider
             $index++;
         }
 
-        return $items;
+        return [
+            'topGenre' => (string) array_key_first($topFive),
+            'items' => $items,
+        ];
     }
 
     /**

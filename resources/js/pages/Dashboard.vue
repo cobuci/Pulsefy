@@ -41,6 +41,8 @@ const props = defineProps<{
     recentPlays?: RecentPlay[];
     insights?: {
         headline?: string;
+        topGenre?: string;
+        topGenres?: Array<{ label: string; value: number; color: string }>;
         activitySeries?: Array<{ label: string; value: number }>;
         genreMix?: Array<{ label: string; value: number; color: string }>;
         recommendations?: SpotifyTrack[];
@@ -95,7 +97,7 @@ const totalHours = computed(() => {
 const uniqueTrackCount = computed(() => topTracksPreview.value.length);
 
 const topGenre = computed(() => {
-    return topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
+    return props.insights?.topGenre ?? topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
 });
 
 const greetingName = computed(() => {
@@ -127,7 +129,9 @@ const headlineText = computed(() => {
 });
 
 const activitySeries = computed(() => props.insights?.activitySeries ?? []);
-const genreMix = computed(() => props.insights?.genreMix ?? []);
+const genreMix = computed(() => {
+    return props.insights?.topGenres ?? props.insights?.genreMix ?? [];
+});
 
 const recentlyPlayedTracks = computed(() => {
     const uniqueByTrack = new Map<string, RecentPlay>();
