@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Deferred, Head, Link, router } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     ChevronRight,
     Clock,
@@ -8,11 +8,15 @@ import {
     TrendingUp,
 } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
+import ActivityChart from '@/components/dashboard/ActivityChart.vue';
 import ArtistCard from '@/components/dashboard/ArtistCard.vue';
+import GenreChart from '@/components/dashboard/GenreChart.vue';
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import TrackListItem from '@/components/dashboard/TrackListItem.vue';
+import IconPlay from '@/components/icons/IconPlay.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { dashboard, recentlyPlayed } from '@/routes';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
@@ -55,6 +59,7 @@ onUnmounted(() => {
 });
 
 const { isPlayingTrack, playTrack } = usePlayer();
+const page = usePage();
 
 const periodDescription = computed(() => {
     if (props.period === 'short_term') {
@@ -89,6 +94,17 @@ const uniqueTrackCount = computed(() => topTracksPreview.value.length);
 
 const topGenre = computed(() => {
     return topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
+});
+
+const greetingName = computed(() => {
+    const fullName = (page.props.auth as { user?: { name?: string } })?.user
+        ?.name;
+
+    if (!fullName) {
+        return 'Listener';
+    }
+
+    return fullName.split(' ')[0] ?? fullName;
 });
 
 const recommendationTracks = computed(() => {
@@ -131,6 +147,20 @@ const listeningHeatmap = computed(() => {
     }));
 });
 
+const recentlyPlayedAlbums = computed(() => {
+    const uniqueByAlbum = new Map<string, RecentPlay>();
+
+    (props.recentPlays ?? []).forEach((play) => {
+        const albumId = play.track.album?.id ?? play.track.id;
+
+        if (!uniqueByAlbum.has(albumId)) {
+            uniqueByAlbum.set(albumId, play);
+        }
+    });
+
+    return Array.from(uniqueByAlbum.values()).slice(0, 6);
+});
+
 async function handlePlay(track: SpotifyTrack) {
     await playTrack(`spotify:track:${track.id}`);
 }
@@ -145,12 +175,12 @@ async function handlePlay(track: SpotifyTrack) {
                 <p
                     class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
                 >
-                    Your listening snapshot
+                    Good evening, {{ greetingName }}
                 </p>
                 <h1
                     class="mt-2 max-w-2xl font-display text-4xl font-bold sm:text-5xl"
                 >
-                    Your {{ periodDescription.toLowerCase() }} in sound was
+                    Your week in sound was
                     <span class="text-gradient">vivid & eclectic</span>.
                 </h1>
             </div>
@@ -176,6 +206,13 @@ async function handlePlay(track: SpotifyTrack) {
         <div class="flex items-center justify-end">
             <PeriodSelector :current="period" :loading="isReloading" />
         </div>
+
+        <section class="grid gap-4 lg:grid-cols-3">
+            <div class="lg:col-span-2">
+                <ActivityChart />
+            </div>
+            <GenreChart />
+        </section>
 
         <section>
             <SectionHeader
@@ -296,9 +333,10 @@ async function handlePlay(track: SpotifyTrack) {
             >
                 <Link
                     :href="artistsIndex()"
-                    class="text-xs text-muted-foreground transition-colors hover:text-accent"
+                    class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-accent"
                 >
                     See all
+                    <ChevronRight class="size-3" />
                 </Link>
             </SectionHeader>
             <Deferred data="topArtists">
@@ -342,39 +380,81 @@ async function handlePlay(track: SpotifyTrack) {
                     <ChevronRight class="size-3" />
                 </Link>
             </SectionHeader>
-            <div
-                class="rounded-2xl border border-border bg-card p-5 shadow-card"
-            >
-                <Deferred data="recentPlays">
-                    <template #fallback>
-                        <TrackListItem
-                            v-for="n in SKELETON_COUNT"
+            <Deferred data="recentPlays">
+                <template #fallback>
+                    <div
+                        class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+                    >
+                        <div
+                            v-for="n in 6"
                             :key="n"
-                            :rank="n"
-                            :loading="true"
-                        />
-                    </template>
-
-                    <template #default>
-                        <div class="space-y-1">
-                            <TrackListItem
-                                v-for="(play, i) in recentPlaysPreview"
-                                :key="`${play.track.id}-${play.played_at}`"
-                                :rank="i + 1"
-                                :track="play.track"
-                                :is-playing="isPlayingTrack(play.track.id)"
-                                @play="handlePlay"
-                            />
-                        </div>
-                        <p
-                            v-if="recentPlaysPreview.length === 0"
-                            class="py-6 text-center text-sm text-muted-foreground"
+                            class="rounded-xl border border-border bg-card p-3 shadow-card"
                         >
-                            No recent plays found.
-                        </p>
-                    </template>
-                </Deferred>
-            </div>
+                            <Skeleton class="aspect-square w-full rounded-lg" />
+                            <Skeleton class="mt-3 h-4 w-3/4" />
+                            <Skeleton class="mt-2 h-3 w-1/2" />
+                        </div>
+                    </div>
+                </template>
+
+                <template #default>
+                    <div
+                        v-if="!recentlyPlayedAlbums.length"
+                        class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card"
+                    >
+                        No recent plays found.
+                    </div>
+
+                    <div
+                        v-else
+                        class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+                    >
+                        <div
+                            v-for="play in recentlyPlayedAlbums"
+                            :key="`${play.track.id}-${play.played_at}`"
+                            class="group"
+                        >
+                            <div
+                                class="relative mb-3 aspect-square overflow-hidden rounded-xl shadow-card"
+                            >
+                                <img
+                                    v-if="play.track.album.images?.[0]?.url"
+                                    :src="play.track.album.images[0].url"
+                                    :alt="play.track.album.name"
+                                    class="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                                <div v-else class="size-full bg-muted" />
+                                <div
+                                    class="absolute inset-0 grid place-items-center bg-background/0 transition-colors group-hover:bg-background/30"
+                                >
+                                    <button
+                                        type="button"
+                                        class="bg-gradient-primary shadow-glow grid size-12 scale-75 place-items-center rounded-full opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100"
+                                        @click="handlePlay(play.track)"
+                                    >
+                                        <IconPlay
+                                            class="ml-0.5 size-5 text-primary-foreground"
+                                        />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p
+                                class="truncate text-sm font-medium transition-colors group-hover:text-accent"
+                            >
+                                {{ play.track.album.name }}
+                            </p>
+                            <p class="truncate text-xs text-muted-foreground">
+                                {{
+                                    play.track.artists
+                                        .map((artist) => artist.name)
+                                        .join(', ')
+                                }}
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </Deferred>
         </section>
 
         <section

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Deferred, Head, Link } from '@inertiajs/vue3';
-import { Skeleton } from '@/components/ui/skeleton';
+import { computed } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
-import { show as artistShow } from '@/routes/artists';
 import { dashboard, recentlyPlayed } from '@/routes';
+import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
+import { formatDuration } from '@/utils/format';
 
 defineOptions({
     inheritAttrs: false,
@@ -37,9 +39,17 @@ function formatTime(isoString: string): string {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffMins < 1) {
+        return 'Just now';
+    }
+
+    if (diffMins < 60) {
+        return `${diffMins}m ago`;
+    }
+
+    if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    }
 
     return date.toLocaleTimeString(undefined, {
         hour: '2-digit',
@@ -62,38 +72,52 @@ interface PlayGroup {
 function albumImageUrl(track: SpotifyTrack): string | null {
     return track.album?.images?.[0]?.url ?? null;
 }
+
+const totalEntries = computed(() => {
+    return (props.playGroups ?? []).reduce(
+        (carry, group) => carry + group.entries.length,
+        0,
+    );
+});
 </script>
 
 <template>
     <Head title="Recently Played" />
 
-    <div class="flex flex-col gap-6 p-4">
-        <div>
-            <h1 class="text-xl font-bold text-foreground">Recently Played</h1>
-            <p class="text-sm text-muted-foreground">
-                Your full listening history
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+        <div class="mb-2">
+            <p
+                class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
+            >
+                Library
+            </p>
+            <h1 class="mt-2 font-display text-4xl font-bold">
+                Recently Played
+            </h1>
+            <p class="mt-1 text-sm text-muted-foreground">
+                Your full listening history · {{ totalEntries }} plays tracked
             </p>
         </div>
 
         <Deferred data="playGroups">
             <template #fallback>
-                <div class="rounded-xl border border-border bg-card shadow-sm">
-                    <div class="border-b border-border px-4 py-2.5">
-                        <Skeleton class="h-3 w-12" />
-                    </div>
-                    <div class="p-2">
+                <div
+                    class="rounded-2xl border border-border bg-card p-4 shadow-card"
+                >
+                    <Skeleton class="mb-3 h-3 w-20" />
+                    <div class="space-y-1">
                         <div
                             v-for="n in SKELETON_COUNT"
                             :key="n"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                            class="flex items-center gap-3 rounded-lg p-2"
                         >
-                            <Skeleton class="size-5 shrink-0 rounded" />
-                            <Skeleton class="size-11 shrink-0 rounded-lg" />
+                            <Skeleton class="h-4 w-6 shrink-0" />
+                            <Skeleton class="size-10 shrink-0 rounded-md" />
                             <div class="flex flex-1 flex-col gap-1.5">
                                 <Skeleton class="h-3.5 w-36" />
                                 <Skeleton class="h-3 w-20" />
                             </div>
-                            <Skeleton class="h-3 w-8" />
+                            <Skeleton class="h-3 w-12" />
                         </div>
                     </div>
                 </div>
@@ -102,7 +126,7 @@ function albumImageUrl(track: SpotifyTrack): string | null {
             <template #default>
                 <div
                     v-if="playGroups!.length === 0"
-                    class="py-16 text-center text-sm text-muted-foreground"
+                    class="rounded-2xl border border-border bg-card py-16 text-center text-sm text-muted-foreground"
                 >
                     No listening history found.
                 </div>
@@ -111,83 +135,72 @@ function albumImageUrl(track: SpotifyTrack): string | null {
                     <section
                         v-for="group in playGroups"
                         :key="group.label"
-                        class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                        class="overflow-hidden rounded-2xl border border-border bg-card shadow-card"
                     >
-                        <!-- Day header -->
                         <div class="border-b border-border px-4 py-2.5">
                             <h2
-                                class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+                                class="text-xs font-medium tracking-wider text-muted-foreground uppercase"
                             >
                                 {{ group.label }}
                             </h2>
                         </div>
 
-                        <!-- Track list -->
                         <div class="p-2">
                             <div
                                 v-for="entry in group.entries"
-                                :key="entry.track.id"
-                                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent/40"
+                                :key="`${entry.track.id}-${entry.lastPlayedAt}`"
+                                class="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-secondary/60"
                             >
-                                <!-- Play/pause button -->
-                                <button
-                                    class="relative flex size-5 shrink-0 items-center justify-center"
-                                    :aria-label="
-                                        isPlayingTrack(entry.track.id)
-                                            ? 'Pause'
-                                            : 'Play'
-                                    "
-                                    @click="handlePlay(entry.track)"
-                                >
+                                <div class="relative w-6 shrink-0 text-center">
                                     <span
-                                        class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-muted-foreground transition-opacity duration-150"
-                                        :class="
-                                            isPlayingTrack(entry.track.id)
-                                                ? 'opacity-0'
-                                                : 'group-hover:opacity-0'
-                                        "
-                                        aria-hidden="true"
+                                        v-if="!isPlayingTrack(entry.track.id)"
+                                        class="text-sm text-muted-foreground tabular-nums group-hover:hidden"
                                     >
                                         {{ entry.rank }}
                                     </span>
-                                    <IconPlay
-                                        v-if="!isPlayingTrack(entry.track.id)"
-                                        class="absolute inset-0 m-auto size-4 text-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                                        aria-hidden="true"
-                                    />
-                                    <IconPause
-                                        v-else
-                                        class="absolute inset-0 m-auto size-4 text-green-500 opacity-100"
-                                        aria-hidden="true"
-                                    />
-                                </button>
+                                    <button
+                                        type="button"
+                                        class="hidden w-6 place-items-center text-foreground group-hover:grid"
+                                        :aria-label="'Play'"
+                                        @click="handlePlay(entry.track)"
+                                    >
+                                        <IconPlay class="size-3.5" />
+                                    </button>
+                                    <button
+                                        v-if="isPlayingTrack(entry.track.id)"
+                                        type="button"
+                                        class="grid w-6 place-items-center text-accent"
+                                        :aria-label="'Pause'"
+                                        @click="handlePlay(entry.track)"
+                                    >
+                                        <IconPause class="size-3.5" />
+                                    </button>
+                                </div>
 
-                                <!-- Album art -->
                                 <img
                                     v-if="albumImageUrl(entry.track)"
                                     :src="albumImageUrl(entry.track)!"
                                     :alt="entry.track.album.name"
-                                    class="size-11 shrink-0 rounded-lg object-cover"
+                                    class="size-10 shrink-0 rounded-md object-cover"
                                 />
                                 <div
                                     v-else
-                                    class="size-11 shrink-0 rounded-lg bg-muted"
+                                    class="size-10 shrink-0 rounded-md bg-muted"
                                 />
 
-                                <!-- Track info + time -->
                                 <div class="min-w-0 flex-1">
                                     <p
-                                        class="truncate text-sm leading-tight font-semibold transition-colors duration-150"
+                                        class="truncate text-sm font-medium"
                                         :class="
                                             isPlayingTrack(entry.track.id)
-                                                ? 'text-green-500'
+                                                ? 'text-accent'
                                                 : 'text-foreground'
                                         "
                                     >
                                         {{ entry.track.name }}
                                     </p>
                                     <p
-                                        class="mt-0.5 truncate text-xs text-muted-foreground"
+                                        class="truncate text-xs text-muted-foreground"
                                     >
                                         <template
                                             v-for="(
@@ -217,13 +230,20 @@ function albumImageUrl(track: SpotifyTrack): string | null {
                                     </p>
                                 </div>
 
-                                <!-- Play count dot -->
                                 <span
                                     v-if="entry.count > 1"
-                                    class="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground tabular-nums"
+                                    class="hidden text-xs text-muted-foreground tabular-nums sm:block"
                                     :title="`Played ${entry.count} times`"
                                 >
-                                    {{ entry.count }}
+                                    {{ entry.count }} plays
+                                </span>
+
+                                <span
+                                    class="w-12 shrink-0 text-right text-xs text-muted-foreground tabular-nums"
+                                >
+                                    {{
+                                        formatDuration(entry.track.duration_ms)
+                                    }}
                                 </span>
                             </div>
                         </div>
