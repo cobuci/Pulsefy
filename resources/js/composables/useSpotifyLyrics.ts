@@ -60,8 +60,8 @@ export function useSpotifyLyrics(
 
         const lines = lyricsData.value.lyrics.split('\n');
 
-        return lines
-            .map((line: string) => {
+        const parsedLines: Array<ParsedLyricLine | null> = lines.map(
+            (line: string): ParsedLyricLine | null => {
                 const match = line.match(
                     /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/,
                 );
@@ -81,7 +81,10 @@ export function useSpotifyLyrics(
                     text,
                     translation: null,
                 };
-            })
+            },
+        );
+
+        return parsedLines
             .filter((line: ParsedLyricLine | null): line is ParsedLyricLine => line !== null)
             .sort((a: ParsedLyricLine, b: ParsedLyricLine) => a.timeMs - b.timeMs);
     });
