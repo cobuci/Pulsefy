@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property ?int $folder_id
  * @property int $position
+ * @property bool $is_hidden
  * @property string $spotify_id
  * @property string $name
  * @property ?string $description
@@ -45,6 +46,7 @@ final class Playlist extends Model
             'external_urls' => 'array',
             'is_public' => 'bool',
             'is_collaborative' => 'bool',
+            'is_hidden' => 'bool',
             'synced_at' => 'datetime',
             'expires_at' => 'datetime',
         ];

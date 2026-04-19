@@ -35,6 +35,7 @@ final class ReorderPlaylistsController extends Controller
 
         $playlists = Playlist::query()
             ->whereBelongsTo($user)
+            ->where('is_hidden', false)
             ->when(
                 $folderId === null,
                 fn ($query) => $query->whereNull('folder_id'),

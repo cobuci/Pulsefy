@@ -41,6 +41,8 @@ test('authenticated users can view library page with folders and root playlists'
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Library/Index')
             ->where('syncStatus.isRunning', false)
+            ->where('hiddenCount', 0)
+            ->where('showHidden', false)
             ->where('folders.0.name', 'Road Trip')
             ->has('playlists', 2)
             ->where('playlists', fn ($playlists): bool => collect($playlists)
@@ -51,5 +53,62 @@ test('authenticated users can view library page with folders and root playlists'
             ->where('playlists', fn ($playlists): bool => collect($playlists)
                 ->pluck('position')
                 ->every(fn ($position): bool => is_int($position)))
+            ->where('playlists', fn ($playlists): bool => collect($playlists)
+                ->pluck('is_hidden')
+                ->every(fn ($isHidden): bool => is_bool($isHidden)))
         );
+});
+
+test('library page hides hidden playlists by default and returns hidden count', function () {
+    $user = User::factory()->create();
+
+    Playlist::factory()->create([
+        'user_id' => $user->id,
+        'spotify_id' => 'playlist-visible-index',
+        'is_hidden' => false,
+    ]);
+
+    Playlist::factory()->create([
+        'user_id' => $user->id,
+        'spotify_id' => 'playlist-hidden-index',
+        'is_hidden' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('library.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Library/Index')
+            ->where('showHidden', false)
+            ->where('hiddenCount', 1)
+            ->where('playlists', fn ($playlists): bool => collect($playlists)
+                ->pluck('id')
+                ->all() === ['playlist-visible-index']));
+});
+
+test('library page includes hidden playlists when show_hidden is enabled', function () {
+    $user = User::factory()->create();
+
+    Playlist::factory()->create([
+        'user_id' => $user->id,
+        'spotify_id' => 'playlist-visible-include-hidden',
+        'is_hidden' => false,
+    ]);
+
+    Playlist::factory()->create([
+        'user_id' => $user->id,
+        'spotify_id' => 'playlist-hidden-include-hidden',
+        'is_hidden' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('library.index', ['show_hidden' => 1]))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Library/Index')
+            ->where('showHidden', true)
+            ->where('hiddenCount', 1)
+            ->where('playlists', fn ($playlists): bool => collect($playlists)
+                ->pluck('id')
+                ->sort()
+                ->values()
+                ->all() === ['playlist-hidden-include-hidden', 'playlist-visible-include-hidden']));
 });

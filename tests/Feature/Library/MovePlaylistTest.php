@@ -13,6 +13,7 @@ test('users can move own playlist to folder', function () {
         'user_id' => $user->id,
         'folder_id' => null,
         'spotify_id' => 'playlist-move-1',
+        'is_hidden' => true,
     ]);
 
     $this->actingAs($user)
@@ -23,6 +24,7 @@ test('users can move own playlist to folder', function () {
 
     expect($playlist->fresh()->folder_id)->toBe($folder->id);
     expect($playlist->fresh()->position)->toBeGreaterThan(0);
+    expect($playlist->fresh()->is_hidden)->toBeTrue();
 });
 
 test('users cannot move playlist to folder they do not own', function () {

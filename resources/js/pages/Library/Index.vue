@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
+import { Check, ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
+import { AppContextMenu  } from '@/components/ui/context-menu';
+import type {ContextMenuItem} from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
-import { index as libraryIndex, move as movePlaylist, reorder as reorderPlaylists, show as libraryShow } from '@/routes/library';
+import {
+    index as libraryIndex,
+    move as movePlaylist,
+    reorder as reorderPlaylists,
+    show as libraryShow,
+    visibility as updatePlaylistVisibility,
+    refresh as refreshLibrary,
+} from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
-import { refresh as refreshLibrary } from '@/routes/library';
 
 defineOptions({
     layout: {
@@ -36,6 +44,7 @@ type LibraryPlaylistItem = {
     synced_at: string | null;
     folder_id?: number | null;
     position: number;
+    is_hidden: boolean;
 };
 
 const props = defineProps<{
@@ -55,7 +64,10 @@ const props = defineProps<{
         synced_at: string | null;
         folder_id: number | null;
         position: number;
+        is_hidden: boolean;
     }>;
+    hiddenCount: number;
+    showHidden: boolean;
     syncStatus?: {
         isRunning: boolean;
         hasFailure: boolean;
@@ -74,6 +86,12 @@ const dragOriginFolderId = ref<number | null>(null);
 const isDraggingPlaylist = ref(false);
 const movedToAnotherFolder = ref(false);
 const localPlaylists = ref<LibraryPlaylistItem[]>([]);
+const includeHidden = ref(props.showHidden);
+const hiddenCount = computed(() => props.hiddenCount);
+const contextMenuOpen = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuItems = ref<ContextMenuItem[]>([]);
 const syncStatusRef = ref(
     props.syncStatus ?? {
         isRunning: false,
@@ -140,7 +158,15 @@ const childFolders = computed<LibraryFolderItem[]>(() => {
 });
 
 const visiblePlaylists = computed<LibraryPlaylistItem[]>(() => {
-    return localPlaylists.value.filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value);
+    return localPlaylists.value.filter(
+        (playlist) => (playlist.folder_id ?? null) === activeFolderId.value && !playlist.is_hidden,
+    );
+});
+
+const hiddenPlaylists = computed<LibraryPlaylistItem[]>(() => {
+    return localPlaylists.value.filter(
+        (playlist) => (playlist.folder_id ?? null) === activeFolderId.value && playlist.is_hidden,
+    );
 });
 
 watch(
@@ -156,10 +182,21 @@ watch(
                     return folderA - folderB;
                 }
 
+                if (a.is_hidden !== b.is_hidden) {
+                    return Number(a.is_hidden) - Number(b.is_hidden);
+                }
+
                 return a.position - b.position;
             });
     },
     { immediate: true },
+);
+
+watch(
+    () => props.showHidden,
+    (showHidden) => {
+        includeHidden.value = showHidden;
+    },
 );
 
 const activeFolderPath = computed<LibraryFolderItem[]>(() => {
@@ -200,6 +237,7 @@ function onPlaylistDragStart(event: DragEvent, playlistId: string) {
     event.dataTransfer?.setData('text/plain', playlistId);
     event.dataTransfer?.setData('application/x-pulsefy-playlist', playlistId);
     event.dataTransfer?.setData('application/x-pulsefy-origin-folder', String(activeFolderId.value ?? 'root'));
+
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
     }
@@ -207,9 +245,11 @@ function onPlaylistDragStart(event: DragEvent, playlistId: string) {
 
 function onFolderDragOver(event: DragEvent, folderId: number | null) {
     event.preventDefault();
+
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
     }
+
     dragOverFolderId.value = folderId;
 }
 
@@ -242,10 +282,10 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
         {
             preserveScroll: true,
             preserveState: true,
-            only: ['playlists'],
+            only: ['playlists', 'hiddenCount', 'showHidden'],
             onError: () => {
                 router.reload({
-                    only: ['playlists'],
+                    only: ['playlists', 'hiddenCount', 'showHidden'],
                 });
             },
         },
@@ -254,6 +294,7 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
 
 function onPlaylistDragOver(event: DragEvent, playlistId: string) {
     event.preventDefault();
+
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
     }
@@ -294,7 +335,7 @@ function onPlaylistDragLeave(playlistId: string) {
 function persistReorderIfNeeded() {
     const orderedIds = visiblePlaylists.value.map((playlist) => playlist.id);
     const originalIds = props.playlists
-        .filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value)
+        .filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value && !playlist.is_hidden)
         .sort((a, b) => a.position - b.position)
         .map((playlist) => playlist.id);
 
@@ -333,11 +374,13 @@ function onPlaylistDrop(event: DragEvent, targetPlaylistId: string) {
 
     if (!sourcePlaylistId || sourcePlaylistId === targetPlaylistId) {
         onPlaylistDragEnd();
+
         return;
     }
 
     if (originFolderId !== activeFolderId.value || dragOriginFolderId.value !== activeFolderId.value) {
         onPlaylistDragEnd();
+
         return;
     }
 
@@ -383,6 +426,139 @@ function onPlaylistCardClick(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
 }
+
+function closeContextMenu() {
+    contextMenuOpen.value = false;
+}
+
+function openContextMenu(event: MouseEvent, items: ContextMenuItem[]) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    contextMenuItems.value = items;
+    contextMenuX.value = event.clientX;
+    contextMenuY.value = event.clientY;
+    contextMenuOpen.value = true;
+}
+
+function setPlaylistVisibility(playlist: LibraryPlaylistItem, hidden: boolean) {
+    closeContextMenu();
+
+    router.patch(
+        updatePlaylistVisibility(playlist.id).url,
+        { hidden },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['playlists', 'hiddenCount', 'showHidden'],
+            onError: () => {
+                router.reload({
+                    only: ['playlists', 'hiddenCount', 'showHidden'],
+                });
+            },
+        },
+    );
+}
+
+function movePlaylistToFolder(playlist: LibraryPlaylistItem, folderId: number | null) {
+    closeContextMenu();
+
+    router.patch(
+        movePlaylist(playlist.id).url,
+        {
+            folder_id: folderId,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['playlists'],
+            onError: () => {
+                router.reload({
+                    only: ['playlists'],
+                });
+            },
+        },
+    );
+}
+
+function getPlaylistContextItems(playlist: LibraryPlaylistItem): ContextMenuItem[] {
+    const folderItems: ContextMenuItem[] = props.folders
+        .filter((folder) => folder.id !== playlist.folder_id)
+        .map((folder) => ({
+            key: `move-folder-${playlist.id}-${folder.id}`,
+            label: folder.name,
+            onSelect: () => movePlaylistToFolder(playlist, folder.id),
+        }));
+
+    if (folderItems.length === 0) {
+        folderItems.push({
+            key: `move-folder-empty-${playlist.id}`,
+            label: 'No other folder available',
+            disabled: true,
+        });
+    }
+
+    return [
+        {
+            key: `toggle-hidden-${playlist.id}`,
+            label: playlist.is_hidden ? 'Show playlist' : 'Hide playlist',
+            onSelect: () => setPlaylistVisibility(playlist, !playlist.is_hidden),
+        },
+        {
+            key: `playlist-sep-${playlist.id}`,
+            separator: true,
+        },
+        {
+            key: `move-root-${playlist.id}`,
+            label: 'Move to root',
+            disabled: playlist.folder_id === null,
+            onSelect: () => movePlaylistToFolder(playlist, null),
+        },
+        {
+            key: `move-folder-${playlist.id}`,
+            label: 'Move to folder',
+            children: folderItems,
+        },
+    ];
+}
+
+function onPlaylistContextMenu(event: MouseEvent, playlist: LibraryPlaylistItem) {
+    openContextMenu(event, getPlaylistContextItems(playlist));
+}
+
+function onFolderContextMenu(event: MouseEvent, folder: LibraryFolderItem) {
+    openContextMenu(event, [
+        {
+            key: `folder-rename-${folder.id}`,
+            label: 'Rename (coming soon)',
+            disabled: true,
+        },
+        {
+            key: `folder-delete-${folder.id}`,
+            label: 'Delete (coming soon)',
+            destructive: true,
+            disabled: true,
+        },
+    ]);
+}
+
+function toggleShowHidden() {
+    includeHidden.value = !includeHidden.value;
+    closeContextMenu();
+
+    router.visit(
+        libraryIndex({
+            query: {
+                show_hidden: includeHidden.value ? 1 : 0,
+            },
+        }).url,
+        {
+            only: ['playlists', 'hiddenCount', 'showHidden'],
+            preserveScroll: true,
+            preserveState: true,
+        },
+    );
+}
 </script>
 
 <template>
@@ -426,6 +602,16 @@ function onPlaylistCardClick(event: MouseEvent) {
                         {{ processing ? 'Refreshing…' : 'Refresh playlists' }}
                     </Button>
                 </Form>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    :disabled="hiddenCount === 0"
+                    @click="toggleShowHidden"
+                >
+                    <Check v-if="includeHidden" class="mr-1.5 size-4" />
+                    {{ includeHidden ? 'Hide hidden playlists' : `Show hidden playlists (${hiddenCount})` }}
+                </Button>
 
                 <Form
                     :action="storeFolder().url"
@@ -482,6 +668,7 @@ function onPlaylistCardClick(event: MouseEvent) {
                     @dragover="onFolderDragOver($event, folder.id)"
                     @dragleave="onFolderDragLeave(folder.id)"
                     @drop="onFolderDrop($event, folder.id)"
+                    @contextmenu="onFolderContextMenu($event, folder)"
                 >
                     <div
                         v-if="dragOverFolderId === folder.id"
@@ -559,6 +746,7 @@ function onPlaylistCardClick(event: MouseEvent) {
                                 : '',
                         ]"
                         @click="onPlaylistCardClick"
+                        @contextmenu="onPlaylistContextMenu($event, playlist)"
                     >
                         <img
                             v-if="playlist.image"
@@ -580,8 +768,59 @@ function onPlaylistCardClick(event: MouseEvent) {
                     </Link>
                 </div>
             </TransitionGroup>
+
+            <TransitionGroup
+                v-if="includeHidden && hiddenPlaylists.length > 0"
+                name="playlist-grid"
+                tag="div"
+                class="mt-8"
+            >
+                <div key="hidden-title" class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    Hidden playlists
+                </div>
+
+                <div key="hidden-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    <div
+                        v-for="playlist in hiddenPlaylists"
+                        :key="`hidden-${playlist.id}`"
+                        class="group relative"
+                    >
+                        <Link
+                            :href="libraryShow(playlist.id).url"
+                            class="block overflow-hidden rounded-2xl border border-border/70 bg-card/60 opacity-85 transition-all duration-200 hover:border-accent/40 hover:opacity-100 hover:shadow-accent"
+                            @contextmenu="onPlaylistContextMenu($event, playlist)"
+                        >
+                            <img
+                                v-if="playlist.image"
+                                :src="playlist.image"
+                                :alt="playlist.name"
+                                class="aspect-square w-full object-cover"
+                            />
+                            <div v-else class="aspect-square w-full bg-muted" />
+
+                            <div class="p-3">
+                                <div class="truncate text-sm font-medium text-foreground">
+                                    {{ playlist.name }}
+                                </div>
+                                <p class="truncate text-xs text-muted-foreground">
+                                    {{ playlist.tracks_total }} tracks
+                                    <span v-if="playlist.owner_name">· {{ playlist.owner_name }}</span>
+                                </p>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+            </TransitionGroup>
         </section>
     </div>
+
+    <AppContextMenu
+        :open="contextMenuOpen"
+        :x="contextMenuX"
+        :y="contextMenuY"
+        :items="contextMenuItems"
+        @close="closeContextMenu"
+    />
 </template>
 
 <style scoped>

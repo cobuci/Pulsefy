@@ -15,6 +15,7 @@ use App\Http\Controllers\Library\RefreshController as LibraryRefreshController;
 use App\Http\Controllers\Library\ReorderPlaylistsController as LibraryReorderPlaylistsController;
 use App\Http\Controllers\Library\ShowController as LibraryShowController;
 use App\Http\Controllers\Library\SyncPlaylistController as LibrarySyncPlaylistController;
+use App\Http\Controllers\Library\UpdatePlaylistVisibilityController as LibraryUpdatePlaylistVisibilityController;
 use App\Http\Controllers\Player\ControlController as PlayerControlController;
 use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
@@ -45,6 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('library/refresh', LibraryRefreshController::class)->name('library.refresh');
     Route::post('library/{playlistId}/sync', LibrarySyncPlaylistController::class)->name('library.sync-playlist');
     Route::patch('library/{playlistId}/move', LibraryMovePlaylistController::class)->name('library.move');
+    Route::patch('library/{playlistId}/visibility', LibraryUpdatePlaylistVisibilityController::class)->name('library.visibility');
     Route::patch('library/reorder', LibraryReorderPlaylistsController::class)->name('library.reorder');
     Route::post('library/folders', [LibraryFolderController::class, 'store'])->name('library.folders.store');
     Route::patch('library/folders/{folder}', [LibraryFolderController::class, 'update'])->name('library.folders.update');
