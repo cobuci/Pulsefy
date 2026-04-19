@@ -1,10 +1,12 @@
 <?php
 
+use App\Jobs\SyncPlaylistTracksJob;
+use App\Models\Artist;
 use App\Models\Playlist;
 use App\Models\PlaylistTrack;
 use App\Models\Track;
 use App\Models\User;
-use App\Services\Spotify\Library\SpotifyLibraryService;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
 
 test('guests are redirected from library playlist page', function () {
@@ -41,6 +43,7 @@ test('library show displays cached playlist details and track cache', function (
             ->component('Library/Show')
             ->where('playlist.id', 'playlist-1')
             ->where('playlist.name', 'Daily Mix')
+            ->where('playlist.sync_status.isRunning', false)
             ->where('playlist.items.0.spotify_track_id', 'track-abc')
             ->where('playlist.items.1.spotify_track_id', 'track-def')
         );
@@ -64,6 +67,17 @@ test('library show includes hydrated local track details when resolved', functio
         'metadata_synced_at' => now(),
     ]);
 
+    $artist = Artist::query()->create([
+        'artist_id' => 'artist-known',
+        'artist_name' => 'Known Artist',
+        'genres' => [],
+        'images' => [],
+        'popularity' => 0,
+        'fetched_at' => now(),
+        'expires_at' => now()->addDays(7),
+    ]);
+    $track->artists()->sync([$artist->id]);
+
     PlaylistTrack::factory()->create([
         'playlist_id' => $playlist->id,
         'track_id' => $track->id,
@@ -77,12 +91,17 @@ test('library show includes hydrated local track details when resolved', functio
             ->component('Library/Show')
             ->where('playlist.id', 'playlist-hydrated')
             ->where('playlist.items.0.spotify_track_id', 'track-known')
+            ->where('playlist.items.0.uri', 'spotify:track:track-known')
             ->where('playlist.items.0.track.id', 'track-known')
             ->where('playlist.items.0.track.name', 'Known Track')
+            ->where('playlist.items.0.track.artists.0.id', 'artist-known')
+            ->where('playlist.items.0.track.artists.0.name', 'Known Artist')
         );
 });
 
-test('library show refreshes stale playlist tracks', function () {
+test('library show dispatches playlist sync job when cache is stale', function () {
+    Queue::fake();
+
     $user = User::factory()->create();
 
     $playlist = Playlist::factory()->create([
@@ -91,30 +110,39 @@ test('library show refreshes stale playlist tracks', function () {
         'expires_at' => now()->subMinute(),
     ]);
 
-    $service = Mockery::mock(SpotifyLibraryService::class);
-    $service->shouldReceive('syncPlaylistTracks')
-        ->once()
-        ->andReturnUsing(function (User $modelUser, Playlist $modelPlaylist) use ($user, $playlist): void {
-            expect($modelUser->id)->toBe($user->id)
-                ->and($modelPlaylist->id)->toBe($playlist->id);
-
-            $modelPlaylist->update([
-                'expires_at' => now()->addMinutes(30),
-            ]);
-
-            PlaylistTrack::query()->create([
-                'playlist_id' => $modelPlaylist->id,
-                'spotify_track_id' => 'track-fresh',
-                'position' => 0,
-            ]);
-        });
-    app()->instance(SpotifyLibraryService::class, $service);
-
     $this->actingAs($user)
         ->get(route('library.show', ['playlistId' => 'playlist-stale']))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Library/Show')
             ->where('playlist.id', 'playlist-stale')
-            ->where('playlist.items.0.spotify_track_id', 'track-fresh')
+            ->where('playlist.sync_status.isRunning', true)
         );
+
+    Queue::assertPushed(SyncPlaylistTracksJob::class, function (SyncPlaylistTracksJob $job) use ($user, $playlist): bool {
+        return $job->userId === $user->id && $job->playlistId === $playlist->spotify_id;
+    });
+});
+
+test('library show dispatches playlist sync job when cached items are empty', function () {
+    Queue::fake();
+
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'spotify_id' => 'playlist-empty-items',
+        'expires_at' => now()->addMinutes(30),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('library.show', ['playlistId' => 'playlist-empty-items']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Library/Show')
+            ->where('playlist.id', 'playlist-empty-items')
+            ->where('playlist.sync_status.isRunning', true)
+        );
+
+    Queue::assertPushed(SyncPlaylistTracksJob::class, function (SyncPlaylistTracksJob $job) use ($user, $playlist): bool {
+        return $job->userId === $user->id && $job->playlistId === $playlist->spotify_id;
+    });
 });

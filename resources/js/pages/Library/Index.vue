@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { index as libraryIndex, move as movePlaylist, show as libraryShow } from '@/routes/library';
@@ -54,10 +54,74 @@ const props = defineProps<{
         synced_at: string | null;
         folder_id: number | null;
     }>;
+    syncStatus?: {
+        isRunning: boolean;
+        hasFailure: boolean;
+        completed: number;
+        total: number;
+        progress: number;
+        updatedAt: string | null;
+    };
 }>();
 
 const activeFolderId = ref<number | null>(null);
 const dragOverFolderId = ref<number | null>(null);
+const syncStatusRef = ref(
+    props.syncStatus ?? {
+        isRunning: false,
+        hasFailure: false,
+        completed: 0,
+        total: 0,
+        progress: 0,
+        updatedAt: null,
+    },
+);
+const page = usePage<{
+    auth: {
+        user?: {
+            id: number;
+        };
+    };
+}>();
+
+const currentSyncStatus = computed(() => syncStatusRef.value);
+
+onMounted(() => {
+    if (typeof window === 'undefined' || !window.Echo || !page.props.auth.user?.id) {
+        return;
+    }
+
+    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
+        .listen(
+            '.Library.SyncStatusUpdated',
+            (event: {
+                status: {
+                    isRunning: boolean;
+                    hasFailure: boolean;
+                    completed: number;
+                    total: number;
+                    progress: number;
+                    updatedAt: string | null;
+                };
+            }) => {
+                syncStatusRef.value = event.status;
+
+                if (! event.status.isRunning) {
+                    router.reload({
+                        only: ['playlists', 'syncStatus'],
+                    });
+                }
+            },
+        );
+});
+
+onUnmounted(() => {
+    if (typeof window === 'undefined' || !window.Echo || !page.props.auth.user?.id) {
+        return;
+    }
+
+    window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
+});
 
 const folderById = computed(() => {
     return new Map(props.folders.map((folder) => [folder.id, folder]));
@@ -154,13 +218,26 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
             </div>
 
             <div class="flex w-full max-w-2xl items-center justify-end gap-2">
+                <span
+                    v-if="currentSyncStatus.isRunning"
+                    class="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent"
+                >
+                    Syncing {{ currentSyncStatus.completed }}/{{ currentSyncStatus.total }} · {{ currentSyncStatus.progress }}%
+                </span>
+                <span
+                    v-else-if="currentSyncStatus.hasFailure"
+                    class="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive"
+                >
+                    Library sync failed
+                </span>
+
                 <Form
                     :action="refreshLibrary().url"
                     method="post"
                     class="shrink-0"
                     v-slot="{ processing }"
                 >
-                    <Button type="submit" variant="outline" :disabled="processing">
+                    <Button type="submit" variant="outline" :disabled="processing || currentSyncStatus.isRunning">
                         {{ processing ? 'Refreshing…' : 'Refresh playlists' }}
                     </Button>
                 </Form>

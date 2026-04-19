@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Library;
 
 use App\Http\Controllers\Controller;
 use App\Models\Playlist;
+use App\Services\Spotify\Library\LibrarySyncStatusService;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class IndexController extends Controller
 {
+    public function __construct(
+        private readonly LibrarySyncStatusService $statusService,
+    ) {}
+
     public function __invoke(): Response
     {
         $user = request()->user();
@@ -39,6 +44,7 @@ final class IndexController extends Controller
                     'folder_id' => $playlist->folder_id,
                 ])
                 ->values(),
+            'syncStatus' => $this->statusService->userStatus($user->id),
         ]);
     }
 }

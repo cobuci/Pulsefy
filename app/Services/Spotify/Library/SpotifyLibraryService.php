@@ -8,7 +8,10 @@ use App\Models\Track;
 use App\Models\User;
 use App\Services\Spotify\Client\SpotifyPlaylistClient;
 use App\Services\Spotify\SpotifyTokenService;
+use App\Services\Spotify\Sync\SpotifyCatalogHydrationService;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +21,7 @@ class SpotifyLibraryService
 
     public function __construct(
         private readonly SpotifyTokenService $tokenService,
+        private readonly ?SpotifyCatalogHydrationService $catalogHydration = null,
     ) {}
 
     public function syncUserPlaylists(User $user): int
@@ -70,9 +74,11 @@ class SpotifyLibraryService
         $offset = 0;
         $limit = 50;
         $rows = [];
+        $trackPayloads = [];
+        $hadSuccessfulResponse = false;
 
         while (true) {
-            $response = $client->playlistTracks($playlist->spotify_id, $limit, $offset);
+            $response = $this->playlistTracksWithFallback($client, $playlist->spotify_id, $limit, $offset);
 
             if (! $response->successful()) {
                 Log::channel('spotify')->warning('Could not sync playlist tracks', [
@@ -84,6 +90,8 @@ class SpotifyLibraryService
                 break;
             }
 
+            $hadSuccessfulResponse = true;
+
             $items = Arr::wrap($response->json('items'));
 
             if ($items === []) {
@@ -91,10 +99,20 @@ class SpotifyLibraryService
             }
 
             foreach ($items as $position => $item) {
-                $trackSpotifyId = (string) data_get($item, 'track.id', '');
+                $trackPayload = data_get($item, 'item');
+
+                if (! is_array($trackPayload)) {
+                    $trackPayload = data_get($item, 'track');
+                }
+
+                $trackSpotifyId = (string) data_get($trackPayload, 'id', '');
 
                 if ($trackSpotifyId === '') {
                     continue;
+                }
+
+                if (is_array($trackPayload) && $trackPayload !== []) {
+                    $trackPayloads[] = $trackPayload;
                 }
 
                 $rows[] = [
@@ -102,7 +120,7 @@ class SpotifyLibraryService
                     'track_id' => null,
                     'spotify_track_id' => $trackSpotifyId,
                     'position' => $offset + $position,
-                    'added_at' => data_get($item, 'added_at'),
+                    'added_at' => $this->parseSpotifyTimestamp(data_get($item, 'added_at')),
                     'added_by_spotify_id' => data_get($item, 'added_by.id'),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -114,6 +132,14 @@ class SpotifyLibraryService
             }
 
             $offset += $limit;
+        }
+
+        if (! $hadSuccessfulResponse) {
+            return;
+        }
+
+        if ($trackPayloads !== []) {
+            ($this->catalogHydration ?? app(SpotifyCatalogHydrationService::class))->hydrateTracks($trackPayloads);
         }
 
         DB::transaction(function () use ($playlist, $rows): void {
@@ -185,5 +211,45 @@ class SpotifyLibraryService
     private function clientFor(User $user): SpotifyPlaylistClient
     {
         return new SpotifyPlaylistClient($this->tokenService->ensureFreshToken($user));
+    }
+
+    private function playlistTracksWithFallback(
+        SpotifyPlaylistClient $client,
+        string $playlistSpotifyId,
+        int $limit,
+        int $offset,
+    ): Response {
+        $withTokenMarket = $client->playlistTracks($playlistSpotifyId, $limit, $offset, 'from_token');
+
+        if ($withTokenMarket->status() !== 403) {
+            return $withTokenMarket;
+        }
+
+        $withoutMarket = $client->playlistTracks($playlistSpotifyId, $limit, $offset, null);
+
+        if ($withoutMarket->status() !== 403) {
+            Log::channel('spotify')->notice('Playlist tracks fallback without market succeeded', [
+                'spotify_id' => $playlistSpotifyId,
+                'offset' => $offset,
+                'limit' => $limit,
+            ]);
+
+            return $withoutMarket;
+        }
+
+        return $withTokenMarket;
+    }
+
+    private function parseSpotifyTimestamp(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->toDateTimeString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

@@ -2,6 +2,7 @@ import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import {
     nowPlaying as nowPlayingRoute,
+    pause as pauseRoute,
     play as playRoute,
 } from '@/routes/player';
 import type { NowPlaying } from '@/types/spotify';
@@ -11,6 +12,7 @@ export type UsePlayerReturn = {
     nowPlayingData: Ref<NowPlaying | null>;
     isPlayingTrack: ComputedRef<(trackId: string) => boolean>;
     fetchNowPlaying: () => Promise<void>;
+    pausePlayback: () => Promise<void>;
     playTrack: (
         spotifyUri: string,
         options?: { uris?: string[]; offsetPosition?: number },
@@ -89,10 +91,27 @@ async function playTrack(
     } catch {}
 }
 
+async function pausePlayback(): Promise<void> {
+    try {
+        await fetch(pauseRoute.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await fetchNowPlaying();
+    } catch {}
+}
+
 const playerStore: UsePlayerReturn = {
     nowPlayingData,
     isPlayingTrack,
     fetchNowPlaying,
+    pausePlayback,
     playTrack,
 };
 

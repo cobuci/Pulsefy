@@ -26,20 +26,27 @@ class SpotifyPlaylistClient
         ]);
     }
 
-    public function playlist(string $playlistId, string $market = 'US'): Response
+    public function playlist(string $playlistId, ?string $market = 'from_token'): Response
     {
-        return $this->get('/playlists/'.$playlistId, [
-            'market' => $market,
+        return $this->get('/playlists/'.$playlistId, $this->marketQuery($market));
+    }
+
+    public function playlistTracks(string $playlistId, int $limit = 50, int $offset = 0, ?string $market = 'from_token'): Response
+    {
+        return $this->get('/playlists/'.$playlistId.'/items', [
+            'limit' => $limit,
+            'offset' => $offset,
+            ...$this->marketQuery($market),
         ]);
     }
 
-    public function playlistTracks(string $playlistId, int $limit = 50, int $offset = 0, string $market = 'US'): Response
+    private function marketQuery(?string $market): array
     {
-        return $this->get('/playlists/'.$playlistId.'/tracks', [
-            'market' => $market,
-            'limit' => $limit,
-            'offset' => $offset,
-        ]);
+        if (! is_string($market) || trim($market) === '') {
+            return [];
+        }
+
+        return ['market' => $market];
     }
 
     private function get(string $path, array $query = []): Response
