@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\Album;
+use App\Models\Artist;
 use App\Models\SpotifyStat;
+use App\Models\Track;
 use App\Models\User;
+use App\Models\UserTopArtist;
 use App\Services\LastFm\LastFmClient;
 use App\Services\LastFm\LastFmGenreService;
 use App\Services\Spotify\Artist\ArtistGenreCacheService;
@@ -283,4 +287,58 @@ test('topItemsSnapshot fetches paginated top tracks and artists', function () {
         ->and(data_get($snapshot, 'medium_term.tracks'))->toHaveCount(52)
         ->and(data_get($snapshot, 'medium_term.artists'))->toHaveCount(51)
         ->and(data_get($snapshot, 'medium_term.artists.0.genres.0'))->toBe('rock');
+});
+
+test('topArtists from db falls back to album art when artist image is missing', function () {
+    $user = User::factory()->create();
+
+    $artist = Artist::query()->create([
+        'artist_id' => 'artist-1',
+        'artist_name' => 'Artist One',
+        'genres' => ['rock'],
+        'images' => null,
+        'fetched_at' => now(),
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $album = Album::query()->create([
+        'spotify_id' => 'album-1',
+        'name' => 'Album One',
+        'album_type' => 'album',
+        'release_date' => '2024-01-01',
+        'images' => [['url' => 'https://image.test/album.jpg', 'height' => 640, 'width' => 640]],
+        'total_tracks' => 10,
+        'metadata_synced_at' => now(),
+    ]);
+
+    $track = Track::query()->create([
+        'spotify_id' => 'track-1',
+        'album_id' => $album->id,
+        'name' => 'Track One',
+        'duration_ms' => 120000,
+        'explicit' => false,
+        'metadata_synced_at' => now(),
+    ]);
+
+    $track->artists()->syncWithoutDetaching([$artist->id]);
+
+    UserTopArtist::query()->create([
+        'user_id' => $user->id,
+        'artist_model_id' => $artist->id,
+        'time_range' => 'medium_term',
+        'rank' => 1,
+        'score' => 100,
+        'synced_at' => now(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldNotReceive('ensureFreshToken');
+
+    $service = makeSpotifyService($tokenService);
+    $artists = $service->topArtists($user, 'medium_term');
+
+    expect($artists)
+        ->toHaveCount(1)
+        ->and(data_get($artists, '0.images.0.url'))
+        ->toBe('https://image.test/album.jpg');
 });

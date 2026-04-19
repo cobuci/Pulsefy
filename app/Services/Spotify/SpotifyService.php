@@ -279,7 +279,7 @@ final readonly class SpotifyService implements SpotifyStatsProvider
             return UserTopArtist::query()
                 ->whereBelongsTo($user)
                 ->where('time_range', $timeRange)
-                ->with('artist')
+                ->with('artist.tracks.album')
                 ->orderBy('rank')
                 ->get()
                 ->pluck('artist')
@@ -424,10 +424,16 @@ final readonly class SpotifyService implements SpotifyStatsProvider
      */
     private function mapArtistToSpotifyPayload(Artist $artist): array
     {
+        $images = is_array($artist->images) ? $artist->images : [];
+
+        if ($images === []) {
+            $images = $this->fallbackArtistImagesFromTracks($artist);
+        }
+
         return [
             'id' => $artist->artist_id,
             'name' => $artist->artist_name ?? 'Unknown Artist',
-            'images' => $artist->images ?? [],
+            'images' => $images,
             'genres' => $artist->genres,
             'popularity' => $artist->popularity ?? 0,
             'uri' => $artist->uri ?? 'spotify:artist:'.$artist->artist_id,
@@ -435,5 +441,20 @@ final readonly class SpotifyService implements SpotifyStatsProvider
                 'spotify' => 'https://open.spotify.com/artist/'.$artist->artist_id,
             ],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fallbackArtistImagesFromTracks(Artist $artist): array
+    {
+        $trackWithAlbumArt = $artist->tracks
+            ->first(fn (Track $track): bool => is_array($track->album?->images) && $track->album->images !== []);
+
+        if (! $trackWithAlbumArt?->album?->images || ! is_array($trackWithAlbumArt->album->images)) {
+            return [];
+        }
+
+        return $trackWithAlbumArt->album->images;
     }
 }
