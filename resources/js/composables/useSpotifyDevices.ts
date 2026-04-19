@@ -23,12 +23,14 @@ export function useSpotifyDevices(
     const lastFetchedAt = ref<number>(0);
 
     const availableDevices = computed(
-        () => devicesHttp.response?.devices ?? [],
+        () =>
+            ((devicesHttp.response as { devices?: SpotifyDevice[] } | null)
+                ?.devices ?? []),
     );
 
     const selectableDevices = computed(() => {
         const spotifyDevices = availableDevices.value.filter(
-            (device) => device.id && !device.is_restricted,
+            (device: SpotifyDevice) => device.id && !device.is_restricted,
         );
 
         if (!localPlayerReady.value || !localDeviceId.value) {
@@ -36,7 +38,7 @@ export function useSpotifyDevices(
         }
 
         const hasLocal = spotifyDevices.some(
-            (device) => device.id === localDeviceId.value,
+            (device: SpotifyDevice) => device.id === localDeviceId.value,
         );
 
         if (hasLocal) {
@@ -71,7 +73,7 @@ export function useSpotifyDevices(
             onStatus('');
 
             const active = selectableDevices.value.find(
-                (device) => device.is_active,
+                (device: SpotifyDevice) => device.is_active,
             );
 
             if (active?.id) {

@@ -1,7 +1,26 @@
 import { useHttp } from '@inertiajs/vue3';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
-import { qrCode, recoveryCodes, secretKey } from '@/routes/two-factor';
+
+type RouteSubmitDefinition = {
+    url: string;
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete';
+};
+
+const qrCode = (): RouteSubmitDefinition => ({
+    url: '/user/two-factor-qr-code',
+    method: 'get',
+});
+
+const secretKey = (): RouteSubmitDefinition => ({
+    url: '/user/two-factor-secret-key',
+    method: 'get',
+});
+
+const recoveryCodes = (): RouteSubmitDefinition => ({
+    url: '/user/two-factor-recovery-codes',
+    method: 'get',
+});
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: Ref<string | null>;

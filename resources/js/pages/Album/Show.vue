@@ -41,13 +41,13 @@ watchEffect(() => {
     if (props.artistId && props.artistName) {
         breadcrumbs.push({
             title: props.artistName,
-            href: artistShow(props.artistId).url,
+            href: artistShow(props.artistId),
         });
     }
 
     breadcrumbs.push({
         title: albumName.value,
-        href: albumShow(props.albumId).url,
+        href: albumShow(props.albumId),
     });
 
     setLayoutProps({ breadcrumbs });
