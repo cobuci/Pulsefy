@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, useHttp, usePage } from '@inertiajs/vue3';
-import { Activity, Disc3, LayoutGrid, Menu, Search } from 'lucide-vue-next';
+import { Activity, Disc3, LayoutGrid, ListMusic, Menu, Search } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
@@ -29,6 +29,7 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
 import { dashboard, recentlyPlayed } from '@/routes';
 import { index as artistsIndex } from '@/routes/artists';
+import { index as libraryIndex } from '@/routes/library';
 import { search } from '@/routes';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
@@ -84,6 +85,11 @@ const mainNavItems: NavItem[] = [
         title: 'Recently Played',
         href: recentlyPlayed(),
         icon: Activity,
+    },
+    {
+        title: 'Library',
+        href: libraryIndex(),
+        icon: ListMusic,
     },
 ];
 
