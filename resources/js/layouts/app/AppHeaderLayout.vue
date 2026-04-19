@@ -21,6 +21,8 @@ const contextMenu = useContextMenu();
 function openGlobalContextMenu(event: MouseEvent): void {
     contextMenu.open(event, []);
 }
+
+const contextMenuState = contextMenu.state;
 </script>
 
 <template>
@@ -33,10 +35,10 @@ function openGlobalContextMenu(event: MouseEvent): void {
         <Toaster />
 
         <AppContextMenu
-            :open="contextMenu.state.open"
-            :x="contextMenu.state.x"
-            :y="contextMenu.state.y"
-            :items="contextMenu.state.items"
+            :open="contextMenuState.open"
+            :x="contextMenuState.x"
+            :y="contextMenuState.y"
+            :items="contextMenuState.items"
             @close="contextMenu.close"
         />
     </AppShell>

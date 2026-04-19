@@ -15,11 +15,12 @@ const emit = defineEmits<{
     close: [];
 }>();
 
-const menuRef = ref<HTMLDivElement | null>(null);
 const contentRef = ref<HTMLDivElement | null>(null);
 const submenuRefs = ref<Record<string, HTMLDivElement | null>>({});
 const openSubmenuKey = ref<string | null>(null);
 const position = ref({ x: props.x, y: props.y });
+const isClientMounted = ref(false);
+const previousBodyOverflow = ref<string | null>(null);
 
 const rootItems = computed(() => props.items);
 const hasActionItems = computed(() => rootItems.value.some((item) => !item.separator));
@@ -37,6 +38,27 @@ watch(
     },
 );
 
+watch(
+    () => props.open,
+    (open) => {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        if (open) {
+            previousBodyOverflow.value = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+
+            return;
+        }
+
+        if (previousBodyOverflow.value !== null) {
+            document.body.style.overflow = previousBodyOverflow.value;
+            previousBodyOverflow.value = null;
+        }
+    },
+);
+
 function setSubmenuRef(key: string, element: Element | null): void {
     submenuRefs.value[key] = element instanceof HTMLDivElement ? element : null;
 }
@@ -46,7 +68,7 @@ function closeMenu(): void {
 }
 
 function onGlobalPointerDown(event: PointerEvent): void {
-    if (!props.open || !menuRef.value) {
+    if (!props.open || !contentRef.value) {
         return;
     }
 
@@ -56,13 +78,13 @@ function onGlobalPointerDown(event: PointerEvent): void {
         return;
     }
 
-    if (!menuRef.value.contains(target)) {
+    if (!contentRef.value.contains(target)) {
         closeMenu();
     }
 }
 
 function onGlobalContextMenu(event: MouseEvent): void {
-    if (!props.open || !menuRef.value) {
+    if (!props.open || !contentRef.value) {
         return;
     }
 
@@ -72,8 +94,7 @@ function onGlobalContextMenu(event: MouseEvent): void {
         return;
     }
 
-    if (!menuRef.value.contains(target)) {
-        event.preventDefault();
+    if (!contentRef.value.contains(target)) {
         closeMenu();
     }
 }
@@ -165,32 +186,40 @@ function clearSubmenu(): void {
 }
 
 onMounted(() => {
-    window.addEventListener('pointerdown', onGlobalPointerDown);
-    window.addEventListener('contextmenu', onGlobalContextMenu);
+    isClientMounted.value = true;
+    window.addEventListener('pointerdown', onGlobalPointerDown, true);
+    window.addEventListener('contextmenu', onGlobalContextMenu, true);
     window.addEventListener('keydown', onGlobalKeyDown);
     window.addEventListener('resize', adjustPosition);
 });
 
 onUnmounted(() => {
-    window.removeEventListener('pointerdown', onGlobalPointerDown);
-    window.removeEventListener('contextmenu', onGlobalContextMenu);
+    window.removeEventListener('pointerdown', onGlobalPointerDown, true);
+    window.removeEventListener('contextmenu', onGlobalContextMenu, true);
     window.removeEventListener('keydown', onGlobalKeyDown);
     window.removeEventListener('resize', adjustPosition);
+
+    if (typeof document !== 'undefined' && previousBodyOverflow.value !== null) {
+        document.body.style.overflow = previousBodyOverflow.value;
+        previousBodyOverflow.value = null;
+    }
 });
 </script>
 
 <template>
-    <teleport to="body">
-        <div v-if="open" ref="menuRef" class="fixed inset-0 z-50">
+    <teleport v-if="isClientMounted" to="body">
+        <div v-if="open" class="fixed inset-0 z-50">
             <div
                 ref="contentRef"
-                class="fixed min-w-52 rounded-xl border border-border/80 bg-popover p-1 shadow-xl backdrop-blur-sm"
+                class="fixed z-10 min-w-52 rounded-xl border border-border/80 bg-popover p-1 shadow-xl backdrop-blur-sm"
                 :style="{
                     left: `${position.x}px`,
                     top: `${position.y}px`,
                 }"
                 role="menu"
                 @mouseleave="clearSubmenu"
+                @click.stop
+                @contextmenu.stop
             >
                 <template v-if="hasActionItems">
                     <template v-for="item in rootItems" :key="item.key">
