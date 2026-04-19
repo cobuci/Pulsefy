@@ -22,6 +22,7 @@ test('users can move own playlist to folder', function () {
         ->assertRedirect();
 
     expect($playlist->fresh()->folder_id)->toBe($folder->id);
+    expect($playlist->fresh()->position)->toBeGreaterThan(0);
 });
 
 test('users cannot move playlist to folder they do not own', function () {

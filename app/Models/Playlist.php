@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $user_id
  * @property ?int $folder_id
+ * @property int $position
  * @property string $spotify_id
  * @property string $name
  * @property ?string $description
