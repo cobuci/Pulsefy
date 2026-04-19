@@ -1,11 +1,12 @@
 import { useHttp } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { lyrics } from '@/routes/player';
 import type { LyricsResponse, SpotifyTrack } from '@/types/spotify';
 
-type ParsedLyricLine = {
+export type ParsedLyricLine = {
     timeMs: number;
     text: string;
+    translation: string | null;
 };
 
 export function useSpotifyLyrics(
@@ -14,9 +15,10 @@ export function useSpotifyLyrics(
 ) {
     const lyricsHttp = useHttp<LyricsResponse>();
     const lyricsOpen = ref(false);
-    const lyricLineRefs = ref<HTMLElement[]>([]);
 
-    const lyricsData = computed(() => lyricsHttp.response ?? null);
+    const lyricsData = computed<LyricsResponse | null>(() => {
+        return (lyricsHttp.response as LyricsResponse | null) ?? null;
+    });
 
     async function fetchLyrics(forceRefresh: boolean) {
         const track = currentTrack();
@@ -59,7 +61,7 @@ export function useSpotifyLyrics(
         const lines = lyricsData.value.lyrics.split('\n');
 
         return lines
-            .map((line) => {
+            .map((line: string) => {
                 const match = line.match(
                     /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/,
                 );
@@ -77,10 +79,11 @@ export function useSpotifyLyrics(
                 return {
                     timeMs: minutes * 60_000 + seconds * 1_000 + milliseconds,
                     text,
+                    translation: null,
                 };
             })
-            .filter((line): line is ParsedLyricLine => line !== null)
-            .sort((a, b) => a.timeMs - b.timeMs);
+            .filter((line: ParsedLyricLine | null): line is ParsedLyricLine => line !== null)
+            .sort((a: ParsedLyricLine, b: ParsedLyricLine) => a.timeMs - b.timeMs);
     });
 
     const activeLyricLineIndex = computed(() => {
@@ -101,32 +104,13 @@ export function useSpotifyLyrics(
         return index;
     });
 
-    watch(activeLyricLineIndex, (index) => {
-        if (!lyricsOpen.value || index < 0) {
-            return;
-        }
-
-        lyricLineRefs.value[index]?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        });
-    });
-
-    function setLyricLineRef(element: Element | null, index: number) {
-        if (element instanceof HTMLElement) {
-            lyricLineRefs.value[index] = element;
-        }
-    }
-
     return {
         lyricsHttp,
         lyricsOpen,
         lyricsData,
-        lyricLineRefs,
         parsedSyncedLyrics,
         activeLyricLineIndex,
         fetchLyricsForCurrentTrack,
         retryLyricsFetch,
-        setLyricLineRef,
     };
 }

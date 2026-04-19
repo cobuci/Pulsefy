@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Repeat, Repeat1, Shuffle } from 'lucide-vue-next';
+import { Languages, Repeat, Repeat1, Shuffle, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
@@ -41,7 +41,10 @@ const isShuffleBusy = ref(false);
 const isRepeatBusy = ref(false);
 const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
+const activeLyricRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
+const showLyricsTranslation = ref(false);
+const lyricsTranslationLanguage = ref<'pt-BR' | 'en'>('pt-BR');
 
 const progressPct = ref(0);
 const seekSliderPct = ref(0);
@@ -98,6 +101,29 @@ function handleDocumentPointerDown(event: PointerEvent) {
     }
 }
 
+function handleLyricsHotkeys(event: KeyboardEvent) {
+    if (!lyrics.lyricsOpen.value) {
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        lyrics.lyricsOpen.value = false;
+
+        return;
+    }
+
+    if (event.key.toLowerCase() === 't') {
+        showLyricsTranslation.value = !showLyricsTranslation.value;
+    }
+
+    if (event.key.toLowerCase() === 'l' && showLyricsTranslation.value) {
+        lyricsTranslationLanguage.value =
+            lyricsTranslationLanguage.value === 'pt-BR' ? 'en' : 'pt-BR';
+    }
+}
+
+const hasLyricsTranslation = computed(() => false);
+
 watch(data, (val) => {
     if (progressTimer) {
         clearInterval(progressTimer);
@@ -116,7 +142,8 @@ watch(data, (val) => {
 
     if (activeTrackId.value !== val.track.id) {
         activeTrackId.value = val.track.id;
-        lyrics.lyricLineRefs.value = [];
+        showLyricsTranslation.value = false;
+        lyricsTranslationLanguage.value = 'pt-BR';
         lyrics.fetchLyricsForCurrentTrack();
     }
 
@@ -145,6 +172,7 @@ onMounted(() => {
     fetchNowPlaying();
     pollTimer = setInterval(fetchNowPlaying, POLL_INTERVAL);
     document.addEventListener('pointerdown', handleDocumentPointerDown);
+    document.addEventListener('keydown', handleLyricsHotkeys);
     void webPlayer.initLocalPlayer((state) => {
         webPlayer.syncFromLocalState(
             state,
@@ -178,6 +206,7 @@ onUnmounted(() => {
     }
 
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
+    document.removeEventListener('keydown', handleLyricsHotkeys);
     webPlayer.disconnect();
 });
 
@@ -397,6 +426,50 @@ function onLyricLineClick(timeMs: number) {
 
     void seekToPosition(timeMs);
 }
+
+function setActiveLyricRef(element: unknown, index: number) {
+    if (index !== lyrics.activeLyricLineIndex.value) {
+        return;
+    }
+
+    if (element instanceof HTMLElement) {
+        activeLyricRef.value = element;
+
+        return;
+    }
+
+    if (
+        typeof element === 'object' &&
+        element !== null &&
+        '$el' in element &&
+        (element as { $el?: unknown }).$el instanceof HTMLElement
+    ) {
+        activeLyricRef.value = (element as { $el: HTMLElement }).$el;
+
+        return;
+    }
+
+    activeLyricRef.value = null;
+}
+
+function toggleLyricsTranslationLanguage() {
+    lyricsTranslationLanguage.value =
+        lyricsTranslationLanguage.value === 'pt-BR' ? 'en' : 'pt-BR';
+}
+
+watch(
+    [() => lyrics.activeLyricLineIndex.value, () => lyrics.lyricsOpen.value],
+    ([index, open]) => {
+        if (!open || index < 0) {
+            return;
+        }
+
+        activeLyricRef.value?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+        });
+    },
+);
 </script>
 
 <template>
@@ -411,100 +484,179 @@ function onLyricLineClick(timeMs: number) {
         >
             <div
                 v-if="hasTrack && lyrics.lyricsOpen.value"
-                class="glass-strong mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-t-2xl border border-b-0 border-border/60 px-4 pb-4"
+                class="relative mx-auto max-h-[78vh] max-w-7xl overflow-hidden rounded-t-2xl border border-b-0 border-border/60"
             >
-                <div class="flex items-center justify-between py-3">
-                    <p
-                        class="text-xs font-medium tracking-wide text-muted-foreground uppercase"
-                    >
-                        Lyrics
-                    </p>
-                    <button
-                        type="button"
-                        class="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                        @click="lyrics.lyricsOpen.value = false"
-                    >
-                        Close
-                    </button>
+                <div
+                    class="absolute inset-0 overflow-hidden"
+                >
+                    <img
+                        v-if="data?.track?.album?.images?.[0]?.url"
+                        :src="data.track.album.images[0].url"
+                        alt=""
+                        aria-hidden="true"
+                        class="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl"
+                    />
+                    <div class="absolute inset-0 bg-background/85 backdrop-blur-2xl" />
                 </div>
 
-                <div
-                    class="h-[55vh] overflow-y-auto rounded-xl bg-muted/20 px-2 py-2"
-                >
-                    <div v-if="lyrics.lyricsHttp.processing" class="space-y-2">
-                        <div class="h-5 w-2/3 animate-pulse rounded bg-muted" />
-                        <div class="h-5 w-1/2 animate-pulse rounded bg-muted" />
-                        <div class="h-5 w-3/4 animate-pulse rounded bg-muted" />
-                    </div>
+                <div class="relative flex h-[74vh] flex-col">
+                    <header class="flex items-center justify-between gap-4 px-6 pt-5">
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-semibold tracking-[0.2em] text-accent uppercase">
+                                Lyrics
+                            </p>
+                            <p class="truncate text-sm font-semibold text-foreground">
+                                {{ data?.track?.name }}
+                            </p>
+                            <p class="truncate text-xs text-muted-foreground">
+                                {{ data?.track?.artists?.map((item) => item.name).join(', ') }}
+                            </p>
+                        </div>
 
-                    <template
-                        v-else-if="lyrics.lyricsData.value?.type === 'synced'"
-                    >
-                        <button
-                            v-for="(line, index) in lyrics.parsedSyncedLyrics
-                                .value"
-                            :key="`${line.timeMs}-${index}`"
-                            type="button"
-                            :ref="
-                                (element) =>
-                                    lyrics.setLyricLineRef(element, index)
-                            "
-                            :disabled="seekBusy || !hasTrack"
-                            :class="[
-                                'w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm transition-all hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50',
-                                index === lyrics.activeLyricLineIndex.value
-                                    ? 'bg-muted/60 font-semibold text-foreground'
-                                    : 'text-muted-foreground',
-                            ]"
-                            @click="onLyricLineClick(line.timeMs)"
-                        >
-                            {{ line.text || '♪' }}
-                        </button>
-                    </template>
-
-                    <pre
-                        v-else-if="lyrics.lyricsData.value?.type === 'plain'"
-                        class="text-sm leading-6 whitespace-pre-wrap text-foreground"
-                        >{{ lyrics.lyricsData.value?.lyrics }}</pre
-                    >
-
-                    <div
-                        v-else
-                        class="flex h-full min-h-56 items-center justify-center"
-                    >
-                        <div
-                            class="mx-auto flex max-w-md flex-col items-center text-center"
-                        >
-                            <div
-                                class="mb-4 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                :disabled="!hasLyricsTranslation"
+                                :title="showLyricsTranslation ? 'Translation on (T)' : 'Translation off (T)'"
+                                :class="[
+                                    'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
+                                    showLyricsTranslation
+                                        ? 'border-accent bg-accent text-accent-foreground'
+                                        : 'border-border text-muted-foreground hover:text-foreground',
+                                    !hasLyricsTranslation
+                                        ? 'cursor-not-allowed opacity-40'
+                                        : 'cursor-pointer',
+                                ]"
+                                @click="showLyricsTranslation = !showLyricsTranslation"
                             >
-                                <IconMusicNote class="size-5" />
-                            </div>
-
-                            <p class="text-base font-semibold text-foreground">
-                                No lyrics found for this track
-                            </p>
-                            <p class="mt-1 text-sm text-muted-foreground">
-                                Sometimes metadata differs. You can try
-                                searching again.
-                            </p>
+                                <Languages class="size-3.5" />
+                                <span class="hidden sm:inline">Translate</span>
+                            </button>
 
                             <button
                                 type="button"
-                                :disabled="lyrics.lyricsHttp.processing"
-                                class="mt-5 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                                @click="lyrics.retryLyricsFetch()"
+                                :disabled="!showLyricsTranslation"
+                                title="Toggle translation language (L)"
+                                :class="[
+                                    'inline-flex h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors',
+                                    showLyricsTranslation
+                                        ? 'border-border text-foreground hover:text-accent'
+                                        : 'border-border text-muted-foreground opacity-40',
+                                ]"
+                                @click="toggleLyricsTranslationLanguage"
                             >
-                                <IconRefresh class="size-4" />
-                                Try again
+                                {{ lyricsTranslationLanguage }}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
+                                aria-label="Close lyrics"
+                                @click="lyrics.lyricsOpen.value = false"
+                            >
+                                <X class="size-4" />
                             </button>
                         </div>
-                    </div>
-                </div>
+                    </header>
 
-                <p class="pt-3 text-[11px] text-muted-foreground">
-                    Lyrics provided by LRCLIB
-                </p>
+                    <div class="h-full overflow-y-auto px-4 py-8 sm:px-8">
+                        <div class="mx-auto max-w-3xl space-y-6 pb-[26vh] pt-[14vh]">
+                            <div v-if="lyrics.lyricsHttp.processing" class="space-y-2">
+                                <div class="h-5 w-2/3 animate-pulse rounded bg-muted" />
+                                <div class="h-5 w-1/2 animate-pulse rounded bg-muted" />
+                                <div class="h-5 w-3/4 animate-pulse rounded bg-muted" />
+                            </div>
+
+                            <template
+                                v-else-if="lyrics.lyricsData.value?.type === 'synced'"
+                            >
+                                <button
+                                    v-for="(line, index) in lyrics.parsedSyncedLyrics
+                                        .value"
+                                    :key="`${line.timeMs}-${index}`"
+                                    type="button"
+                                    :ref="(element) => setActiveLyricRef(element, index)"
+                                    :disabled="seekBusy || !hasTrack"
+                                    :class="[
+                                        'w-full cursor-pointer rounded-md px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50',
+                                        index === lyrics.activeLyricLineIndex.value
+                                            ? 'bg-muted/60 font-semibold text-foreground [text-shadow:0_0_26px_color-mix(in_oklab,var(--accent)_45%,transparent)]'
+                                            : index < lyrics.activeLyricLineIndex.value
+                                              ? 'text-muted-foreground/45'
+                                              : 'text-muted-foreground/70',
+                                    ]"
+                                    @click="onLyricLineClick(line.timeMs)"
+                                >
+                                    <p class="font-display text-xl leading-tight sm:text-3xl">
+                                        {{ line.text || '♪' }}
+                                    </p>
+
+                                    <p
+                                        v-if="showLyricsTranslation"
+                                        class="mt-1 border-l-2 border-accent/70 pl-3 text-sm italic text-accent/90"
+                                    >
+                                        {{ line.translation ?? `Translation preview (${lyricsTranslationLanguage})` }}
+                                    </p>
+                                </button>
+                            </template>
+
+                            <pre
+                                v-else-if="lyrics.lyricsData.value?.type === 'plain'"
+                                class="text-sm leading-6 whitespace-pre-wrap text-foreground"
+                                >{{ lyrics.lyricsData.value?.lyrics }}</pre
+                            >
+
+                            <div
+                                v-else
+                                class="flex h-full min-h-56 items-center justify-center"
+                            >
+                                <div
+                                    class="mx-auto flex max-w-md flex-col items-center text-center"
+                                >
+                                    <div
+                                        class="mb-4 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                                    >
+                                        <IconMusicNote class="size-5" />
+                                    </div>
+
+                                    <p class="text-base font-semibold text-foreground">
+                                        No lyrics found for this track
+                                    </p>
+                                    <p class="mt-1 text-sm text-muted-foreground">
+                                        Sometimes metadata differs. You can try
+                                        searching again.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        :disabled="lyrics.lyricsHttp.processing"
+                                        class="mt-5 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                        @click="lyrics.retryLyricsFetch()"
+                                    >
+                                        <IconRefresh class="size-4" />
+                                        Try again
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <footer class="absolute right-0 bottom-0 left-0 border-t border-border/60 bg-background/80 px-6 py-3 text-[11px] text-muted-foreground backdrop-blur">
+                        <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
+                            <span>Lyrics by LRCLIB</span>
+                            <span>·</span>
+                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">Esc</kbd>
+                            <span>close</span>
+                            <span>·</span>
+                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">T</kbd>
+                            <span>translation</span>
+                            <span>·</span>
+                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">L</kbd>
+                            <span>language</span>
+                        </div>
+                    </footer>
+                </div>
             </div>
         </Transition>
 
