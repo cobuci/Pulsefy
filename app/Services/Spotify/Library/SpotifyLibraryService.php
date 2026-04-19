@@ -14,10 +14,13 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class SpotifyLibraryService
 {
     private const int PLAYLIST_TTL_MINUTES = 45;
+
+    private const int POSITION_STEP = 100;
 
     public function __construct(
         private readonly SpotifyTokenService $tokenService,
@@ -204,6 +207,11 @@ class SpotifyLibraryService
         $playlist->expires_at = now()->addMinutes(self::PLAYLIST_TTL_MINUTES);
 
         $playlist->save();
+
+        if (Schema::hasColumn('playlists', 'position') && (! is_int($playlist->position) || $playlist->position <= 0)) {
+            $playlist->position = $playlist->id * self::POSITION_STEP;
+            $playlist->save();
+        }
 
         return $playlist;
     }

@@ -24,6 +24,16 @@ test('authenticated users can view library page with folders and root playlists'
         'spotify_id' => 'playlist-1',
         'name' => 'Top Vibes',
         'tracks_total' => 24,
+        'position' => 10,
+    ]);
+
+    Playlist::factory()->create([
+        'user_id' => $user->id,
+        'folder_id' => null,
+        'spotify_id' => 'playlist-2',
+        'name' => 'After Hours',
+        'tracks_total' => 12,
+        'position' => 20,
     ]);
 
     $this->actingAs($user)
@@ -32,8 +42,14 @@ test('authenticated users can view library page with folders and root playlists'
             ->component('Library/Index')
             ->where('syncStatus.isRunning', false)
             ->where('folders.0.name', 'Road Trip')
-            ->where('playlists.0.id', 'playlist-1')
-            ->where('playlists.0.name', 'Top Vibes')
-            ->where('playlists.0.tracks_total', 24)
+            ->has('playlists', 2)
+            ->where('playlists', fn ($playlists): bool => collect($playlists)
+                ->pluck('id')
+                ->sort()
+                ->values()
+                ->all() === ['playlist-1', 'playlist-2'])
+            ->where('playlists', fn ($playlists): bool => collect($playlists)
+                ->pluck('position')
+                ->every(fn ($position): bool => is_int($position)))
         );
 });

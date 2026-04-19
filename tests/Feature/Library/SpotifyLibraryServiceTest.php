@@ -205,6 +205,49 @@ test('sync playlist tracks stores null added_at when spotify returns invalid tim
         ->and($syncedRow->added_at)->toBeNull();
 });
 
+test('sync user playlists assigns default position when playlist is first created', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token-1');
+
+    Http::fake([
+        'api.spotify.com/v1/me/playlists*' => Http::response([
+            'items' => [
+                [
+                    'id' => 'playlist-positioned-1',
+                    'name' => 'Positioned Playlist',
+                    'description' => null,
+                    'images' => [],
+                    'owner' => [
+                        'id' => 'owner-1',
+                        'display_name' => 'Owner Name',
+                    ],
+                    'public' => false,
+                    'collaborative' => false,
+                    'tracks' => ['total' => 1],
+                    'snapshot_id' => 'snapshot-1',
+                    'uri' => 'spotify:playlist:playlist-positioned-1',
+                    'external_urls' => ['spotify' => 'https://open.spotify.com/playlist/playlist-positioned-1'],
+                ],
+            ],
+            'next' => null,
+        ], 200),
+    ]);
+
+    $service = new SpotifyLibraryService($tokenService);
+    $service->syncUserPlaylists($user);
+
+    $playlist = Playlist::query()
+        ->where('user_id', $user->id)
+        ->where('spotify_id', 'playlist-positioned-1')
+        ->first();
+
+    expect($playlist)
+        ->not->toBeNull()
+        ->and($playlist->position)->toBeGreaterThan(0);
+});
+
 test('sync playlist tracks hydrates unknown tracks into local catalog', function () {
     $user = User::factory()->create();
     $playlist = Playlist::factory()->create([

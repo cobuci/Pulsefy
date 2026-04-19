@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { index as libraryIndex, move as movePlaylist, show as libraryShow } from '@/routes/library';
+import { index as libraryIndex, move as movePlaylist, reorder as reorderPlaylists, show as libraryShow } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
 import { refresh as refreshLibrary } from '@/routes/library';
 
@@ -35,6 +35,7 @@ type LibraryPlaylistItem = {
     owner_name: string | null;
     synced_at: string | null;
     folder_id?: number | null;
+    position: number;
 };
 
 const props = defineProps<{
@@ -53,6 +54,7 @@ const props = defineProps<{
         owner_name: string | null;
         synced_at: string | null;
         folder_id: number | null;
+        position: number;
     }>;
     syncStatus?: {
         isRunning: boolean;
@@ -66,6 +68,12 @@ const props = defineProps<{
 
 const activeFolderId = ref<number | null>(null);
 const dragOverFolderId = ref<number | null>(null);
+const dragOverPlaylistId = ref<string | null>(null);
+const draggedPlaylistId = ref<string | null>(null);
+const dragOriginFolderId = ref<number | null>(null);
+const isDraggingPlaylist = ref(false);
+const movedToAnotherFolder = ref(false);
+const localPlaylists = ref<LibraryPlaylistItem[]>([]);
 const syncStatusRef = ref(
     props.syncStatus ?? {
         isRunning: false,
@@ -132,10 +140,27 @@ const childFolders = computed<LibraryFolderItem[]>(() => {
 });
 
 const visiblePlaylists = computed<LibraryPlaylistItem[]>(() => {
-    return props.playlists.filter(
-        (playlist) => (playlist.folder_id ?? null) === activeFolderId.value,
-    );
+    return localPlaylists.value.filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value);
 });
+
+watch(
+    () => props.playlists,
+    (playlists) => {
+        localPlaylists.value = playlists
+            .map((playlist) => ({ ...playlist }))
+            .sort((a, b) => {
+                const folderA = a.folder_id ?? -1;
+                const folderB = b.folder_id ?? -1;
+
+                if (folderA !== folderB) {
+                    return folderA - folderB;
+                }
+
+                return a.position - b.position;
+            });
+    },
+    { immediate: true },
+);
 
 const activeFolderPath = computed<LibraryFolderItem[]>(() => {
     const path: LibraryFolderItem[] = [];
@@ -159,14 +184,32 @@ function openFolder(folderId: number | null) {
     activeFolderId.value = folderId;
 }
 
+function resetDragState(): void {
+    dragOverFolderId.value = null;
+    dragOverPlaylistId.value = null;
+    draggedPlaylistId.value = null;
+    dragOriginFolderId.value = null;
+    isDraggingPlaylist.value = false;
+}
+
 function onPlaylistDragStart(event: DragEvent, playlistId: string) {
+    isDraggingPlaylist.value = true;
+    draggedPlaylistId.value = playlistId;
+    dragOriginFolderId.value = activeFolderId.value;
+    movedToAnotherFolder.value = false;
     event.dataTransfer?.setData('text/plain', playlistId);
     event.dataTransfer?.setData('application/x-pulsefy-playlist', playlistId);
-    event.dataTransfer?.setDragImage(new Image(), 0, 0);
+    event.dataTransfer?.setData('application/x-pulsefy-origin-folder', String(activeFolderId.value ?? 'root'));
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+    }
 }
 
 function onFolderDragOver(event: DragEvent, folderId: number | null) {
     event.preventDefault();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
     dragOverFolderId.value = folderId;
 }
 
@@ -178,15 +221,18 @@ function onFolderDragLeave(folderId: number | null) {
 
 function onFolderDrop(event: DragEvent, folderId: number | null) {
     event.preventDefault();
-    dragOverFolderId.value = null;
-
     const playlistId =
         event.dataTransfer?.getData('application/x-pulsefy-playlist') ||
-        event.dataTransfer?.getData('text/plain');
+        event.dataTransfer?.getData('text/plain') ||
+        draggedPlaylistId.value;
+
+    resetDragState();
 
     if (!playlistId) {
         return;
     }
+
+    movedToAnotherFolder.value = true;
 
     router.patch(
         movePlaylist(playlistId).url,
@@ -195,8 +241,147 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
         },
         {
             preserveScroll: true,
+            preserveState: true,
+            only: ['playlists'],
+            onError: () => {
+                router.reload({
+                    only: ['playlists'],
+                });
+            },
         },
     );
+}
+
+function onPlaylistDragOver(event: DragEvent, playlistId: string) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+
+    if (!draggedPlaylistId.value || playlistId === draggedPlaylistId.value) {
+        return;
+    }
+
+    dragOverPlaylistId.value = playlistId;
+}
+
+function onPlaylistDragDropZone(event: DragEvent): void {
+    event.preventDefault();
+
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+}
+
+function onPlaylistDragEnter(event: DragEvent, playlistId: string) {
+    event.preventDefault();
+
+    if (!draggedPlaylistId.value || playlistId === draggedPlaylistId.value || dragOverPlaylistId.value === playlistId) {
+        return;
+    }
+
+    dragOverPlaylistId.value = playlistId;
+
+    previewReorder(draggedPlaylistId.value, playlistId);
+}
+
+function onPlaylistDragLeave(playlistId: string) {
+    if (dragOverPlaylistId.value === playlistId) {
+        dragOverPlaylistId.value = null;
+    }
+}
+
+function persistReorderIfNeeded() {
+    const orderedIds = visiblePlaylists.value.map((playlist) => playlist.id);
+    const originalIds = props.playlists
+        .filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value)
+        .sort((a, b) => a.position - b.position)
+        .map((playlist) => playlist.id);
+
+    if (orderedIds.every((playlistId, index) => playlistId === originalIds[index])) {
+        return;
+    }
+
+    router.patch(
+        reorderPlaylists().url,
+        {
+            folder_id: activeFolderId.value,
+            ordered_playlist_ids: orderedIds,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['playlists'],
+            onError: () => {
+                router.reload({
+                    only: ['playlists'],
+                });
+            },
+        },
+    );
+}
+
+function onPlaylistDrop(event: DragEvent, targetPlaylistId: string) {
+    event.preventDefault();
+
+    const sourcePlaylistId =
+        event.dataTransfer?.getData('application/x-pulsefy-playlist') ||
+        event.dataTransfer?.getData('text/plain') ||
+        draggedPlaylistId.value;
+    const originFolderRaw = event.dataTransfer?.getData('application/x-pulsefy-origin-folder');
+    const originFolderId = originFolderRaw === 'root' || originFolderRaw === '' ? null : Number(originFolderRaw);
+
+    if (!sourcePlaylistId || sourcePlaylistId === targetPlaylistId) {
+        onPlaylistDragEnd();
+        return;
+    }
+
+    if (originFolderId !== activeFolderId.value || dragOriginFolderId.value !== activeFolderId.value) {
+        onPlaylistDragEnd();
+        return;
+    }
+
+    persistReorderIfNeeded();
+
+    onPlaylistDragEnd();
+}
+
+function previewReorder(sourcePlaylistId: string, targetPlaylistId: string) {
+    const sourceIndex = localPlaylists.value.findIndex(
+        (playlist) => playlist.id === sourcePlaylistId && (playlist.folder_id ?? null) === activeFolderId.value,
+    );
+    const targetIndex = localPlaylists.value.findIndex(
+        (playlist) => playlist.id === targetPlaylistId && (playlist.folder_id ?? null) === activeFolderId.value,
+    );
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        return;
+    }
+
+    const next = [...localPlaylists.value];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    localPlaylists.value = next;
+}
+
+function onPlaylistDragEnd() {
+    if (movedToAnotherFolder.value) {
+        router.reload({
+            only: ['playlists'],
+        });
+    }
+
+    resetDragState();
+    movedToAnotherFolder.value = false;
+}
+
+function onPlaylistCardClick(event: MouseEvent) {
+    if (!isDraggingPlaylist.value) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
 }
 </script>
 
@@ -255,14 +440,22 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
         </section>
 
         <div class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-            <button
-                type="button"
-                class="inline-flex items-center gap-1 transition-colors hover:text-accent"
-                @click="openFolder(null)"
+            <div
+                class="rounded-md border border-transparent px-1.5 py-0.5 transition-colors"
+                :class="dragOverFolderId === null && activeFolderId !== null ? 'border-accent/50 bg-accent/10' : ''"
+                @dragover="activeFolderId !== null ? onFolderDragOver($event, null) : undefined"
+                @dragleave="activeFolderId !== null ? onFolderDragLeave(null) : undefined"
+                @drop="activeFolderId !== null ? onFolderDrop($event, null) : undefined"
             >
-                <Home class="size-3" />
-                Library
-            </button>
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-1 transition-colors hover:text-accent"
+                    @click="openFolder(null)"
+                >
+                    <Home class="size-3" />
+                    Library
+                </button>
+            </div>
 
             <template v-for="folder in activeFolderPath" :key="folder.id">
                 <ChevronRight class="size-3" />
@@ -281,22 +474,6 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
                 Folders
             </div>
 
-            <div
-                class="mb-6 rounded-xl border border-dashed border-border/60 p-3 transition-colors"
-                :class="dragOverFolderId === null ? 'border-accent/50 bg-accent/5' : ''"
-                @dragover="onFolderDragOver($event, null)"
-                @dragleave="onFolderDragLeave(null)"
-                @drop="onFolderDrop($event, null)"
-            >
-                <button
-                    type="button"
-                    class="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    @click="openFolder(null)"
-                >
-                    Drop here to move playlist to root
-                </button>
-            </div>
-
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 <div
                     v-for="folder in childFolders"
@@ -306,9 +483,13 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
                     @dragleave="onFolderDragLeave(folder.id)"
                     @drop="onFolderDrop($event, folder.id)"
                 >
+                    <div
+                        v-if="dragOverFolderId === folder.id"
+                        class="pointer-events-none absolute inset-0 z-20 rounded-2xl border-2 border-accent/60"
+                    />
                     <button
                         type="button"
-                        class="w-full rounded-2xl border border-border bg-card p-5 text-left transition-all"
+                        class="w-full rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200"
                         :class="
                             dragOverFolderId === folder.id
                                 ? 'border-accent/60 bg-accent/10 shadow-accent'
@@ -349,17 +530,35 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
                 </p>
             </div>
 
-            <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <TransitionGroup
+                v-else
+                name="playlist-grid"
+                tag="div"
+                class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+                @dragover="onPlaylistDragDropZone"
+            >
                 <div
                     v-for="playlist in visiblePlaylists"
                     :key="playlist.id"
                     class="group relative"
                     draggable="true"
                     @dragstart="onPlaylistDragStart($event, playlist.id)"
+                    @dragend="onPlaylistDragEnd"
+                    @dragover="onPlaylistDragOver($event, playlist.id)"
+                    @dragenter="onPlaylistDragEnter($event, playlist.id)"
+                    @dragleave="onPlaylistDragLeave(playlist.id)"
+                    @drop="onPlaylistDrop($event, playlist.id)"
                 >
                     <Link
                         :href="libraryShow(playlist.id).url"
-                        class="block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-accent/40 hover:shadow-accent"
+                        class="block overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
+                        :class="[
+                            draggedPlaylistId === playlist.id ? 'scale-[0.98] opacity-70' : 'opacity-100',
+                            dragOverPlaylistId === playlist.id && draggedPlaylistId !== playlist.id
+                                ? 'ring-2 ring-accent/50'
+                                : '',
+                        ]"
+                        @click="onPlaylistCardClick"
                     >
                         <img
                             v-if="playlist.image"
@@ -380,7 +579,24 @@ function onFolderDrop(event: DragEvent, folderId: number | null) {
                         </div>
                     </Link>
                 </div>
-            </div>
+            </TransitionGroup>
         </section>
     </div>
 </template>
+
+<style scoped>
+.playlist-grid-move {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.playlist-grid-enter-active,
+.playlist-grid-leave-active {
+    transition: all 180ms ease;
+}
+
+.playlist-grid-enter-from,
+.playlist-grid-leave-to {
+    opacity: 0;
+    transform: scale(0.98);
+}
+</style>

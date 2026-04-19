@@ -42,6 +42,7 @@ final class IndexController extends Controller
                     'owner_name' => $playlist->owner_name,
                     'synced_at' => $playlist->synced_at?->toIso8601String(),
                     'folder_id' => $playlist->folder_id,
+                    'position' => (int) data_get($playlist->getAttributes(), 'position', 0),
                 ])
                 ->values(),
             'syncStatus' => $this->statusService->userStatus($user->id),
