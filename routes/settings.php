@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Settings\JobDispatchController;
+use App\Http\Controllers\Settings\JobsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\ReverbTestController;
 use App\Http\Controllers\Settings\ReverbToastTestController;
@@ -12,6 +14,8 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+    Route::get('settings/jobs', JobsController::class)->name('jobs.edit');
+    Route::post('settings/jobs/dispatch', JobDispatchController::class)->name('jobs.dispatch');
     Route::get('settings/reverb-test', ReverbTestController::class)->name('reverb-test.edit');
     Route::post('settings/reverb-test/dispatch-toast', ReverbToastTestController::class)->name('reverb-test.dispatch-toast');
 });
