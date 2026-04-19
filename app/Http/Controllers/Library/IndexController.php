@@ -23,11 +23,10 @@ final class IndexController extends Controller
                     'position' => $folder->position,
                 ])
                 ->values(),
-            'rootPlaylists' => Playlist::query()
+            'playlists' => Playlist::query()
                 ->whereBelongsTo($user)
-                ->whereNull('folder_id')
                 ->orderByDesc('updated_at')
-                ->limit(100)
+                ->limit(200)
                 ->get()
                 ->map(fn (Playlist $playlist): array => [
                     'id' => $playlist->spotify_id,
@@ -37,6 +36,7 @@ final class IndexController extends Controller
                     'tracks_total' => $playlist->tracks_total,
                     'owner_name' => $playlist->owner_name,
                     'synced_at' => $playlist->synced_at?->toIso8601String(),
+                    'folder_id' => $playlist->folder_id,
                 ])
                 ->values(),
         ]);

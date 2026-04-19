@@ -16,6 +16,12 @@ const props = defineProps<{
             spotify_track_id: string;
             position: number;
             added_at: string | null;
+            track: {
+                id: string;
+                name: string;
+                duration_ms: number;
+                image: string | null;
+            } | null;
         }>;
     };
 }>();
@@ -90,10 +96,28 @@ setLayoutProps({
                 <li
                     v-for="item in playlist.items"
                     :key="`${item.spotify_track_id}-${item.position}`"
-                    class="grid grid-cols-[40px_1fr] gap-2 rounded-md px-2 py-1 text-sm text-foreground/90"
+                    class="grid grid-cols-[40px_48px_1fr] items-center gap-2 rounded-md px-2 py-1 text-sm text-foreground/90"
                 >
                     <span class="text-xs text-muted-foreground">{{ item.position + 1 }}</span>
-                    <span class="truncate">{{ item.spotify_track_id }}</span>
+                    <img
+                        v-if="item.track?.image"
+                        :src="item.track.image"
+                        :alt="item.track.name"
+                        class="size-10 rounded object-cover"
+                    />
+                    <div v-else class="size-10 rounded bg-muted" />
+
+                    <div class="min-w-0">
+                        <p class="truncate">{{ item.track?.name ?? item.spotify_track_id }}</p>
+                        <p
+                            v-if="item.track"
+                            class="truncate text-[11px] text-muted-foreground tabular-nums"
+                        >
+                            {{ Math.floor(item.track.duration_ms / 60000) }}:{
+                                String(Math.floor((item.track.duration_ms % 60000) / 1000)).padStart(2, '0')
+                            }
+                        </p>
+                    </div>
                 </li>
             </ol>
         </section>

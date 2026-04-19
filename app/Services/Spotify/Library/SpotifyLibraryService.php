@@ -4,6 +4,7 @@ namespace App\Services\Spotify\Library;
 
 use App\Models\Playlist;
 use App\Models\PlaylistTrack;
+use App\Models\Track;
 use App\Models\User;
 use App\Services\Spotify\Client\SpotifyPlaylistClient;
 use App\Services\Spotify\SpotifyTokenService;
@@ -121,6 +122,20 @@ class SpotifyLibraryService
             if ($rows === []) {
                 return;
             }
+
+            $trackIdsBySpotifyId = Track::query()
+                ->whereIn('spotify_id', collect($rows)->pluck('spotify_track_id')->values()->all())
+                ->pluck('id', 'spotify_id');
+
+            $rows = array_map(function (array $row) use ($trackIdsBySpotifyId): array {
+                $resolvedTrackId = $trackIdsBySpotifyId->get($row['spotify_track_id']);
+
+                if (is_int($resolvedTrackId)) {
+                    $row['track_id'] = $resolvedTrackId;
+                }
+
+                return $row;
+            }, $rows);
 
             PlaylistTrack::query()->insert($rows);
         });

@@ -21,13 +21,13 @@ final class ShowController extends Controller
         $playlist = Playlist::query()
             ->whereBelongsTo($user)
             ->where('spotify_id', $playlistId)
-            ->with('items')
+            ->with('items.track.album')
             ->firstOrFail();
 
         if (! $playlist->expires_at || $playlist->expires_at->isPast()) {
             $this->libraryService->syncPlaylistTracks($user, $playlist);
             $playlist->refresh();
-            $playlist->load('items');
+            $playlist->load('items.track.album');
         }
 
         return Inertia::render('Library/Show', [
@@ -44,6 +44,12 @@ final class ShowController extends Controller
                         'spotify_track_id' => $item->spotify_track_id,
                         'position' => $item->position,
                         'added_at' => $item->added_at?->toIso8601String(),
+                        'track' => $item->track ? [
+                            'id' => $item->track->spotify_id,
+                            'name' => $item->track->name,
+                            'duration_ms' => $item->track->duration_ms,
+                            'image' => data_get($item->track->album?->images, '0.url'),
+                        ] : null,
                     ])
                     ->values(),
             ],

@@ -10,6 +10,7 @@ use App\Http\Controllers\Insights\RefreshController as InsightsRefreshController
 use App\Http\Controllers\Insights\StatusController as InsightsStatusController;
 use App\Http\Controllers\Library\FolderController as LibraryFolderController;
 use App\Http\Controllers\Library\IndexController as LibraryIndexController;
+use App\Http\Controllers\Library\MovePlaylistController as LibraryMovePlaylistController;
 use App\Http\Controllers\Library\RefreshController as LibraryRefreshController;
 use App\Http\Controllers\Library\ShowController as LibraryShowController;
 use App\Http\Controllers\Player\ControlController as PlayerControlController;
@@ -40,6 +41,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('library', LibraryIndexController::class)->name('library.index');
     Route::get('library/{playlistId}', LibraryShowController::class)->name('library.show');
     Route::post('library/refresh', LibraryRefreshController::class)->name('library.refresh');
+    Route::patch('library/{playlistId}/move', LibraryMovePlaylistController::class)->name('library.move');
     Route::post('library/folders', [LibraryFolderController::class, 'store'])->name('library.folders.store');
     Route::patch('library/folders/{folder}', [LibraryFolderController::class, 'update'])->name('library.folders.update');
     Route::delete('library/folders/{folder}', [LibraryFolderController::class, 'destroy'])->name('library.folders.destroy');

@@ -31,8 +31,8 @@ test('authenticated users can view library page with folders and root playlists'
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Library/Index')
             ->where('folders.0.name', 'Road Trip')
-            ->where('rootPlaylists.0.id', 'playlist-1')
-            ->where('rootPlaylists.0.name', 'Top Vibes')
-            ->where('rootPlaylists.0.tracks_total', 24)
+            ->where('playlists.0.id', 'playlist-1')
+            ->where('playlists.0.name', 'Top Vibes')
+            ->where('playlists.0.tracks_total', 24)
         );
 });
