@@ -328,3 +328,52 @@ test('sync top tracks preserves album metadata when payload has partial album da
         ->and($album->album_type)->toBe('album')
         ->and($album->release_date)->toBe('2024-01-01');
 });
+
+test('sync top tracks links album with artists from album payload', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => function (Request $request) {
+            $range = data_get($request->data(), 'time_range');
+
+            if ($range !== 'medium_term') {
+                return Http::response(['items' => []]);
+            }
+
+            return Http::response([
+                'items' => [[
+                    'id' => 'track-link-1',
+                    'name' => 'Track Link One',
+                    'duration_ms' => 120000,
+                    'explicit' => false,
+                    'artists' => [[
+                        'id' => 'artist-track-1',
+                        'name' => 'Track Artist',
+                    ]],
+                    'album' => [
+                        'id' => 'album-link-1',
+                        'name' => 'Album Link One',
+                        'album_type' => 'album',
+                        'release_date' => '2024-01-01',
+                        'images' => [],
+                        'total_tracks' => 9,
+                        'artists' => [[
+                            'id' => 'artist-album-1',
+                            'name' => 'Album Artist',
+                        ]],
+                    ],
+                ]],
+            ]);
+        },
+    ]);
+
+    (new SpotifySyncService($tokenService))->syncTopTracks($user);
+
+    $album = Album::query()->where('spotify_id', 'album-link-1')->first();
+
+    expect($album)->not->toBeNull();
+    expect($album?->artists()->where('artist_id', 'artist-album-1')->exists())->toBeTrue();
+});

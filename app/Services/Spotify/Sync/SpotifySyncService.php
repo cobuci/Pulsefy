@@ -337,6 +337,9 @@ final readonly class SpotifySyncService
         $albumName = data_get($payload, 'album.name');
         $albumId = null;
 
+        $albumArtistsPayload = data_get($payload, 'album.artists', []);
+        $albumArtistModelIds = [];
+
         if (is_string($albumSpotifyId) && $albumSpotifyId !== '' && is_string($albumName) && $albumName !== '') {
             $album = Album::query()->firstOrNew(['spotify_id' => $albumSpotifyId]);
 
@@ -361,6 +364,26 @@ final readonly class SpotifySyncService
             $album->save();
 
             $albumId = $album->id;
+
+            if (is_array($albumArtistsPayload)) {
+                foreach ($albumArtistsPayload as $artistPayload) {
+                    if (! is_array($artistPayload)) {
+                        continue;
+                    }
+
+                    $artist = $this->upsertArtist($artistPayload);
+
+                    if (! $artist) {
+                        continue;
+                    }
+
+                    $albumArtistModelIds[] = $artist->id;
+                }
+            }
+
+            if ($albumArtistModelIds !== []) {
+                $album->artists()->syncWithoutDetaching(array_unique($albumArtistModelIds));
+            }
         }
 
         $track = Track::query()->firstOrNew(['spotify_id' => $spotifyId]);
