@@ -218,3 +218,59 @@ test('sync runs persist meta counts and duration information', function () {
         ->and(data_get($run?->meta, 'skipped'))->toBe(0)
         ->and((int) data_get($run?->meta, 'duration_ms'))->toBeGreaterThanOrEqual(0);
 });
+
+test('sync top tracks preserves artist images when payload has partial artist data', function () {
+    $user = User::factory()->create();
+
+    Artist::query()->create([
+        'artist_id' => 'artist-1',
+        'artist_name' => 'Artist One',
+        'genres' => ['indie'],
+        'images' => [['url' => 'https://image.test/artist-1.jpg', 'height' => 640, 'width' => 640]],
+        'fetched_at' => now()->subDay(),
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => function (Request $request) {
+            $range = data_get($request->data(), 'time_range');
+
+            if ($range !== 'medium_term') {
+                return Http::response(['items' => []]);
+            }
+
+            return Http::response([
+                'items' => [[
+                    'id' => 'track-1',
+                    'name' => 'Track One',
+                    'duration_ms' => 120000,
+                    'explicit' => false,
+                    'artists' => [[
+                        'id' => 'artist-1',
+                        'name' => 'Artist One',
+                    ]],
+                    'album' => [
+                        'id' => 'album-1',
+                        'name' => 'Album One',
+                        'album_type' => 'album',
+                        'release_date' => '2024-01-01',
+                        'images' => [],
+                        'total_tracks' => 10,
+                    ],
+                ]],
+            ]);
+        },
+    ]);
+
+    (new SpotifySyncService($tokenService))->syncTopTracks($user);
+
+    $artist = Artist::query()->where('artist_id', 'artist-1')->first();
+
+    expect($artist)->not->toBeNull()
+        ->and($artist?->images)->toBe([
+            ['url' => 'https://image.test/artist-1.jpg', 'height' => 640, 'width' => 640],
+        ]);
+});

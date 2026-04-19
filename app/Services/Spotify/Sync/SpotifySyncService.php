@@ -306,19 +306,26 @@ final readonly class SpotifySyncService
             return null;
         }
 
-        return Artist::query()->updateOrCreate(
-            ['artist_id' => $spotifyId],
-            [
-                'artist_name' => $name,
-                'genres' => is_array(data_get($payload, 'genres')) ? data_get($payload, 'genres') : [],
-                'images' => is_array(data_get($payload, 'images')) ? data_get($payload, 'images') : null,
-                'popularity' => is_numeric(data_get($payload, 'popularity')) ? (int) data_get($payload, 'popularity') : null,
-                'uri' => is_string(data_get($payload, 'uri')) ? data_get($payload, 'uri') : null,
-                'external_urls' => is_array(data_get($payload, 'external_urls')) ? data_get($payload, 'external_urls') : null,
-                'fetched_at' => now(),
-                'expires_at' => now()->addDays(7),
-            ],
-        );
+        $artist = Artist::query()->firstOrNew(['artist_id' => $spotifyId]);
+
+        $genres = data_get($payload, 'genres');
+        $images = data_get($payload, 'images');
+        $popularity = data_get($payload, 'popularity');
+        $uri = data_get($payload, 'uri');
+        $externalUrls = data_get($payload, 'external_urls');
+
+        $artist->artist_name = $name;
+        $artist->genres = is_array($genres) ? $genres : ($artist->genres ?? []);
+        $artist->images = is_array($images) ? $images : $artist->images;
+        $artist->popularity = is_numeric($popularity) ? (int) $popularity : $artist->popularity;
+        $artist->uri = is_string($uri) && $uri !== '' ? $uri : $artist->uri;
+        $artist->external_urls = is_array($externalUrls) ? $externalUrls : $artist->external_urls;
+        $artist->fetched_at = now();
+        $artist->expires_at = now()->addDays(7);
+
+        $artist->save();
+
+        return $artist;
     }
 
     private function upsertTrack(array $payload): ?Track
