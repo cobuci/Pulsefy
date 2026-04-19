@@ -13,6 +13,7 @@ use App\Models\UserTopArtist;
 use App\Models\UserTopTrack;
 use App\Services\Spotify\Client\SpotifyStatsClient;
 use App\Services\Spotify\SpotifyTokenService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -84,9 +85,7 @@ final readonly class SpotifySyncService
 
                 $currentArtistIds = $this->existingArtistModelIds($items);
 
-                $staleQuery = UserTopArtist::query()
-                    ->where('user_id', $user->id)
-                    ->where('time_range', $timeRange);
+                $staleQuery = $this->staleTopArtistsQuery($user->id, $timeRange);
 
                 if ($currentArtistIds === []) {
                     $rangeMeta['pruned'] += $staleQuery->delete();
@@ -187,9 +186,7 @@ final readonly class SpotifySyncService
 
                 $currentTrackIds = $this->existingTrackIds($items);
 
-                $staleQuery = UserTopTrack::query()
-                    ->where('user_id', $user->id)
-                    ->where('time_range', $timeRange);
+                $staleQuery = $this->staleTopTracksQuery($user->id, $timeRange);
 
                 if ($currentTrackIds === []) {
                     $rangeMeta['pruned'] += $staleQuery->delete();
@@ -320,8 +317,7 @@ final readonly class SpotifySyncService
         $artist->popularity = is_numeric($popularity) ? (int) $popularity : $artist->popularity;
         $artist->uri = is_string($uri) && $uri !== '' ? $uri : $artist->uri;
         $artist->external_urls = is_array($externalUrls) ? $externalUrls : $artist->external_urls;
-        $artist->fetched_at = now();
-        $artist->expires_at = now()->addDays(7);
+        $this->touchArtistTtl($artist);
 
         $artist->save();
 
@@ -342,31 +338,45 @@ final readonly class SpotifySyncService
         $albumId = null;
 
         if (is_string($albumSpotifyId) && $albumSpotifyId !== '' && is_string($albumName) && $albumName !== '') {
-            $album = Album::query()->updateOrCreate(
-                ['spotify_id' => $albumSpotifyId],
-                [
-                    'name' => $albumName,
-                    'album_type' => data_get($payload, 'album.album_type'),
-                    'release_date' => data_get($payload, 'album.release_date'),
-                    'images' => is_array(data_get($payload, 'album.images')) ? data_get($payload, 'album.images') : null,
-                    'total_tracks' => (int) data_get($payload, 'album.total_tracks', 0),
-                    'metadata_synced_at' => now(),
-                ],
-            );
+            $album = Album::query()->firstOrNew(['spotify_id' => $albumSpotifyId]);
+
+            $albumType = data_get($payload, 'album.album_type');
+            $releaseDate = data_get($payload, 'album.release_date');
+            $images = data_get($payload, 'album.images');
+            $totalTracks = data_get($payload, 'album.total_tracks');
+
+            $album->name = $albumName;
+            $album->album_type = is_string($albumType) && $albumType !== ''
+                ? $albumType
+                : $album->album_type;
+            $album->release_date = is_string($releaseDate) && $releaseDate !== ''
+                ? $releaseDate
+                : $album->release_date;
+            $album->images = is_array($images) ? $images : $album->images;
+            $album->total_tracks = is_numeric($totalTracks)
+                ? (int) $totalTracks
+                : $album->total_tracks;
+            $this->touchAlbumMetadataSync($album);
+
+            $album->save();
 
             $albumId = $album->id;
         }
 
-        return Track::query()->updateOrCreate(
-            ['spotify_id' => $spotifyId],
-            [
-                'album_id' => $albumId,
-                'name' => $name,
-                'duration_ms' => (int) data_get($payload, 'duration_ms', 0),
-                'explicit' => (bool) data_get($payload, 'explicit', false),
-                'metadata_synced_at' => now(),
-            ],
-        );
+        $track = Track::query()->firstOrNew(['spotify_id' => $spotifyId]);
+
+        $durationMs = data_get($payload, 'duration_ms');
+        $explicit = data_get($payload, 'explicit');
+
+        $track->album_id = $albumId ?? $track->album_id;
+        $track->name = $name;
+        $track->duration_ms = is_numeric($durationMs) ? (int) $durationMs : $track->duration_ms;
+        $track->explicit = is_bool($explicit) ? $explicit : $track->explicit;
+        $this->touchTrackMetadataSync($track);
+
+        $track->save();
+
+        return $track;
     }
 
     private function syncTrackArtists(array $trackPayload, int $trackId): void
@@ -455,6 +465,38 @@ final readonly class SpotifySyncService
             'status' => 'running',
             'started_at' => now(),
         ]);
+    }
+
+    private function staleTopArtistsQuery(int $userId, string $timeRange): Builder
+    {
+        return UserTopArtist::query()
+            ->where('user_id', $userId)
+            ->where('time_range', $timeRange);
+    }
+
+    private function staleTopTracksQuery(int $userId, string $timeRange): Builder
+    {
+        return UserTopTrack::query()
+            ->where('user_id', $userId)
+            ->where('time_range', $timeRange);
+    }
+
+    private function touchArtistTtl(Artist $artist): void
+    {
+        $now = now();
+
+        $artist->fetched_at = $now;
+        $artist->expires_at = (clone $now)->addDays(7);
+    }
+
+    private function touchAlbumMetadataSync(Album $album): void
+    {
+        $album->metadata_synced_at = now();
+    }
+
+    private function touchTrackMetadataSync(Track $track): void
+    {
+        $track->metadata_synced_at = now();
     }
 
     /**

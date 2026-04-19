@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Album;
 use App\Models\Artist;
 use App\Models\SpotifySyncRun;
 use App\Models\Track;
@@ -273,4 +274,57 @@ test('sync top tracks preserves artist images when payload has partial artist da
         ->and($artist?->images)->toBe([
             ['url' => 'https://image.test/artist-1.jpg', 'height' => 640, 'width' => 640],
         ]);
+});
+
+test('sync top tracks preserves album metadata when payload has partial album data', function () {
+    $user = User::factory()->create();
+
+    $album = Album::query()->create([
+        'spotify_id' => 'album-keep',
+        'name' => 'Album Keep',
+        'album_type' => 'album',
+        'release_date' => '2024-01-01',
+        'images' => [['url' => 'https://image.test/album-keep.jpg', 'height' => 640, 'width' => 640]],
+        'total_tracks' => 12,
+        'metadata_synced_at' => now()->subDay(),
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/top/tracks*' => function (Request $request) {
+            $range = data_get($request->data(), 'time_range');
+
+            if ($range !== 'medium_term') {
+                return Http::response(['items' => []]);
+            }
+
+            return Http::response([
+                'items' => [[
+                    'id' => 'track-keep',
+                    'name' => 'Track Keep',
+                    'duration_ms' => 120000,
+                    'explicit' => false,
+                    'artists' => [[
+                        'id' => 'artist-keep',
+                        'name' => 'Artist Keep',
+                    ]],
+                    'album' => [
+                        'id' => 'album-keep',
+                        'name' => 'Album Keep',
+                    ],
+                ]],
+            ]);
+        },
+    ]);
+
+    (new SpotifySyncService($tokenService))->syncTopTracks($user);
+
+    $album->refresh();
+
+    expect(data_get($album->images, '0.url'))->toBe('https://image.test/album-keep.jpg')
+        ->and($album->total_tracks)->toBe(12)
+        ->and($album->album_type)->toBe('album')
+        ->and($album->release_date)->toBe('2024-01-01');
 });

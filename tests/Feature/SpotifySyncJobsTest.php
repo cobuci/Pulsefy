@@ -149,6 +149,45 @@ test('backfill artist genres job skips artists inside cooldown window', function
     Http::assertNothingSent();
 });
 
+test('backfill artist genres job processes multiple batches in one run', function () {
+    config()->set('services.lastfm.api_key', 'test-key');
+
+    foreach (range(1, 31) as $index) {
+        Artist::query()->create([
+            'artist_id' => 'artist-batch-'.$index,
+            'artist_name' => 'Artist Batch '.$index,
+            'genres' => [],
+            'fetched_at' => now()->subDay(),
+            'expires_at' => now()->subHour(),
+        ]);
+    }
+
+    Http::fake([
+        'ws.audioscrobbler.com/2.0/*' => Http::response([
+            'toptags' => [
+                'tag' => [
+                    ['name' => 'Rock', 'count' => 99],
+                ],
+            ],
+        ]),
+    ]);
+
+    $lastFm = new LastFmGenreService(new LastFmClient);
+
+    (new BackfillArtistGenresJob)->handle($lastFm);
+
+    $remaining = Artist::query()
+        ->where('artist_id', 'like', 'artist-batch-%')
+        ->where(function ($query): void {
+            $query
+                ->whereNull('genres')
+                ->orWhereJsonLength('genres', 0);
+        })
+        ->count();
+
+    expect($remaining)->toBe(0);
+});
+
 test('backfill artist genres job has uniqueness and overlap middleware configured', function () {
     $job = new BackfillArtistGenresJob;
 

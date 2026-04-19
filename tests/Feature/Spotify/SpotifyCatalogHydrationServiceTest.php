@@ -95,3 +95,32 @@ test('hydrate artist profile persists metadata used by frontend', function () {
         ->and($artist?->uri)->toBe('spotify:artist:artist-meta')
         ->and(data_get($artist?->external_urls, 'spotify'))->toBe('https://open.spotify.com/artist/artist-meta');
 });
+
+test('hydrate album profile preserves existing metadata when payload is partial', function () {
+    $existing = Album::query()->create([
+        'spotify_id' => 'album-preserve',
+        'name' => 'Album Preserve',
+        'album_type' => 'album',
+        'release_date' => '2023-01-01',
+        'images' => [['url' => 'https://image.test/album-preserve.jpg']],
+        'total_tracks' => 11,
+        'metadata_synced_at' => now()->subDay(),
+    ]);
+
+    $service = app(SpotifyCatalogHydrationService::class);
+
+    $album = $service->hydrateAlbumProfile([
+        'id' => 'album-preserve',
+        'name' => 'Album Preserve Updated',
+    ]);
+
+    expect($album)->not->toBeNull();
+
+    $existing->refresh();
+
+    expect($existing->name)->toBe('Album Preserve Updated')
+        ->and($existing->album_type)->toBe('album')
+        ->and($existing->release_date)->toBe('2023-01-01')
+        ->and(data_get($existing->images, '0.url'))->toBe('https://image.test/album-preserve.jpg')
+        ->and($existing->total_tracks)->toBe(11);
+});
