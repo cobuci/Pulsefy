@@ -67,6 +67,19 @@ class User extends Authenticatable
         return $this->hasMany(SpotifySyncRun::class);
     }
 
+    public function libraryFolders(): HasMany
+    {
+        return $this->hasMany(LibraryFolder::class)
+            ->orderBy('position')
+            ->orderBy('name');
+    }
+
+    public function playlists(): HasMany
+    {
+        return $this->hasMany(Playlist::class)
+            ->orderByDesc('updated_at');
+    }
+
     public function artists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'user_top_artists', 'user_id', 'artist_model_id')
