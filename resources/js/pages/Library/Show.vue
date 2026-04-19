@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, setLayoutProps, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, Clock3, Play } from 'lucide-vue-next';
+import { Clock3, Play } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import { Button } from '@/components/ui/button';
@@ -231,17 +231,7 @@ setLayoutProps({
 <template>
     <Head :title="playlist.name" />
 
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 py-4">
-        <div class="flex items-center">
-            <Link
-                :href="libraryIndex()"
-                class="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-                <ArrowLeft class="size-3.5" />
-                Back to Library
-            </Link>
-        </div>
-
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 pt-6 pb-4">
         <section class="flex flex-wrap gap-4 rounded-2xl border border-border/60 bg-card/70 p-5">
             <img
                 v-if="playlist.image"
