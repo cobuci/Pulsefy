@@ -94,6 +94,8 @@ test('dashboard response includes deferred spotify prop keys', function () {
                 ->has('topArtists')
                 ->has('recentPlays')
                 ->has('insights')
+                ->where('insights.listeningTimeLabel', '0m')
+                ->where('insights.uniqueTracksCount', 0)
                 ->where('insights.topGenre', 'Mixed')
                 ->where('insights.topGenres', [])
             )
@@ -215,6 +217,8 @@ test('dashboard resolves deferred props from db snapshots without spotify api ca
                 ->where('topTracks.0.id', 'track-1')
                 ->where('topArtists.0.id', 'artist-1')
                 ->where('recentPlays.0.track.id', 'track-1')
+                ->where('insights.listeningTimeLabel', '3m')
+                ->where('insights.uniqueTracksCount', 1)
                 ->where('insights.topGenre', 'alt pop')
             )
         );

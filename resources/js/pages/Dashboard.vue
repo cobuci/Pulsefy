@@ -43,6 +43,8 @@ const props = defineProps<{
     recentPlays?: RecentPlay[];
     insights?: {
         headline?: string;
+        listeningTimeLabel?: string;
+        uniqueTracksCount?: number;
         topGenre?: string;
         topGenres?: Array<{ label: string; value: number; color: string }>;
         activitySeries?: Array<{ label: string; value: number }>;
@@ -139,15 +141,10 @@ const recentPlaysPreview = computed(() =>
 );
 
 const totalHours = computed(() => {
-    const totalDurationMs = topTracksPreview.value.reduce(
-        (carry, track) => carry + track.duration_ms,
-        0,
-    );
-
-    return `${Math.max(1, Math.round(totalDurationMs / (1000 * 60 * 60)))}h`;
+    return props.insights?.listeningTimeLabel ?? '0m';
 });
 
-const uniqueTrackCount = computed(() => topTracksPreview.value.length);
+const uniqueTrackCount = computed(() => props.insights?.uniqueTracksCount ?? 0);
 
 const topGenre = computed(() => {
     const label = props.insights?.topGenre ?? topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';

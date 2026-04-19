@@ -46,6 +46,14 @@ final readonly class SpotifyInsightsService implements SpotifyInsightsProvider
 
             return [
                 'headline' => $this->dashboardHeadline($timeRange, $topArtists),
+                'listeningTimeLabel' => $this->durationLabel((int) collect($topTracks)->sum(
+                    fn (array $track): int => (int) data_get($track, 'duration_ms', 0),
+                )),
+                'uniqueTracksCount' => collect($topTracks)
+                    ->pluck('id')
+                    ->filter(fn (mixed $id): bool => is_string($id) && $id !== '')
+                    ->unique()
+                    ->count(),
                 'activitySeries' => $this->activitySeries($recentPlays),
                 'topGenre' => $genreStats['topGenre'],
                 'topGenres' => $genreStats['items'],
