@@ -17,6 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     play: [track: SpotifyTrack];
+    pause: [track: SpotifyTrack];
 }>();
 
 const isHovered = ref(false);
@@ -36,6 +37,12 @@ function handlePlay() {
         emit('play', props.track);
     }
 }
+
+function handlePause() {
+    if (props.track) {
+        emit('pause', props.track);
+    }
+}
 </script>
 
 <template>
@@ -48,7 +55,7 @@ function handlePlay() {
             v-if="!loading && track"
             class="relative flex size-5 shrink-0 items-center justify-center"
             :aria-label="isPlaying ? 'Pause' : 'Play'"
-            @click="handlePlay"
+            @click="isPlaying ? handlePause() : handlePlay()"
         >
             <!-- Rank number — shown when not hovered and not playing -->
             <span
@@ -76,11 +83,24 @@ function handlePlay() {
             />
 
             <!-- Pause / equalizer icon — shown when track is actively playing -->
-            <IconPause
+            <div
                 v-else
-                class="absolute inset-0 m-auto size-4 text-green-500 opacity-100 transition-opacity duration-150"
-                aria-hidden="true"
-            />
+                class="absolute inset-0 m-auto flex items-end justify-center gap-0.5"
+            >
+                <span class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0" />
+                <span
+                    class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0"
+                    style="animation-delay: 0.15s"
+                />
+                <span
+                    class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0"
+                    style="animation-delay: 0.3s"
+                />
+                <IconPause
+                    class="absolute inset-0 m-auto size-4 text-green-500 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                    aria-hidden="true"
+                />
+            </div>
         </button>
 
         <span

@@ -20,6 +20,7 @@ export type UseSpotifyWebPlayerReturn = {
         trackId: () => string | undefined,
         onProgress: (pct: number) => void,
         duration: () => number,
+        onPlaybackStateChanged: (isPlaying: boolean) => void,
     ) => void;
     onPlayerStatus: (message: string) => void;
 };
@@ -169,14 +170,17 @@ export function useSpotifyWebPlayer(
         currentTrackId: () => string | undefined,
         onProgress: (pct: number) => void,
         duration: () => number,
+        onPlaybackStateChanged: (isPlaying: boolean) => void,
     ) {
         if (!state) {
             localPlaybackActive.value = false;
+            onPlaybackStateChanged(false);
 
             return;
         }
 
         localPlaybackActive.value = true;
+        onPlaybackStateChanged(!state.paused);
 
         const dur = state.duration || duration() || 0;
 

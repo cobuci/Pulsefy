@@ -89,7 +89,7 @@ function albumImage(album: SpotifyAlbum): string | null {
     return album.images?.[0]?.url ?? null;
 }
 
-const { isPlayingTrack, playTrack } = usePlayer();
+const { isPlayingTrack, playTrack, pausePlayback } = usePlayer();
 
 const INITIAL_ALBUMS_COUNT = 6;
 
@@ -181,6 +181,12 @@ function canPlayTrack(track: SpotifyTrack): boolean {
 }
 
 async function handlePlay(track: SpotifyTrack) {
+    if (isPlayingTrack.value(track.id)) {
+        await pausePlayback();
+
+        return;
+    }
+
     const uri = trackUri(track);
 
     if (!uri) {
@@ -492,10 +498,23 @@ async function playShuffledTopTracks() {
                                     "
                                     @click.stop="handlePlay(track)"
                                 >
-                                    <IconPause
+                                    <div
                                         v-if="isPlayingTrack(track.id)"
-                                        class="size-4 text-accent"
-                                    />
+                                        class="relative flex items-end justify-center gap-0.5"
+                                    >
+                                        <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" />
+                                        <span
+                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                            style="animation-delay: 0.15s"
+                                        />
+                                        <span
+                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                            style="animation-delay: 0.3s"
+                                        />
+                                        <IconPause
+                                            class="absolute inset-0 m-auto size-4 text-accent opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                                        />
+                                    </div>
                                     <IconPlay v-else class="size-4" />
                                 </button>
                                 <span

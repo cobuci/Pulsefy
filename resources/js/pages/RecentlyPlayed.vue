@@ -27,9 +27,15 @@ const props = defineProps<{
 
 const SKELETON_COUNT = 10;
 
-const { isPlayingTrack, playTrack } = usePlayer();
+const { isPlayingTrack, playTrack, pausePlayback } = usePlayer();
 
 async function handlePlay(track: SpotifyTrack) {
+    if (isPlayingTrack.value(track.id)) {
+        await pausePlayback();
+
+        return;
+    }
+
     await playTrack(`spotify:track:${track.id}`);
 }
 
@@ -169,11 +175,20 @@ const totalEntries = computed(() => {
                                     <button
                                         v-if="isPlayingTrack(entry.track.id)"
                                         type="button"
-                                        class="grid w-6 cursor-pointer place-items-center text-accent"
+                                        class="relative grid w-6 cursor-pointer place-items-center text-accent"
                                         :aria-label="'Pause'"
                                         @click="handlePlay(entry.track)"
                                     >
-                                        <IconPause class="size-3.5" />
+                                        <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" />
+                                        <span
+                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                            style="animation-delay: 0.15s"
+                                        />
+                                        <span
+                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                            style="animation-delay: 0.3s"
+                                        />
+                                        <IconPause class="absolute inset-0 m-auto size-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                                     </button>
                                 </div>
 

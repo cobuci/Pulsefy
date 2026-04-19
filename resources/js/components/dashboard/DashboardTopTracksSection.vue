@@ -9,6 +9,7 @@ defineProps<{
     topTracksPreview: SpotifyTrack[];
     isPlayingTrack: (trackId: string) => boolean;
     handlePlay: (track: SpotifyTrack) => Promise<void>;
+    handlePause: (track: SpotifyTrack) => Promise<void>;
     skeletonCount: number;
 }>();
 </script>
@@ -48,6 +49,7 @@ defineProps<{
                         :track="track"
                         :is-playing="isPlayingTrack(track.id)"
                         @play="handlePlay"
+                        @pause="handlePause"
                     />
                     <p
                         v-if="topTracksPreview.length === 0"

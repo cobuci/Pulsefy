@@ -186,6 +186,21 @@ onMounted(() => {
                 }
             },
             () => data.value?.track?.duration_ms ?? 0,
+            (isPlayingState) => {
+                if (!nowPlayingData.value) {
+                    return;
+                }
+
+                nowPlayingData.value = {
+                    ...nowPlayingData.value,
+                    is_playing: isPlayingState,
+                };
+
+                if (!isPlayingState && progressTimer) {
+                    clearInterval(progressTimer);
+                    progressTimer = null;
+                }
+            },
         );
     });
 
@@ -247,8 +262,16 @@ async function sendCommand(url: string, body?: Record<string, unknown>) {
 }
 
 function onPlay() {
-    if (webPlayer.localPlaybackActive.value && webPlayer.localPlayer.value) {
+    if (webPlayer.localPlayer.value && webPlayer.localPlayerReady.value) {
+        nowPlayingData.value = nowPlayingData.value
+            ? {
+                  ...nowPlayingData.value,
+                  is_playing: true,
+              }
+            : nowPlayingData.value;
+
         void webPlayer.localPlayer.value.resume();
+        void fetchNowPlaying();
 
         return;
     }
@@ -256,13 +279,32 @@ function onPlay() {
     sendCommand(play.url());
 }
 
+function applyPausedStateLocally() {
+    if (!nowPlayingData.value) {
+        return;
+    }
+
+    nowPlayingData.value = {
+        ...nowPlayingData.value,
+        is_playing: false,
+    };
+
+    if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+    }
+}
+
 function onPause() {
     if (webPlayer.localPlaybackActive.value && webPlayer.localPlayer.value) {
         void webPlayer.localPlayer.value.pause();
+        applyPausedStateLocally();
+        void fetchNowPlaying();
 
         return;
     }
 
+    applyPausedStateLocally();
     sendCommand(pause.url());
 }
 

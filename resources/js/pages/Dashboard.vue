@@ -74,7 +74,7 @@ onUnmounted(() => {
     offFinish();
 });
 
-const { isPlayingTrack, playTrack } = usePlayer();
+const { isPlayingTrack, playTrack, pausePlayback } = usePlayer();
 const page = usePage<{
     auth: {
         user?: {
@@ -202,6 +202,10 @@ async function handlePlay(track: SpotifyTrack) {
     await playTrack(`spotify:track:${track.id}`);
 }
 
+async function handlePause(): Promise<void> {
+    await pausePlayback();
+}
+
 function refreshAllInsights() {
     if (isRefreshing.value) {
         return;
@@ -281,6 +285,7 @@ function refreshAllInsights() {
                     :top-tracks-preview="topTracksPreview"
                     :is-playing-track="isPlayingTrack"
                     :handle-play="handlePlay"
+                    :handle-pause="handlePause"
                     :skeleton-count="SKELETON_COUNT"
                 />
 

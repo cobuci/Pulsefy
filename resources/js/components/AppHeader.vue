@@ -64,6 +64,7 @@ const searchOpen = ref(false);
 const searchQuery = ref('');
 const searchActiveIndex = ref(0);
 const searchInputRef = ref<HTMLInputElement | null>(null);
+const isClientMounted = ref(false);
 const searchHttp = useHttp<SpotlightSearchResponse>();
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastIssuedSearchQuery = '';
@@ -259,6 +260,7 @@ function goToSearchItem(item: SpotlightItem) {
 }
 
 onMounted(() => {
+    isClientMounted.value = true;
     document.addEventListener('keydown', onSearchKeydown);
 });
 
@@ -406,7 +408,7 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <Teleport to="body">
+        <Teleport v-if="isClientMounted" to="body">
             <div
                 v-if="searchOpen"
                 class="fixed inset-0 z-[100] grid place-items-start justify-items-center px-4 pt-[18vh]"
