@@ -7,7 +7,6 @@ use App\Http\Requests\Library\MovePlaylistRequest;
 use App\Models\LibraryFolder;
 use App\Models\Playlist;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 final class MovePlaylistController extends Controller
@@ -31,20 +30,16 @@ final class MovePlaylistController extends Controller
             }
         }
 
-        $nextPosition = null;
+        $maxPositionInTarget = Playlist::query()
+            ->whereBelongsTo($user)
+            ->when(
+                $folderId === null,
+                fn ($query) => $query->whereNull('folder_id'),
+                fn ($query) => $query->where('folder_id', $folderId),
+            )
+            ->max('position');
 
-        if (Schema::hasColumn('playlists', 'position')) {
-            $maxPositionInTarget = Playlist::query()
-                ->whereBelongsTo($user)
-                ->when(
-                    $folderId === null,
-                    fn ($query) => $query->whereNull('folder_id'),
-                    fn ($query) => $query->where('folder_id', $folderId),
-                )
-                ->max('position');
-
-            $nextPosition = (int) ($maxPositionInTarget ?? 0) + 100;
-        }
+        $nextPosition = (int) ($maxPositionInTarget ?? 0) + 100;
 
         $payload = [
             'folder_id' => $folderId,
