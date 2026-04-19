@@ -3,8 +3,9 @@ import { Form, Head } from '@inertiajs/vue3';
 import { Folder, ListMusic } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { index as libraryIndex } from '@/routes/library';
+import { index as libraryIndex, show as libraryShow } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
+import { refresh as refreshLibrary } from '@/routes/library';
 
 defineOptions({
     layout: {
@@ -53,15 +54,28 @@ defineProps<{
                 </p>
             </div>
 
-            <Form
-                :action="storeFolder().url"
-                method="post"
-                class="flex w-full max-w-sm items-center gap-2"
-                v-slot="{ processing }"
-            >
-                <Input name="name" placeholder="New folder" autocomplete="off" />
-                <Button type="submit" :disabled="processing">Create folder</Button>
-            </Form>
+            <div class="flex w-full max-w-2xl items-center justify-end gap-2">
+                <Form
+                    :action="refreshLibrary().url"
+                    method="post"
+                    class="shrink-0"
+                    v-slot="{ processing }"
+                >
+                    <Button type="submit" variant="outline" :disabled="processing">
+                        {{ processing ? 'Refreshing…' : 'Refresh playlists' }}
+                    </Button>
+                </Form>
+
+                <Form
+                    :action="storeFolder().url"
+                    method="post"
+                    class="flex w-full max-w-sm items-center gap-2"
+                    v-slot="{ processing }"
+                >
+                    <Input name="name" placeholder="New folder" autocomplete="off" />
+                    <Button type="submit" :disabled="processing">Create folder</Button>
+                </Form>
+            </div>
         </section>
 
         <section class="grid gap-6 lg:grid-cols-3">
@@ -111,7 +125,12 @@ defineProps<{
                         <div v-else class="size-10 rounded bg-muted" />
 
                         <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium text-foreground">{{ playlist.name }}</p>
+                            <a
+                                :href="libraryShow(playlist.id).url"
+                                class="truncate text-sm font-medium text-foreground transition-colors hover:text-accent"
+                            >
+                                {{ playlist.name }}
+                            </a>
                             <p class="truncate text-xs text-muted-foreground">
                                 {{ playlist.tracks_total }} tracks
                                 <span v-if="playlist.owner_name">· {{ playlist.owner_name }}</span>

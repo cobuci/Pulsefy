@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('folder_id')->nullable()->constrained('library_folders')->nullOnDelete();
-            $table->string('spotify_id')->unique();
+            $table->string('spotify_id');
             $table->string('name');
             $table->text('description')->nullable();
             $table->json('images')->nullable();
@@ -29,6 +29,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'folder_id']);
+            $table->unique(['user_id', 'spotify_id']);
             $table->index(['user_id', 'updated_at']);
             $table->index(['expires_at']);
         });
