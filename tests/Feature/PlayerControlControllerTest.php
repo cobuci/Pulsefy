@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -17,6 +18,7 @@ test('guests cannot access player control endpoints', function (string $route) {
     'player.pause',
     'player.next',
     'player.previous',
+    'player.volume',
     'player.shuffle',
     'player.repeat',
 ]);
@@ -131,6 +133,37 @@ test('repeat returns ok when spotify accepts the command (204)', function () {
         ->postJson(route('player.repeat'), ['state' => 'context'])
         ->assertOk()
         ->assertJson(['ok' => true]);
+});
+
+test('volume returns ok when spotify accepts the command (204)', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/volume*' => Http::response(null, 204),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('player.volume'), ['volume_percent' => 70])
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+});
+
+test('volume clamps out-of-range values before calling spotify', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/volume*' => Http::response(null, 204),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('player.volume'), ['volume_percent' => 999])
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->method() === 'PUT'
+            && str_contains($request->url(), '/v1/me/player/volume?volume_percent=100');
+    });
 });
 
 test('repeat returns ok:false for invalid mode', function () {

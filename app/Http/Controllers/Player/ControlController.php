@@ -59,7 +59,7 @@ final class ControlController extends Controller
 
     public function volume(Request $request): JsonResponse
     {
-        $volumePercent = clamp($request->integer('volume_percent', 50), 0, 100);
+        $volumePercent = max(0, min(100, $request->integer('volume_percent', 50)));
 
         return $this->respondOperation($this->playback->setVolume($request->user(), $volumePercent));
     }
