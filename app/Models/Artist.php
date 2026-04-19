@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property ?array<string, mixed> $external_urls
  * @property Carbon $fetched_at
  * @property Carbon $expires_at
+ * @property ?Carbon $lastfm_genres_checked_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  */
@@ -38,6 +39,7 @@ class Artist extends Model
             'external_urls' => 'array',
             'fetched_at' => 'datetime',
             'expires_at' => 'datetime',
+            'lastfm_genres_checked_at' => 'datetime',
         ];
     }
 
