@@ -15,6 +15,7 @@ use App\Http\Controllers\Player\LyricsController;
 use App\Http\Controllers\Player\NowPlayingController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
+use App\Http\Controllers\Search\IndexController as SearchIndexController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('artists', ArtistIndexController::class)->name('artists.index');
     Route::get('artists/{artistId}', ArtistShowController::class)->name('artists.show');
     Route::post('artists/{artistId}/favorite', ArtistFavoriteController::class)->name('artists.favorite');
+    Route::get('search', SearchIndexController::class)->name('search');
     Route::get('albums/{albumId}', AlbumShowController::class)->name('albums.show');
     Route::post('albums/{albumId}/favorite', AlbumFavoriteController::class)->name('albums.favorite');
     Route::post('insights/refresh', InsightsRefreshController::class)->name('insights.refresh');
