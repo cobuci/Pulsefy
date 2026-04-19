@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight } from 'lucide-vue-next';
+import { Ban, ChevronRight } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { cn } from '@/lib/utils';
 import type { ContextMenuItem } from './types';
@@ -22,6 +22,7 @@ const openSubmenuKey = ref<string | null>(null);
 const position = ref({ x: props.x, y: props.y });
 
 const rootItems = computed(() => props.items);
+const hasActionItems = computed(() => rootItems.value.some((item) => !item.separator));
 
 watch(
     () => [props.open, props.x, props.y],
@@ -72,6 +73,7 @@ function onGlobalContextMenu(event: MouseEvent): void {
     }
 
     if (!menuRef.value.contains(target)) {
+        event.preventDefault();
         closeMenu();
     }
 }
@@ -158,6 +160,10 @@ function selectItem(item: ContextMenuItem): void {
     closeMenu();
 }
 
+function clearSubmenu(): void {
+    openSubmenuKey.value = null;
+}
+
 onMounted(() => {
     window.addEventListener('pointerdown', onGlobalPointerDown);
     window.addEventListener('contextmenu', onGlobalContextMenu);
@@ -184,59 +190,67 @@ onUnmounted(() => {
                     top: `${position.y}px`,
                 }"
                 role="menu"
+                @mouseleave="clearSubmenu"
             >
-                <template v-for="item in rootItems" :key="item.key">
-                    <div v-if="item.separator" class="my-1 h-px bg-border" />
+                <template v-if="hasActionItems">
+                    <template v-for="item in rootItems" :key="item.key">
+                        <div v-if="item.separator" class="my-1 h-px bg-border" />
 
-                    <button
-                        v-else
-                        type="button"
-                        class="relative flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition-colors"
-                        :class="
-                            cn(
-                                'text-popover-foreground hover:bg-accent/60 hover:text-accent-foreground',
-                                item.destructive
-                                    ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
-                                    : '',
-                                item.disabled ? 'pointer-events-none opacity-40' : '',
-                            )
-                        "
-                        @mouseenter="openSubmenu(item)"
-                        @focus="openSubmenu(item)"
-                        @click="selectItem(item)"
-                    >
-                        <span>{{ item.label }}</span>
-                        <ChevronRight v-if="item.children?.length" class="size-4 text-muted-foreground" />
-
-                        <div
-                            v-if="item.children?.length && openSubmenuKey === item.key"
-                            :ref="(element) => setSubmenuRef(item.key, element)"
-                            class="absolute top-0 left-[calc(100%+0.25rem)] min-w-48 rounded-xl border border-border/80 bg-popover p-1 shadow-xl"
+                        <button
+                            v-else
+                            type="button"
+                            class="relative flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition-colors"
+                            :class="
+                                cn(
+                                    'text-popover-foreground hover:bg-accent/60 hover:text-accent-foreground',
+                                    item.destructive
+                                        ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
+                                        : '',
+                                    item.disabled ? 'pointer-events-none opacity-40' : '',
+                                )
+                            "
+                            @mouseenter="openSubmenu(item)"
+                            @focus="openSubmenu(item)"
+                            @click="selectItem(item)"
                         >
-                            <template v-for="child in item.children" :key="child.key">
-                                <div v-if="child.separator" class="my-1 h-px bg-border" />
+                            <span>{{ item.label }}</span>
+                            <ChevronRight v-if="item.children?.length" class="size-4 text-muted-foreground" />
 
-                                <button
-                                    v-else
-                                    type="button"
-                                    class="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm transition-colors"
-                                    :class="
-                                        cn(
-                                            'text-popover-foreground hover:bg-accent/60 hover:text-accent-foreground',
-                                            child.destructive
-                                                ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
-                                                : '',
-                                            child.disabled ? 'pointer-events-none opacity-40' : '',
-                                        )
-                                    "
-                                    @click="selectItem(child)"
-                                >
-                                    {{ child.label }}
-                                </button>
-                            </template>
-                        </div>
-                    </button>
+                            <div
+                                v-if="item.children?.length && openSubmenuKey === item.key"
+                                :ref="(element) => setSubmenuRef(item.key, element)"
+                                class="absolute top-0 left-[calc(100%+0.25rem)] min-w-48 rounded-xl border border-border/80 bg-popover p-1 shadow-xl"
+                            >
+                                <template v-for="child in item.children" :key="child.key">
+                                    <div v-if="child.separator" class="my-1 h-px bg-border" />
+
+                                    <button
+                                        v-else
+                                        type="button"
+                                        class="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm transition-colors"
+                                        :class="
+                                            cn(
+                                                'text-popover-foreground hover:bg-accent/60 hover:text-accent-foreground',
+                                                child.destructive
+                                                    ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
+                                                    : '',
+                                                child.disabled ? 'pointer-events-none opacity-40' : '',
+                                            )
+                                        "
+                                        @click="selectItem(child)"
+                                    >
+                                        {{ child.label }}
+                                    </button>
+                                </template>
+                            </div>
+                        </button>
+                    </template>
                 </template>
+
+                <div v-else class="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted-foreground">
+                    <Ban class="size-4" />
+                    No actions available
+                </div>
             </div>
         </div>
     </teleport>

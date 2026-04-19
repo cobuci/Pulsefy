@@ -3,9 +3,9 @@ import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Check, ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
-import { AppContextMenu  } from '@/components/ui/context-menu';
-import type {ContextMenuItem} from '@/components/ui/context-menu';
+import type { ContextMenuItem } from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
+import { useContextMenu } from '@/composables/useContextMenu';
 import {
     index as libraryIndex,
     move as movePlaylist,
@@ -88,10 +88,7 @@ const movedToAnotherFolder = ref(false);
 const localPlaylists = ref<LibraryPlaylistItem[]>([]);
 const includeHidden = ref(props.showHidden);
 const hiddenCount = computed(() => props.hiddenCount);
-const contextMenuOpen = ref(false);
-const contextMenuX = ref(0);
-const contextMenuY = ref(0);
-const contextMenuItems = ref<ContextMenuItem[]>([]);
+const contextMenu = useContextMenu();
 const syncStatusRef = ref(
     props.syncStatus ?? {
         isRunning: false,
@@ -428,17 +425,11 @@ function onPlaylistCardClick(event: MouseEvent) {
 }
 
 function closeContextMenu() {
-    contextMenuOpen.value = false;
+    contextMenu.close();
 }
 
 function openContextMenu(event: MouseEvent, items: ContextMenuItem[]) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    contextMenuItems.value = items;
-    contextMenuX.value = event.clientX;
-    contextMenuY.value = event.clientY;
-    contextMenuOpen.value = true;
+    contextMenu.open(event, items);
 }
 
 function setPlaylistVisibility(playlist: LibraryPlaylistItem, hidden: boolean) {
@@ -814,13 +805,6 @@ function toggleShowHidden() {
         </section>
     </div>
 
-    <AppContextMenu
-        :open="contextMenuOpen"
-        :x="contextMenuX"
-        :y="contextMenuY"
-        :items="contextMenuItems"
-        @close="closeContextMenu"
-    />
 </template>
 
 <style scoped>
