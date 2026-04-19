@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SpotifyArtist } from '@/types/spotify';
 
@@ -62,13 +61,6 @@ const primaryGenre = computed(() => {
                 >
                     {{ rank }}
                 </span>
-
-                <button
-                    type="button"
-                    class="bg-gradient-primary shadow-glow absolute right-3 bottom-3 grid size-10 translate-y-2 place-items-center rounded-full opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100"
-                >
-                    <IconPlay class="ml-0.5 size-4 text-primary-foreground" />
-                </button>
 
                 <div class="absolute right-14 bottom-3 left-3">
                     <p
