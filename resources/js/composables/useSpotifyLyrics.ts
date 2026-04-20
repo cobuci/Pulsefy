@@ -1,7 +1,9 @@
 import { useHttp } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { lyrics } from '@/routes/player';
-import type { LyricsResponse, SpotifyTrack } from '@/types/spotify';
+import { translate as translateLyrics } from '@/routes/player/lyrics';
+import type { LyricsResponse, LyricsTranslationStatus, SpotifyTrack } from '@/types/spotify';
+import { getCsrfToken } from '@/utils/csrf';
 
 export type ParsedLyricLine = {
     timeMs: number;
@@ -15,9 +17,16 @@ export function useSpotifyLyrics(
 ) {
     const lyricsHttp = useHttp<LyricsResponse>();
     const lyricsOpen = ref(false);
+    const translationRequestBusy = ref(false);
 
     const lyricsData = computed<LyricsResponse | null>(() => {
         return (lyricsHttp.response as LyricsResponse | null) ?? null;
+    });
+
+    const translatedLinesByIndex = computed(() => {
+        const lines = lyricsData.value?.translation?.translated_lines ?? [];
+
+        return new Map(lines.map((line) => [line.index, line]));
     });
 
     async function fetchLyrics(forceRefresh: boolean) {
@@ -51,6 +60,64 @@ export function useSpotifyLyrics(
 
     function fetchLyricsForCurrentTrack() {
         void fetchLyrics(false);
+    }
+
+    async function requestTranslation(): Promise<void> {
+        const track = currentTrack();
+
+        if (!track || translationRequestBusy.value) {
+            return;
+        }
+
+        const artist = track.artists.map((item) => item.name).join(', ');
+
+        translationRequestBusy.value = true;
+
+        try {
+            const response = await fetch(translateLyrics.url(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    track_id: track.id,
+                    artist,
+                    track_name: track.name,
+                    album_name: track.album.name,
+                    duration: track.duration_ms,
+                }),
+            });
+
+            if (!response.ok) {
+                await fetchLyrics(true);
+
+                return;
+            }
+
+            await fetchLyrics(true);
+
+            const status = (lyricsData.value?.translation?.status ?? null) as LyricsTranslationStatus | null;
+
+            if (status === 'queued' || status === 'processing') {
+                const maxAttempts = 18;
+
+                for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    await fetchLyrics(true);
+
+                    const currentStatus = (lyricsData.value?.translation?.status ?? null) as LyricsTranslationStatus | null;
+
+                    if (currentStatus === 'ready' || currentStatus === 'failed') {
+                        break;
+                    }
+                }
+            }
+        } finally {
+            translationRequestBusy.value = false;
+        }
     }
 
     const parsedSyncedLyrics = computed<ParsedLyricLine[]>(() => {
@@ -109,11 +176,14 @@ export function useSpotifyLyrics(
 
     return {
         lyricsHttp,
+        translationRequestBusy,
         lyricsOpen,
         lyricsData,
+        translatedLinesByIndex,
         parsedSyncedLyrics,
         activeLyricLineIndex,
         fetchLyricsForCurrentTrack,
         retryLyricsFetch,
+        requestTranslation,
     };
 }

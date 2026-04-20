@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { Languages, Repeat, Repeat1, Shuffle, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
@@ -26,6 +26,7 @@ import {
     seek,
     shuffle as shuffleRoute,
 } from '@/routes/player';
+import type { LyricsTranslationUpdatedEvent } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
@@ -33,6 +34,13 @@ const POLL_INTERVAL = 30_000;
 const PREVIOUS_RESTART_THRESHOLD_MS = 3_000;
 
 const { nowPlayingData, fetchNowPlaying } = usePlayer();
+const page = usePage<{
+    auth: {
+        user?: {
+            id: number;
+        };
+    };
+}>();
 const data = computed(() => nowPlayingData.value);
 const hasTrack = computed(() => !!data.value?.track);
 const isPlaying = computed(() => data.value?.is_playing ?? false);
@@ -113,7 +121,7 @@ function handleLyricsHotkeys(event: KeyboardEvent) {
     }
 
     if (event.key.toLowerCase() === 't') {
-        showLyricsTranslation.value = !showLyricsTranslation.value;
+        handleTranslationToggle();
     }
 
     if (event.key.toLowerCase() === 'l' && showLyricsTranslation.value) {
@@ -122,7 +130,61 @@ function handleLyricsHotkeys(event: KeyboardEvent) {
     }
 }
 
-const hasLyricsTranslation = computed(() => false);
+const hasLyricsTranslation = computed(() => {
+    return (lyrics.lyricsData.value?.translation?.translated_lines?.length ?? 0) > 0;
+});
+
+const translationStatus = computed(() => {
+    return lyrics.lyricsData.value?.translation?.status ?? null;
+});
+
+const isTranslating = computed(() => {
+    return lyrics.translationRequestBusy.value || translationStatus.value === 'queued' || translationStatus.value === 'processing';
+});
+
+const translationButtonLabel = computed(() => {
+    if (isTranslating.value) {
+        return 'Translating...';
+    }
+
+    if (translationStatus.value === 'failed') {
+        return 'Retry translation';
+    }
+
+    if (!hasLyricsTranslation.value) {
+        return 'Get translation';
+    }
+
+    return 'Translate';
+});
+
+function renderedTranslatedLine(index: number, fallbackText: string): string {
+    const translatedLine = lyrics.translatedLinesByIndex.value.get(index);
+
+    if (!translatedLine) {
+        return fallbackText;
+    }
+
+    if (lyricsTranslationLanguage.value === 'pt-BR') {
+        return translatedLine.pt_br ?? fallbackText;
+    }
+
+    return translatedLine.en ?? fallbackText;
+}
+
+function requestLyricsTranslation() {
+    void lyrics.requestTranslation();
+}
+
+function handleTranslationToggle() {
+    if (!hasLyricsTranslation.value) {
+        requestLyricsTranslation();
+
+        return;
+    }
+
+    showLyricsTranslation.value = !showLyricsTranslation.value;
+}
 
 watch(data, (val) => {
     if (progressTimer) {
@@ -209,6 +271,35 @@ onMounted(() => {
             'Your browser has limited DRM capability. Spotify Web Player controls may not be available.';
     }
 
+    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+        window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
+            '.Lyrics.TranslationUpdated',
+            (event: LyricsTranslationUpdatedEvent) => {
+                const currentTrackId = data.value?.track?.id;
+
+                if (!currentTrackId || event.trackId !== currentTrackId) {
+                    return;
+                }
+
+                const payload = lyrics.lyricsData.value;
+
+                if (!payload) {
+                    return;
+                }
+
+                lyrics.lyricsHttp.response = {
+                    ...payload,
+                    translation: {
+                        ...payload.translation,
+                        status: event.status,
+                        translated_lines: event.translatedLines,
+                        error_message: event.errorMessage,
+                    },
+                };
+            },
+        );
+    }
+
 });
 
 onUnmounted(() => {
@@ -223,6 +314,10 @@ onUnmounted(() => {
     document.removeEventListener('pointerdown', handleDocumentPointerDown);
     document.removeEventListener('keydown', handleLyricsHotkeys);
     webPlayer.disconnect();
+
+    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+        window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
+    }
 });
 
 async function postPlayerCommand(url: string, body?: Record<string, unknown>) {
@@ -558,21 +653,21 @@ watch(
                         <div class="flex items-center gap-2">
                             <button
                                 type="button"
-                                :disabled="!hasLyricsTranslation"
+                                :disabled="isTranslating"
                                 :title="showLyricsTranslation ? 'Translation on (T)' : 'Translation off (T)'"
                                 :class="[
                                     'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
                                     showLyricsTranslation
                                         ? 'border-accent bg-accent text-accent-foreground'
                                         : 'border-border text-muted-foreground hover:text-foreground',
-                                    !hasLyricsTranslation
+                                    isTranslating
                                         ? 'cursor-not-allowed opacity-40'
                                         : 'cursor-pointer',
                                 ]"
-                                @click="showLyricsTranslation = !showLyricsTranslation"
+                                @click="handleTranslationToggle"
                             >
                                 <Languages class="size-3.5" />
-                                <span class="hidden sm:inline">Translate</span>
+                                <span class="hidden sm:inline">{{ translationButtonLabel }}</span>
                             </button>
 
                             <button
@@ -589,6 +684,13 @@ watch(
                             >
                                 {{ lyricsTranslationLanguage }}
                             </button>
+
+                            <p
+                                v-if="translationStatus === 'failed'"
+                                class="max-w-60 text-[11px] text-destructive"
+                            >
+                                Translation failed. Try again.
+                            </p>
 
                             <button
                                 type="button"
@@ -637,7 +739,7 @@ watch(
                                         v-if="showLyricsTranslation"
                                         class="mt-1 border-l-2 border-accent/70 pl-3 text-sm italic text-accent/90"
                                     >
-                                        {{ line.translation ?? `Translation preview (${lyricsTranslationLanguage})` }}
+                                        {{ renderedTranslatedLine(index, line.text || '♪') }}
                                     </p>
                                 </button>
                             </template>

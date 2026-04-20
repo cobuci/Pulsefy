@@ -63,11 +63,36 @@ export interface NowPlaying {
     track: SpotifyTrack;
 }
 
+export type LyricsTranslationStatus = 'queued' | 'processing' | 'ready' | 'failed';
+
 export interface LyricsResponse {
     track_id: string;
     type: 'synced' | 'plain' | 'none';
     lyrics: string | null;
     synced: boolean;
+    translation: {
+        status: LyricsTranslationStatus | null;
+        translated_lines: LyricTranslatedLine[] | null;
+        provider: string | null;
+        model: string | null;
+        error_message: string | null;
+    };
+}
+
+export interface LyricTranslatedLine {
+    index: number;
+    timestamp: string | null;
+    text: string;
+    source_lang: 'en' | 'pt-BR' | 'other' | 'mixed';
+    pt_br: string | null;
+    en: string | null;
+}
+
+export interface LyricsTranslationUpdatedEvent {
+    trackId: string;
+    status: LyricsTranslationStatus;
+    translatedLines: LyricTranslatedLine[] | null;
+    errorMessage: string | null;
 }
 
 export interface SpotifyDevice {
