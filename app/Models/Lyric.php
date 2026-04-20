@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\LyricFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -33,5 +34,10 @@ class Lyric extends Model
             'is_synced' => 'boolean',
             'fetched_at' => 'datetime',
         ];
+    }
+
+    public function translations(): HasMany
+    {
+        return $this->hasMany(LyricTranslation::class);
     }
 }

@@ -80,6 +80,11 @@ class User extends Authenticatable
             ->orderByDesc('updated_at');
     }
 
+    public function lyricTranslations(): HasMany
+    {
+        return $this->hasMany(LyricTranslation::class);
+    }
+
     public function artists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'user_top_artists', 'user_id', 'artist_model_id')
