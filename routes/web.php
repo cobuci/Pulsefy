@@ -20,6 +20,7 @@ use App\Http\Controllers\Player\ControlController as PlayerControlController;
 use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
 use App\Http\Controllers\Player\LyricsController;
+use App\Http\Controllers\Player\LyricsTranslationController;
 use App\Http\Controllers\Player\NowPlayingController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
@@ -58,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('insights/status', InsightsStatusController::class)->name('insights.status');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
+    Route::post('player/lyrics/translate', LyricsTranslationController::class)->name('player.lyrics.translate');
 
     Route::prefix('player')->name('player.')->group(function () {
         Route::post('play', [PlayerControlController::class, 'play'])->name('play');

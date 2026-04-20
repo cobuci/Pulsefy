@@ -47,4 +47,9 @@ return [
         'callback' => env('LASTFM_CALLBACK_URI'),
     ],
 
+    'lyrics_translation' => [
+        'provider' => env('AI_LYRICS_TRANSLATION_PROVIDER', 'gemini'),
+        'model' => env('AI_LYRICS_TRANSLATION_MODEL', 'gemini-3.1-flash-lite-preview'),
+    ],
+
 ];
