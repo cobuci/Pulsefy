@@ -72,7 +72,19 @@ function onGlobalPointerDown(event: PointerEvent): void {
         return;
     }
 
-    if (event.button !== 0) {
+    const target = event.target;
+
+    if (!(target instanceof Node)) {
+        return;
+    }
+
+    if (!contentRef.value.contains(target)) {
+        closeMenu();
+    }
+}
+
+function onGlobalContextMenu(event: MouseEvent): void {
+    if (!props.open || !contentRef.value) {
         return;
     }
 
@@ -176,12 +188,14 @@ function clearSubmenu(): void {
 onMounted(() => {
     isClientMounted.value = true;
     window.addEventListener('pointerdown', onGlobalPointerDown, true);
+    window.addEventListener('contextmenu', onGlobalContextMenu, true);
     window.addEventListener('keydown', onGlobalKeyDown);
     window.addEventListener('resize', adjustPosition);
 });
 
 onUnmounted(() => {
     window.removeEventListener('pointerdown', onGlobalPointerDown, true);
+    window.removeEventListener('contextmenu', onGlobalContextMenu, true);
     window.removeEventListener('keydown', onGlobalKeyDown);
     window.removeEventListener('resize', adjustPosition);
 
