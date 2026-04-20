@@ -39,6 +39,13 @@ test('returns cached synced lyrics without calling lrclib', function () {
             'type' => 'synced',
             'lyrics' => "[00:12.00] Hello, it's me",
             'synced' => true,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertNothingSent();
@@ -69,6 +76,13 @@ test('fetches lyrics from lrclib and caches synced response', function () {
             'type' => 'synced',
             'lyrics' => "[00:01.00] Line 1\n[00:05.00] Line 2",
             'synced' => true,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     $this->assertDatabaseHas('lyrics', [
@@ -106,6 +120,13 @@ test('returns plain lyrics when only plain lyrics are available', function () {
             'type' => 'plain',
             'lyrics' => "Plain line 1\nPlain line 2",
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     $this->assertDatabaseHas('lyrics', [
@@ -136,6 +157,13 @@ test('caches no-lyrics result and prevents repeated lrclib calls', function () {
             'type' => 'none',
             'lyrics' => null,
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'lrclib.net/api/search'));
@@ -152,6 +180,13 @@ test('caches no-lyrics result and prevents repeated lrclib calls', function () {
             'type' => 'none',
             'lyrics' => null,
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertNothingSent();
@@ -250,6 +285,13 @@ test('tries first artist when spotify artist list is comma separated', function 
             'type' => 'plain',
             'lyrics' => 'Found with first artist fallback',
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 });
 
@@ -283,6 +325,13 @@ test('retries stale negative cache records', function () {
             'type' => 'plain',
             'lyrics' => 'Recovered after stale cache retry',
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'lrclib.net/api/search'));
@@ -319,6 +368,13 @@ test('force refresh bypasses cache and refetches lyrics', function () {
             'type' => 'plain',
             'lyrics' => 'Found after force refresh',
             'synced' => false,
+            'translation' => [
+                'status' => null,
+                'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'lrclib.net/api/search'));
