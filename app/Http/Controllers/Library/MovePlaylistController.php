@@ -43,11 +43,8 @@ final class MovePlaylistController extends Controller
 
         $payload = [
             'folder_id' => $folderId,
+            'position' => $nextPosition,
         ];
-
-        if (is_int($nextPosition)) {
-            $payload['position'] = $nextPosition;
-        }
 
         $playlist->update($payload);
 

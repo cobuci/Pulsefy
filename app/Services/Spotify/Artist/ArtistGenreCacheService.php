@@ -75,7 +75,7 @@ final readonly class ArtistGenreCacheService
             ->mapWithKeys(function (Artist $record): array {
                 $genres = is_array($record->genres) ? $record->genres : [];
 
-                return [$record->artist_id => array_values(array_filter($genres, fn (mixed $genre): bool => is_string($genre) && $genre !== ''))];
+                return [$record->artist_id => array_values(array_filter($genres, fn (string $genre): bool => $genre !== ''))];
             })
             ->all();
     }

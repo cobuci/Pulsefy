@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\LibraryFolderFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,14 @@ use Illuminate\Support\Carbon;
  * @property int $position
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read Collection<int, LibraryFolder> $children
+ * @property-read int|null $children_count
+ * @property-read LibraryFolder|null $parent
+ * @property-read Collection<int, Playlist> $playlists
+ * @property-read int|null $playlists_count
+ * @property-read User $user
+ *
+ * @mixin \Eloquent
  */
 final class LibraryFolder extends Model
 {

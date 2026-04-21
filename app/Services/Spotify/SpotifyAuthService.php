@@ -5,11 +5,13 @@ namespace App\Services\Spotify;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
+use Laravel\Socialite\Two\User as SocialiteOAuthUser;
 
 final class SpotifyAuthService
 {
     public function findOrCreateUser(SocialiteUser $spotifyUser): User
     {
+        /** @var SocialiteOAuthUser $spotifyUser */
         return User::updateOrCreate(
             ['spotify_id' => $spotifyUser->getId()],
             [

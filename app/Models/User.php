@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
@@ -25,6 +28,32 @@ use Illuminate\Support\Carbon;
  * @property ?string $two_factor_recovery_codes
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read Collection<int, Artist> $artists
+ * @property-read int|null $artists_count
+ * @property-read Collection<int, LibraryFolder> $libraryFolders
+ * @property-read int|null $library_folders_count
+ * @property-read Collection<int, LyricPronunciation> $lyricPronunciations
+ * @property-read int|null $lyric_pronunciations_count
+ * @property-read Collection<int, LyricTranslation> $lyricTranslations
+ * @property-read int|null $lyric_translations_count
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
+ * @property-read int|null $notifications_count
+ * @property-read Collection<int, Playlist> $playlists
+ * @property-read int|null $playlists_count
+ * @property-read Collection<int, UserRecentPlay> $recentPlays
+ * @property-read int|null $recent_plays_count
+ * @property-read Collection<int, SpotifyStat> $spotifyStats
+ * @property-read int|null $spotify_stats_count
+ * @property-read Collection<int, SpotifySyncRun> $syncRuns
+ * @property-read int|null $sync_runs_count
+ * @property-read Collection<int, UserTopArtist> $topArtists
+ * @property-read int|null $top_artists_count
+ * @property-read Collection<int, UserTopTrack> $topTracks
+ * @property-read int|null $top_tracks_count
+ * @property-read Collection<int, Track> $tracks
+ * @property-read int|null $tracks_count
+ *
+ * @mixin \Eloquent
  */
 class User extends Authenticatable
 {

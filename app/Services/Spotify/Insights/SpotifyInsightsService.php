@@ -193,15 +193,6 @@ final readonly class SpotifyInsightsService implements SpotifyInsightsProvider
             ->all();
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $topArtists
-     * @return array<int, InsightItem>
-     */
-    private function genreMix(array $topArtists): array
-    {
-        return $this->genreStats($topArtists)['items'];
-    }
-
     private function genreStats(array $topArtists): array
     {
         $weightedGenres = [];

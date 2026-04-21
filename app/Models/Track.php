@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,15 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $metadata_synced_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read Album|null $album
+ * @property-read Collection<int, Artist> $artists
+ * @property-read int|null $artists_count
+ * @property-read Collection<int, UserRecentPlay> $recentPlays
+ * @property-read int|null $recent_plays_count
+ * @property-read Collection<int, UserTopTrack> $topForUsers
+ * @property-read int|null $top_for_users_count
+ *
+ * @mixin \Eloquent
  */
 class Track extends Model
 {

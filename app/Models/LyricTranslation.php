@@ -25,6 +25,8 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read User $user
  * @property-read Lyric $lyric
+ *
+ * @mixin \Eloquent
  */
 class LyricTranslation extends Model
 {

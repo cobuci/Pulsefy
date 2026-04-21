@@ -398,9 +398,13 @@ final readonly class SpotifyService implements SpotifyStatsProvider
                 ->values()
                 ->all(),
             'album' => [
+                /** @phpstan-ignore nullsafe.neverNull */
                 'id' => $album?->spotify_id ?? '',
+                /** @phpstan-ignore nullsafe.neverNull */
                 'name' => $album?->name ?? 'Unknown Album',
+                /** @phpstan-ignore nullsafe.neverNull */
                 'images' => $album?->images ?? [],
+                /** @phpstan-ignore nullsafe.neverNull */
                 'release_date' => $album?->release_date ?? '',
                 'album_type' => $album?->album_type,
                 'total_tracks' => $album?->total_tracks,

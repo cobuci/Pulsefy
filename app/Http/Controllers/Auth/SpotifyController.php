@@ -8,6 +8,7 @@ use App\Services\Spotify\SpotifyAuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use SocialiteProviders\Spotify\Provider as SpotifyProvider;
 
 final class SpotifyController extends Controller
 {
@@ -38,7 +39,10 @@ final class SpotifyController extends Controller
 
     public function redirect(): RedirectResponse
     {
-        return Socialite::driver('spotify')
+        /** @var SpotifyProvider $driver */
+        $driver = Socialite::driver('spotify');
+
+        return $driver
             ->scopes(self::SPOTIFY_SCOPES)
             ->with([
                 'show_dialog' => 'true',

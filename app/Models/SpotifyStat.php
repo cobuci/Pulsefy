@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read User $user
+ *
+ * @mixin \Eloquent
  */
 class SpotifyStat extends Model
 {

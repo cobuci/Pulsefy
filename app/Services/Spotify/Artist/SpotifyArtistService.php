@@ -452,7 +452,7 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
         if (in_array($response->status(), self::FALLBACK_STATUSES, true) && $userRequest !== null) {
             $userResponse = $userRequest($this->userArtistClient($user));
 
-            if ($response->status() === 429 && in_array($userResponse->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
+            if (in_array($userResponse->status(), self::EMPTY_PAYLOAD_STATUSES, true)) {
                 return $response;
             }
 
@@ -559,7 +559,9 @@ final readonly class SpotifyArtistService implements SpotifyArtistProvider
                 'album' => [
                     'id' => $track->album?->spotify_id,
                     'name' => $track->album?->name,
+                    /** @phpstan-ignore nullsafe.neverNull */
                     'images' => $track->album?->images ?? [],
+                    /** @phpstan-ignore nullsafe.neverNull */
                     'release_date' => $track->album?->release_date ?? '',
                     'album_type' => $track->album?->album_type,
                     'total_tracks' => $track->album?->total_tracks,

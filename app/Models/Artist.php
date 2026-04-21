@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -22,6 +23,14 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $lastfm_genres_checked_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read Collection<int, Album> $albums
+ * @property-read int|null $albums_count
+ * @property-read Collection<int, UserTopArtist> $topForUsers
+ * @property-read int|null $top_for_users_count
+ * @property-read Collection<int, Track> $tracks
+ * @property-read int|null $tracks_count
+ *
+ * @mixin \Eloquent
  */
 class Artist extends Model
 {

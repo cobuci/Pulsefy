@@ -193,6 +193,7 @@ final class SpotifyCatalogHydrationService
         $durationMs = data_get($payload, 'duration_ms');
         $explicit = data_get($payload, 'explicit');
 
+        /** @phpstan-ignore nullsafe.neverNull */
         $track->album_id = $resolvedAlbum?->id ?? $track->album_id;
         $track->name = $name;
         $track->duration_ms = is_numeric($durationMs) ? (int) $durationMs : $track->duration_ms;

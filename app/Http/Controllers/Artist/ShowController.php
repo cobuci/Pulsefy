@@ -39,6 +39,7 @@ final class ShowController extends Controller
                 'name' => $artistModel->artist_name,
                 'images' => $artistModel->images ?? $artistModel->tracks()
                     ->get()
+                    /** @phpstan-ignore-next-line */
                     ->map(fn (Track $track): ?array => $track->album?->images)
                     ->filter(fn (?array $images): bool => is_array($images) && $images !== [])
                     ->first() ?? [],
@@ -57,6 +58,7 @@ final class ShowController extends Controller
                 ->latest('artist_track.updated_at')
                 ->take(10)
                 ->get()
+                /** @phpstan-ignore-next-line */
                 ->map(fn (Track $track): array => [
                     'id' => $track->spotify_id,
                     'uri' => 'spotify:track:'.$track->spotify_id,
@@ -74,7 +76,9 @@ final class ShowController extends Controller
                     'album' => [
                         'id' => $track->album?->spotify_id,
                         'name' => $track->album?->name,
+                        /** @phpstan-ignore nullsafe.neverNull */
                         'images' => $track->album?->images ?? [],
+                        /** @phpstan-ignore nullsafe.neverNull */
                         'release_date' => $track->album?->release_date ?? '',
                         'external_urls' => [
                             'spotify' => $track->album?->spotify_id

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Library;
 
 use App\Http\Controllers\Controller;
+use App\Models\LibraryFolder;
 use App\Models\Playlist;
 use App\Services\Spotify\Library\LibrarySyncStatusService;
 use Inertia\Inertia;
@@ -36,7 +37,8 @@ final class IndexController extends Controller
                 ->orderBy('parent_id')
                 ->orderBy('position')
                 ->get()
-                ->map(fn ($folder): array => [
+                /** @phpstan-ignore-next-line */
+                ->map(fn (LibraryFolder $folder): array => [
                     'id' => $folder->id,
                     'name' => $folder->name,
                     'parent_id' => $folder->parent_id,

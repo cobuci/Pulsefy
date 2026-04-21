@@ -71,6 +71,7 @@ final class BackfillArtistGenresJob implements ShouldBeUnique, ShouldQueue
             }
 
             foreach ($artists as $artist) {
+                /** @var Artist $artist */
                 $genres = $lastFmGenreService->genresForArtistName((string) $artist->artist_name);
 
                 $artist->lastfm_genres_checked_at = now();

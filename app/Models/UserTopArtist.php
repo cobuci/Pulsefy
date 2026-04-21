@@ -17,6 +17,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon $synced_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read Artist $artist
+ * @property-read User $user
+ *
+ * @mixin \Eloquent
  */
 class UserTopArtist extends Model
 {

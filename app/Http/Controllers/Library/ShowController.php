@@ -53,7 +53,8 @@ final class ShowController extends Controller
                             'id' => $artist->artist_id,
                             'name' => $artist->artist_name,
                         ])
-                        ->values(),
+                        ->values()
+                        ->all(),
                 ] : null,
             ]);
 

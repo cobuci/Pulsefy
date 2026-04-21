@@ -47,7 +47,7 @@ final class LrcLineParser
             $translatedText = $line[$normalizedLanguage] ?? null;
             $text = is_string($translatedText) && $translatedText !== ''
                 ? $translatedText
-                : ($line['text'] ?? '');
+                : $line['text'];
 
             if (($line['timestamp'] ?? null) !== null && $line['timestamp'] !== '') {
                 return '['.$line['timestamp'].'] '.$text;

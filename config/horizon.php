@@ -17,6 +17,7 @@ return [
 
     'name' => env('HORIZON_NAME'),
 
+    'allowed_email' => env('HORIZON_ALLOWED_EMAIL'),
     /*
     |--------------------------------------------------------------------------
     | Horizon Domain

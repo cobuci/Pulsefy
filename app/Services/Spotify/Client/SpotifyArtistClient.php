@@ -113,7 +113,7 @@ final class SpotifyArtistClient
             $response = Http::withToken($this->accessToken)
                 ->timeout(10)
                 ->connectTimeout(5)
-                ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response?->status() === 429), throw: false)
+                ->retry(2, 500, fn ($e) => ! ($e instanceof RequestException && $e->response->status() === 429), throw: false)
                 ->send($method, self::BASE_URL.$path, $options);
 
             $lastResponse = $response;

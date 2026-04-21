@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\PlaylistFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,12 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $expires_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read LibraryFolder|null $folder
+ * @property-read Collection<int, PlaylistTrack> $items
+ * @property-read int|null $items_count
+ * @property-read User $user
+ *
+ * @mixin \Eloquent
  */
 final class Playlist extends Model
 {

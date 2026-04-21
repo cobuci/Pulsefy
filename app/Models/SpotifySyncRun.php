@@ -18,6 +18,9 @@ use Illuminate\Support\Carbon;
  * @property ?string $error
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ * @property-read User $user
+ *
+ * @mixin \Eloquent
  */
 class SpotifySyncRun extends Model
 {
