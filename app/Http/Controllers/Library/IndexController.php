@@ -19,7 +19,19 @@ final class IndexController extends Controller
         $user = request()->user();
         $showHidden = request()->boolean('show_hidden');
 
+        $likedPlaylist = Playlist::query()
+            ->whereBelongsTo($user)
+            ->where('is_liked_playlist', true)
+            ->first(['spotify_id', 'name', 'images', 'tracks_total', 'synced_at']);
+
         return Inertia::render('Library/Index', [
+            'likedPlaylist' => $likedPlaylist ? [
+                'id' => $likedPlaylist->spotify_id,
+                'name' => $likedPlaylist->name,
+                'tracks_total' => $likedPlaylist->tracks_total,
+                'synced_at' => $likedPlaylist->synced_at?->toIso8601String(),
+                'syncStatus' => $this->statusService->playlistStatus($user->id, 'liked-songs'),
+            ] : null,
             'folders' => $user->libraryFolders()
                 ->orderBy('parent_id')
                 ->orderBy('position')
@@ -33,6 +45,7 @@ final class IndexController extends Controller
                 ->values(),
             'playlists' => Playlist::query()
                 ->whereBelongsTo($user)
+                ->where('is_liked_playlist', false)
                 ->when(! $showHidden, fn ($query) => $query->where('is_hidden', false))
                 ->orderBy('folder_id')
                 ->orderBy('position')
@@ -64,6 +77,7 @@ final class IndexController extends Controller
                 ->values(),
             'hiddenCount' => Playlist::query()
                 ->whereBelongsTo($user)
+                ->where('is_liked_playlist', false)
                 ->where('is_hidden', true)
                 ->count(),
             'showHidden' => $showHidden,

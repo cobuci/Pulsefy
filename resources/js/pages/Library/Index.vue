@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, ChevronRight, Folder, FolderOpen, Home, ListMusic } from 'lucide-vue-next';
+import { Check, ChevronRight, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import type { ContextMenuItem } from '@/components/ui/context-menu';
@@ -15,6 +15,7 @@ import {
     refresh as refreshLibrary,
 } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
+import { sync as syncLikedSongs } from '@/routes/library/liked-songs';
 
 defineOptions({
     layout: {
@@ -48,6 +49,17 @@ type LibraryPlaylistItem = {
 };
 
 const props = defineProps<{
+    likedPlaylist: {
+        id: string;
+        name: string;
+        tracks_total: number;
+        synced_at: string | null;
+        syncStatus: {
+            isRunning: boolean;
+            hasFailure: boolean;
+            updatedAt: string | null;
+        };
+    } | null;
     folders: Array<{
         id: number;
         name: string;
@@ -652,6 +664,45 @@ function toggleShowHidden() {
             </div>
 
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                <div
+                    v-if="likedPlaylist && activeFolderId === null"
+                    class="group relative"
+                >
+                    <Link
+                        :href="libraryShow(likedPlaylist.id).url"
+                        class="block w-full rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
+                    >
+                        <div class="mb-6 flex items-start justify-between">
+                            <div class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20">
+                                <Heart class="size-5 text-accent" fill="currentColor" />
+                            </div>
+                            <Form
+                                :action="syncLikedSongs().url"
+                                method="post"
+                                v-slot="{ processing }"
+                                @click.stop
+                            >
+                                <button
+                                    type="submit"
+                                    class="rounded-md p-1 text-muted-foreground/40 opacity-0 transition-opacity hover:text-accent group-hover:opacity-100"
+                                    :disabled="processing || likedPlaylist.syncStatus.isRunning"
+                                    :title="likedPlaylist.syncStatus.isRunning ? 'Syncing…' : 'Sync liked songs'"
+                                    @click.prevent.stop="($event.currentTarget as HTMLButtonElement).closest('form')?.requestSubmit()"
+                                >
+                                    <RefreshCw class="size-4" :class="(processing || likedPlaylist.syncStatus.isRunning) ? 'animate-spin' : ''" />
+                                </button>
+                            </Form>
+                        </div>
+
+                        <div class="truncate font-display text-base font-bold text-foreground">
+                            {{ likedPlaylist.name }}
+                        </div>
+                        <div class="mt-1 text-xs text-muted-foreground">
+                            {{ likedPlaylist.tracks_total }} tracks
+                        </div>
+                    </Link>
+                </div>
+
                 <div
                     v-for="folder in childFolders"
                     :key="folder.id"
