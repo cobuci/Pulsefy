@@ -9,6 +9,7 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { dashboard } from '@/routes';
 import { favorite as favoriteAlbum } from '@/routes/albums';
 import { show as albumShow } from '@/routes/albums';
@@ -76,6 +77,7 @@ const primaryArtistId = computed(() => {
 });
 
 const { isPlayingTrack, nowPlayingData, playTrack, fetchNowPlaying } = usePlayer();
+const { openTrackContextMenu } = useTrackContextMenu();
 const favorite = ref<boolean>(props.isFavorite ?? false);
 const favoriteBusy = ref(false);
 const shuffleBusy = ref(false);
@@ -444,6 +446,7 @@ async function playShuffledTracks() {
                                               : 'cursor-default'
                                     "
                                     @click="onTrackRowClick(track)"
+                                    @contextmenu="openTrackContextMenu($event, track)"
                                 >
                                     <button
                                         class="grid size-5 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"

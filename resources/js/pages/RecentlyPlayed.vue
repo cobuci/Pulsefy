@@ -5,6 +5,7 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { dashboard, recentlyPlayed } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
@@ -28,6 +29,7 @@ const props = defineProps<{
 const SKELETON_COUNT = 10;
 
 const { isPlayingTrack, playTrack, pausePlayback } = usePlayer();
+const { openTrackContextMenu } = useTrackContextMenu();
 
 async function handlePlay(track: SpotifyTrack) {
     if (isPlayingTrack.value(track.id)) {
@@ -156,6 +158,7 @@ const totalEntries = computed(() => {
                                 v-for="entry in group.entries"
                                 :key="`${entry.track.id}-${entry.lastPlayedAt}`"
                                 class="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-secondary/60"
+                                @contextmenu="openTrackContextMenu($event, entry.track)"
                             >
                                 <div class="relative w-6 shrink-0 text-center">
                                     <span

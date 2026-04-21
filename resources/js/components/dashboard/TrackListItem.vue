@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';
@@ -13,12 +14,16 @@ const props = defineProps<{
     rank: number;
     loading?: boolean;
     isPlaying?: boolean;
+    isSaved?: boolean;
 }>();
 
 const emit = defineEmits<{
     play: [track: SpotifyTrack];
     pause: [track: SpotifyTrack];
+    saveToggled: [track: SpotifyTrack, saved: boolean];
 }>();
+
+const { openTrackContextMenu } = useTrackContextMenu();
 
 const isHovered = ref(false);
 
@@ -50,6 +55,7 @@ function handlePause() {
         class="group flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary/60"
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
+        @contextmenu="track && openTrackContextMenu($event, track, { isSaved: isSaved, onSaveToggled: (saved) => emit('saveToggled', track, saved) })"
     >
         <button
             v-if="!loading && track"

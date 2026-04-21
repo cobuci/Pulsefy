@@ -9,6 +9,7 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { dashboard } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { index as artistsIndex, show as artistShow } from '@/routes/artists';
@@ -90,6 +91,7 @@ function albumImage(album: SpotifyAlbum): string | null {
 }
 
 const { isPlayingTrack, playTrack, pausePlayback } = usePlayer();
+const { openTrackContextMenu } = useTrackContextMenu();
 
 const INITIAL_ALBUMS_COUNT = 6;
 
@@ -487,6 +489,7 @@ async function playShuffledTopTracks() {
                                         ? handlePlay(track)
                                         : null
                                 "
+                                @contextmenu="track.id && openTrackContextMenu($event, track)"
                             >
                                 <button
                                     class="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"

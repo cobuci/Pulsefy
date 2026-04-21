@@ -3,6 +3,7 @@ import { Deferred, Link } from '@inertiajs/vue3';
 import { ChevronRight } from 'lucide-vue-next';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { recentlyPlayed } from '@/routes';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
@@ -12,6 +13,8 @@ defineProps<{
     recentlyPlayedTracks: RecentPlay[];
     handlePlay: (track: SpotifyTrack) => Promise<void>;
 }>();
+
+const { openTrackContextMenu } = useTrackContextMenu();
 </script>
 
 <template>
@@ -55,6 +58,7 @@ defineProps<{
                         v-for="play in recentlyPlayedTracks"
                         :key="`${play.track.id}-${play.played_at}`"
                         class="group"
+                        @contextmenu="openTrackContextMenu($event, play.track)"
                     >
                         <div class="relative mb-3 aspect-square overflow-hidden rounded-xl shadow-card">
                             <img
