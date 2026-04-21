@@ -14,6 +14,7 @@ use App\Http\Controllers\Library\MovePlaylistController as LibraryMovePlaylistCo
 use App\Http\Controllers\Library\RefreshController as LibraryRefreshController;
 use App\Http\Controllers\Library\ReorderPlaylistsController as LibraryReorderPlaylistsController;
 use App\Http\Controllers\Library\ShowController as LibraryShowController;
+use App\Http\Controllers\Library\SyncLikedSongsController as LibrarySyncLikedSongsController;
 use App\Http\Controllers\Library\SyncPlaylistController as LibrarySyncPlaylistController;
 use App\Http\Controllers\Library\UpdatePlaylistVisibilityController as LibraryUpdatePlaylistVisibilityController;
 use App\Http\Controllers\Player\CheckFavoriteController as PlayerCheckFavoriteController;
@@ -28,8 +29,18 @@ use App\Http\Controllers\Player\NowPlayingController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
 use App\Http\Controllers\Search\IndexController as SearchIndexController;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+if (app()->isLocal()) {
+    Route::get('/_dev/login/{id}', function (int $id) {
+        $user = User::findOrFail($id);
+        Auth::login($user);
+
+        return redirect()->route('dashboard');
+    })->name('dev.login');
+}
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -48,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('library', LibraryIndexController::class)->name('library.index');
     Route::get('library/{playlistId}', LibraryShowController::class)->name('library.show');
     Route::post('library/refresh', LibraryRefreshController::class)->name('library.refresh');
+    Route::post('library/liked-songs/sync', LibrarySyncLikedSongsController::class)->name('library.liked-songs.sync');
     Route::post('library/{playlistId}/sync', LibrarySyncPlaylistController::class)->name('library.sync-playlist');
     Route::patch('library/{playlistId}/move', LibraryMovePlaylistController::class)->name('library.move');
     Route::patch('library/{playlistId}/visibility', LibraryUpdatePlaylistVisibilityController::class)->name('library.visibility');
