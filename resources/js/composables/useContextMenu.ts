@@ -39,9 +39,21 @@ export function useContextMenu() {
         };
     }
 
+    function updateItems(items: ContextMenuItem[]) {
+        if (!sharedState.value.open) {
+            return;
+        }
+
+        sharedState.value = {
+            ...sharedState.value,
+            items,
+        };
+    }
+
     return {
         state: sharedState,
         open,
+        updateItems,
         close,
     };
 }

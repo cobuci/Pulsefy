@@ -225,6 +225,14 @@ onUnmounted(() => {
                     <template v-for="item in rootItems" :key="item.key">
                         <div v-if="item.separator" class="my-1 h-px bg-border" />
 
+                        <div
+                            v-else-if="item.loading"
+                            class="flex items-center gap-2.5 rounded-md px-2.5 py-2"
+                        >
+                            <div class="size-4 animate-pulse rounded bg-muted" />
+                            <div class="h-3.5 w-32 animate-pulse rounded bg-muted" />
+                        </div>
+
                         <button
                             v-else
                             type="button"
@@ -242,7 +250,10 @@ onUnmounted(() => {
                             @focus="openSubmenu(item)"
                             @click="selectItem(item)"
                         >
-                            <span>{{ item.label }}</span>
+                            <span class="flex items-center gap-2.5">
+                                <component :is="item.icon" v-if="item.icon" class="size-4 shrink-0" />
+                                {{ item.label }}
+                            </span>
                             <ChevronRight v-if="item.children?.length" class="size-4 text-muted-foreground" />
 
                             <div

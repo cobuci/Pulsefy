@@ -1,8 +1,23 @@
 import type { ContextMenuItem } from '@/components/ui/context-menu';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { check as checkFavoriteRoute } from '@/routes/player/favorite';
 import { favorite as favoriteRoute } from '@/routes/player';
 import type { SpotifyTrack } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
+import { Heart, HeartOff } from 'lucide-vue-next';
+
+async function fetchIsSaved(trackId: string): Promise<boolean> {
+    try {
+        const url = checkFavoriteRoute.url({ query: { track_id: trackId } });
+        const response = await fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const payload = (await response.json()) as { ok?: boolean; saved?: boolean };
+        return payload.ok === true && payload.saved === true;
+    } catch {
+        return false;
+    }
+}
 
 async function toggleSaveTrack(trackId: string, save: boolean): Promise<boolean> {
     try {
@@ -24,64 +39,47 @@ async function toggleSaveTrack(trackId: string, save: boolean): Promise<boolean>
     }
 }
 
+function buildSaveItem(
+    trackId: string,
+    isSaved: boolean,
+    onSaveToggled?: (saved: boolean) => void,
+): ContextMenuItem {
+    return {
+        key: `track-save-${trackId}`,
+        label: isSaved ? 'Remove from Liked Songs' : 'Save to Liked Songs',
+        icon: isSaved ? HeartOff : Heart,
+        onSelect: async () => {
+            const success = await toggleSaveTrack(trackId, !isSaved);
+
+            if (success) {
+                onSaveToggled?.(!isSaved);
+            }
+        },
+    };
+}
+
 export function useTrackContextMenu() {
     const contextMenu = useContextMenu();
 
-    function buildTrackMenuItems(
-        track: SpotifyTrack,
-        options: {
-            isSaved?: boolean;
-            onSaveToggled?: (saved: boolean) => void;
-        } = {},
-    ): ContextMenuItem[] {
-        const items: ContextMenuItem[] = [];
-
-        if (track.id) {
-            const isSaved = options.isSaved ?? false;
-
-            items.push({
-                key: `track-save-${track.id}`,
-                label: isSaved ? 'Remove from Liked Songs' : 'Save to Liked Songs',
-                onSelect: async () => {
-                    const success = await toggleSaveTrack(track.id, !isSaved);
-
-                    if (success) {
-                        options.onSaveToggled?.(!isSaved);
-                    }
-                },
-            });
-        }
-
-        if (track.external_urls?.spotify) {
-            if (items.length > 0) {
-                items.push({ key: `track-sep-${track.id}`, separator: true });
-            }
-
-            items.push({
-                key: `track-open-spotify-${track.id}`,
-                label: 'Open in Spotify',
-                onSelect: () => {
-                    window.open(track.external_urls.spotify, '_blank', 'noopener,noreferrer');
-                },
-            });
-        }
-
-        return items;
-    }
-
-    function openTrackContextMenu(
+    async function openTrackContextMenu(
         event: MouseEvent,
         track: SpotifyTrack,
         options: {
-            isSaved?: boolean;
             onSaveToggled?: (saved: boolean) => void;
         } = {},
-    ): void {
-        contextMenu.open(event, buildTrackMenuItems(track, options));
+    ): Promise<void> {
+        if (!track.id) {
+            return;
+        }
+
+        contextMenu.open(event, [{ key: `track-save-loading-${track.id}`, loading: true }]);
+
+        const isSaved = await fetchIsSaved(track.id);
+
+        contextMenu.updateItems([buildSaveItem(track.id, isSaved, options.onSaveToggled)]);
     }
 
     return {
         openTrackContextMenu,
-        buildTrackMenuItems,
     };
 }
