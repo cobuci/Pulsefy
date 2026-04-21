@@ -28,7 +28,7 @@ const contextMenuState = contextMenu.state;
 <template>
     <AppShell variant="header" @contextmenu="openGlobalContextMenu">
         <AppHeader :breadcrumbs="breadcrumbs" />
-        <AppContent variant="header" class="pb-24">
+        <AppContent variant="header" class="pt-16 pb-24">
             <slot />
         </AppContent>
         <NowPlayingPlayer />

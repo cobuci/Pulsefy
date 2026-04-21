@@ -19,7 +19,7 @@ const isOpen = Boolean(
 <template>
     <div
         v-if="variant === 'header'"
-        class="relative flex min-h-screen w-full flex-col overflow-x-clip bg-background text-foreground"
+        class="relative flex h-screen w-full flex-col overflow-hidden bg-background text-foreground"
     >
         <div
             class="pointer-events-none fixed inset-0 -z-10 opacity-80"
