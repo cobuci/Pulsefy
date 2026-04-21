@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Heart, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
+import { Heart, Languages, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';

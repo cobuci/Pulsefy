@@ -5,9 +5,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/composables/usePlayer';
+import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { show as artistShow } from '@/routes/artists';
 import { index as libraryIndex, syncPlaylist } from '@/routes/library';
 import { sync as syncLikedSongs } from '@/routes/library/liked-songs';
+import type { SpotifyTrack } from '@/types/spotify';
 
 type TrackItem = {
     spotify_track_id: string;
@@ -57,6 +59,7 @@ const page = usePage<{
 
 const playlistSyncStatus = ref(props.playlist.sync_status);
 const { playTrack, isPlayingTrack, pausePlayback } = usePlayer();
+const { openTrackContextMenu } = useTrackContextMenu();
 let echoBootstrapTimer: ReturnType<typeof setInterval> | null = null;
 const showStickyBar = ref(false);
 const stickyBarTop = ref(0);
@@ -260,6 +263,14 @@ function formatSyncedAt(iso: string): string {
     return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
 }
 
+function onTrackContextMenu(event: MouseEvent, item: TrackItem): void {
+    if (!item.track) {
+        return;
+    }
+
+    void openTrackContextMenu(event, item.track as unknown as SpotifyTrack);
+}
+
 setLayoutProps({
     breadcrumbs: [
         {
@@ -288,7 +299,7 @@ setLayoutProps({
         >
             <div
                 v-if="showStickyBar"
-                class="glass fixed right-0 left-0 z-40 border-b border-border/60 bg-card/80 px-6 py-3"
+                class="glass fixed right-0 left-0 z-40 border-b border-border/60 bg-card/90 px-6 py-3"
                 :style="{ top: `${stickyBarTop}px` }"
             >
                 <div class="mx-auto flex max-w-7xl items-center gap-4">
@@ -403,6 +414,7 @@ setLayoutProps({
                         class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-secondary/60"
                         :class="item.uri && item.track ? 'cursor-pointer' : 'cursor-default'"
                         @click="onTrackRowClick(item)"
+                        @contextmenu="item.track ? onTrackContextMenu($event, item) : undefined"
                     >
                         <button
                             type="button"

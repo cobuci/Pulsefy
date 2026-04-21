@@ -399,7 +399,7 @@ onUnmounted(() => {
 
         <div
             v-if="props.breadcrumbs.length > 1"
-            class="border-t border-border/50 bg-background/30"
+            class="border-t border-border/50 bg-background/50"
         >
             <div
                 class="mx-auto flex h-10 w-full items-center px-6 md:max-w-7xl"
