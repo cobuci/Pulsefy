@@ -26,7 +26,7 @@ import {
     seek,
     shuffle as shuffleRoute,
 } from '@/routes/player';
-import type { LyricsTranslationUpdatedEvent } from '@/types/spotify';
+import type { LyricsPronunciationUpdatedEvent, LyricsTranslationUpdatedEvent } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
@@ -51,7 +51,7 @@ const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
 const activeLyricRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
-const showLyricsTranslation = ref(false);
+const lyricsSecondaryMode = ref<'none' | 'translation' | 'romanization'>('none');
 const lyricsTranslationLanguage = ref<'pt-BR' | 'en'>('pt-BR');
 
 const progressPct = ref(0);
@@ -124,7 +124,11 @@ function handleLyricsHotkeys(event: KeyboardEvent) {
         handleTranslationToggle();
     }
 
-    if (event.key.toLowerCase() === 'l' && showLyricsTranslation.value) {
+    if (event.key.toLowerCase() === 'r') {
+        handleRomanizationToggle();
+    }
+
+    if (event.key.toLowerCase() === 'l' && lyricsSecondaryMode.value !== 'none') {
         lyricsTranslationLanguage.value =
             lyricsTranslationLanguage.value === 'pt-BR' ? 'en' : 'pt-BR';
     }
@@ -158,7 +162,49 @@ const translationButtonLabel = computed(() => {
     return 'Translate';
 });
 
-function renderedTranslatedLine(index: number, fallbackText: string): string {
+const hasLyricsRomanization = computed(() => {
+    return (lyrics.lyricsData.value?.romanization?.romanized_lines?.length ?? 0) > 0;
+});
+
+const romanizationStatus = computed(() => {
+    return lyrics.lyricsData.value?.romanization?.status ?? null;
+});
+
+const isRomanizing = computed(() => {
+    return lyrics.romanizationRequestBusy.value || romanizationStatus.value === 'queued' || romanizationStatus.value === 'processing';
+});
+
+const romanizationButtonLabel = computed(() => {
+    if (isRomanizing.value) {
+        return 'Romanizing...';
+    }
+
+    if (romanizationStatus.value === 'failed') {
+        return 'Retry romanization';
+    }
+
+    if (!hasLyricsRomanization.value) {
+        return 'Get romanization';
+    }
+
+    return 'Romanize';
+});
+
+function renderedSecondaryLine(index: number, fallbackText: string): string {
+    if (lyricsSecondaryMode.value === 'romanization') {
+        const romanizedLine = lyrics.romanizedLinesByIndex.value.get(index);
+
+        if (!romanizedLine) {
+            return fallbackText;
+        }
+
+        if (lyricsTranslationLanguage.value === 'pt-BR') {
+            return romanizedLine.pt_br ?? fallbackText;
+        }
+
+        return romanizedLine.en ?? fallbackText;
+    }
+
     const translatedLine = lyrics.translatedLinesByIndex.value.get(index);
 
     if (!translatedLine) {
@@ -183,7 +229,17 @@ function handleTranslationToggle() {
         return;
     }
 
-    showLyricsTranslation.value = !showLyricsTranslation.value;
+    lyricsSecondaryMode.value = lyricsSecondaryMode.value === 'translation' ? 'none' : 'translation';
+}
+
+function handleRomanizationToggle() {
+    if (!hasLyricsRomanization.value) {
+        void lyrics.requestRomanization();
+
+        return;
+    }
+
+    lyricsSecondaryMode.value = lyricsSecondaryMode.value === 'romanization' ? 'none' : 'romanization';
 }
 
 watch(data, (val) => {
@@ -204,7 +260,7 @@ watch(data, (val) => {
 
     if (activeTrackId.value !== val.track.id) {
         activeTrackId.value = val.track.id;
-        showLyricsTranslation.value = false;
+        lyricsSecondaryMode.value = 'none';
         lyricsTranslationLanguage.value = 'pt-BR';
         lyrics.fetchLyricsForCurrentTrack();
     }
@@ -272,32 +328,59 @@ onMounted(() => {
     }
 
     if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
-        window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
-            '.Lyrics.TranslationUpdated',
-            (event: LyricsTranslationUpdatedEvent) => {
-                const currentTrackId = data.value?.track?.id;
+        window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
+            .listen(
+                '.Lyrics.TranslationUpdated',
+                (event: LyricsTranslationUpdatedEvent) => {
+                    const currentTrackId = data.value?.track?.id;
 
-                if (!currentTrackId || event.trackId !== currentTrackId) {
-                    return;
-                }
+                    if (!currentTrackId || event.trackId !== currentTrackId) {
+                        return;
+                    }
 
-                const payload = lyrics.lyricsData.value;
+                    const payload = lyrics.lyricsData.value;
 
-                if (!payload) {
-                    return;
-                }
+                    if (!payload) {
+                        return;
+                    }
 
-                lyrics.lyricsHttp.response = {
-                    ...payload,
-                    translation: {
-                        ...payload.translation,
-                        status: event.status,
-                        translated_lines: event.translatedLines,
-                        error_message: event.errorMessage,
-                    },
-                };
-            },
-        );
+                    lyrics.lyricsHttp.response = {
+                        ...payload,
+                        translation: {
+                            ...payload.translation,
+                            status: event.status,
+                            translated_lines: event.translatedLines,
+                            error_message: event.errorMessage,
+                        },
+                    };
+                },
+            )
+            .listen(
+                '.Lyrics.PronunciationUpdated',
+                (event: LyricsPronunciationUpdatedEvent) => {
+                    const currentTrackId = data.value?.track?.id;
+
+                    if (!currentTrackId || event.trackId !== currentTrackId) {
+                        return;
+                    }
+
+                    const payload = lyrics.lyricsData.value;
+
+                    if (!payload) {
+                        return;
+                    }
+
+                    lyrics.lyricsHttp.response = {
+                        ...payload,
+                        romanization: {
+                            ...payload.romanization,
+                            status: event.status,
+                            romanized_lines: event.romanizedLines,
+                            error_message: event.errorMessage,
+                        },
+                    };
+                },
+            );
     }
 
 });
@@ -654,10 +737,10 @@ watch(
                             <button
                                 type="button"
                                 :disabled="isTranslating"
-                                :title="showLyricsTranslation ? 'Translation on (T)' : 'Translation off (T)'"
+                                :title="lyricsSecondaryMode === 'translation' ? 'Translation on (T)' : 'Translation off (T)'"
                                 :class="[
                                     'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
-                                    showLyricsTranslation
+                                    lyricsSecondaryMode === 'translation'
                                         ? 'border-accent bg-accent text-accent-foreground'
                                         : 'border-border text-muted-foreground hover:text-foreground',
                                     isTranslating
@@ -672,11 +755,30 @@ watch(
 
                             <button
                                 type="button"
-                                :disabled="!showLyricsTranslation"
-                                title="Toggle translation language (L)"
+                                :disabled="isRomanizing"
+                                :title="lyricsSecondaryMode === 'romanization' ? 'Romanization on (R)' : 'Romanization off (R)'"
+                                :class="[
+                                    'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
+                                    lyricsSecondaryMode === 'romanization'
+                                        ? 'border-accent bg-accent text-accent-foreground'
+                                        : 'border-border text-muted-foreground hover:text-foreground',
+                                    isRomanizing
+                                        ? 'cursor-not-allowed opacity-40'
+                                        : 'cursor-pointer',
+                                ]"
+                                @click="handleRomanizationToggle"
+                            >
+                                <span class="text-[11px]">あ</span>
+                                <span class="hidden sm:inline">{{ romanizationButtonLabel }}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                :disabled="lyricsSecondaryMode === 'none'"
+                                title="Toggle language (L)"
                                 :class="[
                                     'inline-flex h-9 items-center rounded-full border px-3 text-xs font-medium transition-colors',
-                                    showLyricsTranslation
+                                    lyricsSecondaryMode !== 'none'
                                         ? 'border-border text-foreground hover:text-accent'
                                         : 'border-border text-muted-foreground opacity-40',
                                 ]"
@@ -690,6 +792,13 @@ watch(
                                 class="max-w-60 text-[11px] text-destructive"
                             >
                                 Translation failed. Try again.
+                            </p>
+
+                            <p
+                                v-if="romanizationStatus === 'failed'"
+                                class="max-w-60 text-[11px] text-destructive"
+                            >
+                                Romanization failed. Try again.
                             </p>
 
                             <button
@@ -736,10 +845,10 @@ watch(
                                     </p>
 
                                     <p
-                                        v-if="showLyricsTranslation"
+                                        v-if="lyricsSecondaryMode !== 'none'"
                                         class="mt-1 border-l-2 border-accent/70 pl-3 text-sm italic text-accent/90"
                                     >
-                                        {{ renderedTranslatedLine(index, line.text || '♪') }}
+                                        {{ renderedSecondaryLine(index, line.text || '♪') }}
                                     </p>
                                 </button>
                             </template>
@@ -795,6 +904,9 @@ watch(
                             <span>·</span>
                             <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">T</kbd>
                             <span>translation</span>
+                            <span>·</span>
+                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">R</kbd>
+                            <span>romanization</span>
                             <span>·</span>
                             <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">L</kbd>
                             <span>language</span>

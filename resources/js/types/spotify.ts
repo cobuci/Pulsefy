@@ -65,6 +65,8 @@ export interface NowPlaying {
 
 export type LyricsTranslationStatus = 'queued' | 'processing' | 'ready' | 'failed';
 
+export type LyricsPronunciationStatus = 'queued' | 'processing' | 'ready' | 'failed';
+
 export interface LyricsResponse {
     track_id: string;
     type: 'synced' | 'plain' | 'none';
@@ -73,6 +75,13 @@ export interface LyricsResponse {
     translation: {
         status: LyricsTranslationStatus | null;
         translated_lines: LyricTranslatedLine[] | null;
+        provider: string | null;
+        model: string | null;
+        error_message: string | null;
+    };
+    romanization: {
+        status: LyricsPronunciationStatus | null;
+        romanized_lines: LyricRomanizedLine[] | null;
         provider: string | null;
         model: string | null;
         error_message: string | null;
@@ -88,10 +97,24 @@ export interface LyricTranslatedLine {
     en: string | null;
 }
 
+export interface LyricRomanizedLine {
+    index: number;
+    timestamp: string | null;
+    pt_br: string | null;
+    en: string | null;
+}
+
 export interface LyricsTranslationUpdatedEvent {
     trackId: string;
     status: LyricsTranslationStatus;
     translatedLines: LyricTranslatedLine[] | null;
+    errorMessage: string | null;
+}
+
+export interface LyricsPronunciationUpdatedEvent {
+    trackId: string;
+    status: LyricsPronunciationStatus;
+    romanizedLines: LyricRomanizedLine[] | null;
     errorMessage: string | null;
 }
 
