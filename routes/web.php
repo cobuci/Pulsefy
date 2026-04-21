@@ -26,6 +26,9 @@ use App\Http\Controllers\Player\LyricsController;
 use App\Http\Controllers\Player\LyricsPronunciationController;
 use App\Http\Controllers\Player\LyricsTranslationController;
 use App\Http\Controllers\Player\NowPlayingController;
+use App\Http\Controllers\Player\TrackInsightsController;
+use App\Http\Controllers\Player\TrackInsightsRegenerateController;
+use App\Http\Controllers\Player\TrackInsightsStatusController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
 use App\Http\Controllers\Search\IndexController as SearchIndexController;
@@ -76,6 +79,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
     Route::post('player/lyrics/translate', LyricsTranslationController::class)->name('player.lyrics.translate');
     Route::post('player/lyrics/romanize', LyricsPronunciationController::class)->name('player.lyrics.romanize');
+    Route::get('player/track-insights', TrackInsightsStatusController::class)->name('player.track-insights.status');
+    Route::post('player/track-insights', TrackInsightsController::class)->name('player.track-insights');
+    Route::post('player/track-insights/regenerate', TrackInsightsRegenerateController::class)->name('player.track-insights.regenerate');
 
     Route::prefix('player')->name('player.')->group(function () {
         Route::post('play', [PlayerControlController::class, 'play'])->name('play');

@@ -52,4 +52,9 @@ return [
         'model' => env('AI_LYRICS_TRANSLATION_MODEL', 'gemini-3.1-flash-lite-preview'),
     ],
 
+    'track_insights' => [
+        'provider' => env('AI_TRACK_INSIGHTS_PROVIDER', 'gemini'),
+        'model' => env('AI_TRACK_INSIGHTS_MODEL', 'gemini-3.1-flash-lite-preview'),
+    ],
+
 ];
