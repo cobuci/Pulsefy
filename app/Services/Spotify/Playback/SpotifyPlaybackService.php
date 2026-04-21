@@ -2,11 +2,12 @@
 
 namespace App\Services\Spotify\Playback;
 
+use App\Models\Playlist;
+use App\Models\PlaylistTrack;
 use App\Models\User;
 use App\Services\Spotify\Client\SpotifyPlaybackClient;
 use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
 use App\Services\Spotify\SpotifyTokenService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -185,23 +186,37 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
     public function isTrackSaved(User $user, string $trackId): bool
     {
-        $cacheKey = "spotify:is_saved:{$user->id}:{$trackId}";
+        $likedPlaylist = $this->likedPlaylist($user);
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user, $trackId): bool {
-            try {
-                $response = $this->client($user)->isTrackSaved($trackId);
+        if ($likedPlaylist === null) {
+            return $this->isTrackSavedFromApi($user, $trackId);
+        }
 
-                if (in_array($response->status(), [401, 403, 404], true)) {
-                    return false;
-                }
+        $inDb = PlaylistTrack::query()
+            ->where('playlist_id', $likedPlaylist->id)
+            ->where('spotify_track_id', $trackId)
+            ->exists();
 
-                return (bool) data_get($response->throw()->json(), '0', false);
-            } catch (\Throwable $e) {
-                Log::channel('spotify')->warning('Spotify isTrackSaved failed', ['error' => $e->getMessage(), 'track_id' => $trackId]);
+        if ($inDb) {
+            return true;
+        }
 
-                return false;
-            }
-        });
+        $savedOnApi = $this->isTrackSavedFromApi($user, $trackId);
+
+        if ($savedOnApi) {
+            PlaylistTrack::query()->updateOrCreate(
+                [
+                    'playlist_id' => $likedPlaylist->id,
+                    'spotify_track_id' => $trackId,
+                ],
+                [
+                    'position' => PlaylistTrack::query()->where('playlist_id', $likedPlaylist->id)->max('position') + 1,
+                    'added_at' => now(),
+                ],
+            );
+        }
+
+        return $savedOnApi;
     }
 
     public function saveTrack(User $user, string $trackId): bool
@@ -209,7 +224,20 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         $result = $this->statusOk(fn () => $this->client($user)->saveTrack($trackId), 'saveTrack');
 
         if ($result) {
-            Cache::put("spotify:is_saved:{$user->id}:{$trackId}", true, now()->addMinutes(5));
+            $likedPlaylist = $this->likedPlaylist($user);
+
+            if ($likedPlaylist !== null) {
+                PlaylistTrack::query()->updateOrCreate(
+                    [
+                        'playlist_id' => $likedPlaylist->id,
+                        'spotify_track_id' => $trackId,
+                    ],
+                    [
+                        'position' => PlaylistTrack::query()->where('playlist_id', $likedPlaylist->id)->max('position') + 1,
+                        'added_at' => now(),
+                    ],
+                );
+            }
         }
 
         return $result;
@@ -220,10 +248,42 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         $result = $this->statusOk(fn () => $this->client($user)->unsaveTrack($trackId), 'unsaveTrack');
 
         if ($result) {
-            Cache::put("spotify:is_saved:{$user->id}:{$trackId}", false, now()->addMinutes(5));
+            $likedPlaylist = $this->likedPlaylist($user);
+
+            if ($likedPlaylist !== null) {
+                PlaylistTrack::query()
+                    ->where('playlist_id', $likedPlaylist->id)
+                    ->where('spotify_track_id', $trackId)
+                    ->delete();
+            }
         }
 
         return $result;
+    }
+
+    private function likedPlaylist(User $user): ?Playlist
+    {
+        return Playlist::query()
+            ->where('user_id', $user->id)
+            ->where('is_liked_playlist', true)
+            ->first();
+    }
+
+    private function isTrackSavedFromApi(User $user, string $trackId): bool
+    {
+        try {
+            $response = $this->client($user)->isTrackSaved($trackId);
+
+            if (in_array($response->status(), [401, 403, 404], true)) {
+                return false;
+            }
+
+            return (bool) data_get($response->throw()->json(), '0', false);
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify isTrackSaved failed', ['error' => $e->getMessage(), 'track_id' => $trackId]);
+
+            return false;
+        }
     }
 
     private function statusOk(\Closure $callback, string $operation): bool

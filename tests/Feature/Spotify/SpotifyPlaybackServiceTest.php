@@ -1,9 +1,14 @@
 <?php
 
+use App\Models\Playlist;
+use App\Models\PlaylistTrack;
 use App\Models\User;
 use App\Services\Spotify\Playback\SpotifyPlaybackService;
 use App\Services\Spotify\SpotifyTokenService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Http::preventStrayRequests();
@@ -24,7 +29,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
             'currently_playing_type' => 'track',
             'item' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
         ]),
-        'api.spotify.com/v1/me/tracks/contains*' => Http::response([false]),
+        'api.spotify.com/v1/me/library/contains*' => Http::response([false]),
     ]);
 
     $service = new SpotifyPlaybackService($tokenService);
@@ -224,4 +229,162 @@ test('setRepeat returns true when spotify responds with 204', function () {
     $service = new SpotifyPlaybackService($tokenService);
 
     expect($service->setRepeat($user, 'track'))->toBeTrue();
+});
+
+test('isTrackSaved falls back to API when no liked playlist exists in DB', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library/contains*' => Http::response([true]),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->isTrackSaved($user, 'track456'))->toBeTrue();
+});
+
+test('isTrackSaved returns true from DB without hitting API when track is in liked playlist', function () {
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'is_liked_playlist' => true,
+        'spotify_id' => 'liked-songs',
+    ]);
+
+    PlaylistTrack::factory()->create([
+        'playlist_id' => $playlist->id,
+        'spotify_track_id' => 'track123',
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->never();
+
+    Http::fake();
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->isTrackSaved($user, 'track123'))->toBeTrue();
+
+    Http::assertNothingSent();
+});
+
+test('isTrackSaved calls API and inserts into DB when liked playlist exists but track is not in it and API returns true', function () {
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'is_liked_playlist' => true,
+        'spotify_id' => 'liked-songs',
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library/contains*' => Http::response([true]),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->isTrackSaved($user, 'track456'))->toBeTrue();
+
+    expect(
+        PlaylistTrack::query()
+            ->where('playlist_id', $playlist->id)
+            ->where('spotify_track_id', 'track456')
+            ->exists()
+    )->toBeTrue();
+});
+
+test('isTrackSaved returns false and does not insert when liked playlist exists but API returns false', function () {
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'is_liked_playlist' => true,
+        'spotify_id' => 'liked-songs',
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library/contains*' => Http::response([false]),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->isTrackSaved($user, 'track789'))->toBeFalse();
+
+    expect(
+        PlaylistTrack::query()
+            ->where('playlist_id', $playlist->id)
+            ->where('spotify_track_id', 'track789')
+            ->exists()
+    )->toBeFalse();
+});
+
+test('saveTrack inserts track into liked playlist in DB after successful API call', function () {
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'is_liked_playlist' => true,
+        'spotify_id' => 'liked-songs',
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library*' => Http::response(null, 200),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->saveTrack($user, 'track_new'))->toBeTrue();
+
+    expect(
+        PlaylistTrack::query()
+            ->where('playlist_id', $playlist->id)
+            ->where('spotify_track_id', 'track_new')
+            ->exists()
+    )->toBeTrue();
+});
+
+test('unsaveTrack removes track from liked playlist in DB after successful API call', function () {
+    $user = User::factory()->create();
+
+    $playlist = Playlist::factory()->create([
+        'user_id' => $user->id,
+        'is_liked_playlist' => true,
+        'spotify_id' => 'liked-songs',
+    ]);
+
+    PlaylistTrack::factory()->create([
+        'playlist_id' => $playlist->id,
+        'spotify_track_id' => 'track_del',
+    ]);
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/library*' => Http::response(null, 200),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->unsaveTrack($user, 'track_del'))->toBeTrue();
+
+    expect(
+        PlaylistTrack::query()
+            ->where('playlist_id', $playlist->id)
+            ->where('spotify_track_id', 'track_del')
+            ->exists()
+    )->toBeFalse();
 });
