@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\Library\LibrarySyncStatusUpdated;
+use App\Events\Spotify\SpotifySyncFailed;
 use App\Models\Playlist;
 use App\Models\User;
 use App\Services\Spotify\Library\LibrarySyncStatusService;
@@ -110,5 +111,13 @@ final class SyncUserLibraryJob implements ShouldBeUnique, ShouldQueue
 
         $statusService->finishUserSync($user->id, $hasFailure);
         LibrarySyncStatusUpdated::dispatch($user->id);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        SpotifySyncFailed::dispatch(
+            $this->userId,
+            'Library sync failed. Your playlists may be outdated.',
+        );
     }
 }

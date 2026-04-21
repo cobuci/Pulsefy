@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\Spotify\SpotifySyncFailed;
 use App\Models\User;
 use App\Services\Spotify\Sync\SpotifySyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -61,5 +62,13 @@ class RunUserSpotifySyncJob implements ShouldBeUnique, ShouldQueue
         $sync->syncTopArtists($user);
         $sync->syncTopTracks($user);
         $sync->syncRecentPlays($user);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        SpotifySyncFailed::dispatch(
+            $this->userId,
+            'Spotify sync failed. Your listening data may be outdated.',
+        );
     }
 }

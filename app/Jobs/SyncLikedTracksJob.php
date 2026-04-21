@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\Library\LibraryPlaylistTracksSynced;
+use App\Events\Spotify\SpotifySyncFailed;
 use App\Models\User;
 use App\Services\Spotify\Library\LibrarySyncStatusService;
 use App\Services\Spotify\Library\SpotifyLibraryService;
@@ -68,5 +69,13 @@ final class SyncLikedTracksJob implements ShouldQueue
 
         $statusService->finishPlaylistSync($user->id, 'liked-songs', $hasFailure);
         LibraryPlaylistTracksSynced::dispatch($user->id, 'liked-songs', $hasFailure);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        SpotifySyncFailed::dispatch(
+            $this->userId,
+            'Liked songs sync failed. Your library may be outdated.',
+        );
     }
 }

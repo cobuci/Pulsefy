@@ -7,6 +7,9 @@ import { AppContextMenu } from '@/components/ui/context-menu';
 import { Toaster } from '@/components/ui/sonner';
 import { useContextMenu } from '@/composables/useContextMenu';
 import type { BreadcrumbItem } from '@/types';
+import { usePage } from '@inertiajs/vue3';
+import { onMounted, onUnmounted } from 'vue';
+import { toast } from 'vue-sonner';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
@@ -17,12 +20,38 @@ withDefaults(defineProps<Props>(), {
 });
 
 const contextMenu = useContextMenu();
+const page = usePage();
 
 function openGlobalContextMenu(event: MouseEvent): void {
     contextMenu.open(event, []);
 }
 
 const contextMenuState = contextMenu.state;
+
+onMounted(() => {
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId || typeof window === 'undefined' || !window.Echo) {
+        return;
+    }
+
+    window.Echo.private(`App.Models.User.${userId}`).listen(
+        '.Spotify.SyncFailed',
+        (event: { message: string }) => {
+            toast.error(event.message);
+        },
+    );
+});
+
+onUnmounted(() => {
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId || typeof window === 'undefined' || !window.Echo) {
+        return;
+    }
+
+    window.Echo.private(`App.Models.User.${userId}`).stopListening('.Spotify.SyncFailed');
+});
 </script>
 
 <template>

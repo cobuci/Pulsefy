@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Spotify\Client\SpotifyPlaybackClient;
 use App\Services\Spotify\Contracts\SpotifyPlaybackProvider;
 use App\Services\Spotify\SpotifyTokenService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -184,29 +185,45 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 
     public function isTrackSaved(User $user, string $trackId): bool
     {
-        try {
-            $response = $this->client($user)->isTrackSaved($trackId);
+        $cacheKey = "spotify:is_saved:{$user->id}:{$trackId}";
 
-            if (in_array($response->status(), [401, 403, 404], true)) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($user, $trackId): bool {
+            try {
+                $response = $this->client($user)->isTrackSaved($trackId);
+
+                if (in_array($response->status(), [401, 403, 404], true)) {
+                    return false;
+                }
+
+                return (bool) data_get($response->throw()->json(), '0', false);
+            } catch (\Throwable $e) {
+                Log::channel('spotify')->warning('Spotify isTrackSaved failed', ['error' => $e->getMessage(), 'track_id' => $trackId]);
+
                 return false;
             }
-
-            return (bool) data_get($response->throw()->json(), '0', false);
-        } catch (\Throwable $e) {
-            Log::channel('spotify')->warning('Spotify isTrackSaved failed', ['error' => $e->getMessage(), 'track_id' => $trackId]);
-
-            return false;
-        }
+        });
     }
 
     public function saveTrack(User $user, string $trackId): bool
     {
-        return $this->statusOk(fn () => $this->client($user)->saveTrack($trackId), 'saveTrack');
+        $result = $this->statusOk(fn () => $this->client($user)->saveTrack($trackId), 'saveTrack');
+
+        if ($result) {
+            Cache::put("spotify:is_saved:{$user->id}:{$trackId}", true, now()->addMinutes(5));
+        }
+
+        return $result;
     }
 
     public function unsaveTrack(User $user, string $trackId): bool
     {
-        return $this->statusOk(fn () => $this->client($user)->unsaveTrack($trackId), 'unsaveTrack');
+        $result = $this->statusOk(fn () => $this->client($user)->unsaveTrack($trackId), 'unsaveTrack');
+
+        if ($result) {
+            Cache::put("spotify:is_saved:{$user->id}:{$trackId}", false, now()->addMinutes(5));
+        }
+
+        return $result;
     }
 
     private function statusOk(\Closure $callback, string $operation): bool
