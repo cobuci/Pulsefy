@@ -40,4 +40,9 @@ class Lyric extends Model
     {
         return $this->hasMany(LyricTranslation::class);
     }
+
+    public function pronunciations(): HasMany
+    {
+        return $this->hasMany(LyricPronunciation::class);
+    }
 }

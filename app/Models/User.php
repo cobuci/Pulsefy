@@ -85,6 +85,11 @@ class User extends Authenticatable
         return $this->hasMany(LyricTranslation::class);
     }
 
+    public function lyricPronunciations(): HasMany
+    {
+        return $this->hasMany(LyricPronunciation::class);
+    }
+
     public function artists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'user_top_artists', 'user_id', 'artist_model_id')
