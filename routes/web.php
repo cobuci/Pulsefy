@@ -16,6 +16,7 @@ use App\Http\Controllers\Library\ReorderPlaylistsController as LibraryReorderPla
 use App\Http\Controllers\Library\ShowController as LibraryShowController;
 use App\Http\Controllers\Library\SyncPlaylistController as LibrarySyncPlaylistController;
 use App\Http\Controllers\Library\UpdatePlaylistVisibilityController as LibraryUpdatePlaylistVisibilityController;
+use App\Http\Controllers\Player\CheckFavoriteController as PlayerCheckFavoriteController;
 use App\Http\Controllers\Player\ControlController as PlayerControlController;
 use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
@@ -76,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('device-token', DeviceTokenController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
+        Route::get('favorite', PlayerCheckFavoriteController::class)->name('favorite.check');
         Route::post('favorite', PlayerFavoriteController::class)->name('favorite');
     });
 });
