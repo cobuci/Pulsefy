@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, ChevronRight, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
+import { ChevronRight, Eye, EyeOff, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import type { ContextMenuItem } from '@/components/ui/context-menu';
@@ -167,15 +167,13 @@ const childFolders = computed<LibraryFolderItem[]>(() => {
 });
 
 const visiblePlaylists = computed<LibraryPlaylistItem[]>(() => {
-    return localPlaylists.value.filter(
-        (playlist) => (playlist.folder_id ?? null) === activeFolderId.value && !playlist.is_hidden,
-    );
-});
+    return localPlaylists.value.filter((playlist) => {
+        if ((playlist.folder_id ?? null) !== activeFolderId.value) {
+            return false;
+        }
 
-const hiddenPlaylists = computed<LibraryPlaylistItem[]>(() => {
-    return localPlaylists.value.filter(
-        (playlist) => (playlist.folder_id ?? null) === activeFolderId.value && playlist.is_hidden,
-    );
+        return includeHidden.value ? playlist.is_hidden : !playlist.is_hidden;
+    });
 });
 
 watch(
@@ -549,12 +547,13 @@ function toggleShowHidden() {
     includeHidden.value = !includeHidden.value;
     closeContextMenu();
 
-    router.visit(
+    router.get(
         libraryIndex({
             query: {
                 show_hidden: includeHidden.value ? 1 : 0,
             },
         }).url,
+        {},
         {
             only: ['playlists', 'hiddenCount', 'showHidden'],
             preserveScroll: true,
@@ -609,11 +608,14 @@ function toggleShowHidden() {
                 <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     :disabled="hiddenCount === 0"
+                    class="gap-1.5 text-xs"
                     @click="toggleShowHidden"
                 >
-                    <Check v-if="includeHidden" class="mr-1.5 size-4" />
-                    {{ includeHidden ? 'Hide hidden playlists' : `Show hidden playlists (${hiddenCount})` }}
+                    <EyeOff v-if="includeHidden" class="size-3.5" />
+                    <Eye v-else class="size-3.5" />
+                    {{ includeHidden ? 'Show all' : `Hidden (${hiddenCount})` }}
                 </Button>
 
                 <Form
@@ -746,7 +748,7 @@ function toggleShowHidden() {
 
         <section>
             <div class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Playlists
+                {{ includeHidden ? 'Hidden playlists' : 'Playlists' }}
             </div>
 
             <div v-if="visiblePlaylists.length === 0" class="rounded-2xl border border-dashed border-border p-12 text-center">
@@ -808,49 +810,6 @@ function toggleShowHidden() {
                             </p>
                         </div>
                     </Link>
-                </div>
-            </TransitionGroup>
-
-            <TransitionGroup
-                v-if="includeHidden && hiddenPlaylists.length > 0"
-                name="playlist-grid"
-                tag="div"
-                class="mt-8"
-            >
-                <div key="hidden-title" class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Hidden playlists
-                </div>
-
-                <div key="hidden-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                    <div
-                        v-for="playlist in hiddenPlaylists"
-                        :key="`hidden-${playlist.id}`"
-                        class="group relative"
-                    >
-                        <Link
-                            :href="libraryShow(playlist.id).url"
-                            class="block overflow-hidden rounded-2xl border border-border/70 bg-card/60 opacity-85 transition-all duration-200 hover:border-accent/40 hover:opacity-100 hover:shadow-accent"
-                            @contextmenu="onPlaylistContextMenu($event, playlist)"
-                        >
-                            <img
-                                v-if="playlist.image"
-                                :src="playlist.image"
-                                :alt="playlist.name"
-                                class="aspect-square w-full object-cover"
-                            />
-                            <div v-else class="aspect-square w-full bg-muted" />
-
-                            <div class="p-3">
-                                <div class="truncate text-sm font-medium text-foreground">
-                                    {{ playlist.name }}
-                                </div>
-                                <p class="truncate text-xs text-muted-foreground">
-                                    {{ playlist.tracks_total }} tracks
-                                    <span v-if="playlist.owner_name">· {{ playlist.owner_name }}</span>
-                                </p>
-                            </div>
-                        </Link>
-                    </div>
                 </div>
             </TransitionGroup>
         </section>
