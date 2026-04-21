@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Artist;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\HydrateArtistPageDataJob;
+use App\Models\Album;
 use App\Models\Artist;
 use App\Models\Track;
 use App\Services\Spotify\Contracts\SpotifyArtistProvider;
@@ -27,6 +28,7 @@ final class ShowController extends Controller
         }
 
         $artistModel = Artist::query()
+            /** @var Artist|null $artistModel */
             ->where('artist_id', $artistId)
             ->with(['albums', 'tracks.album', 'tracks.artists'])
             ->first();
@@ -35,7 +37,8 @@ final class ShowController extends Controller
             ? [
                 'id' => $artistModel->artist_id,
                 'name' => $artistModel->artist_name,
-                'images' => $artistModel->images ?? $artistModel->tracks
+                'images' => $artistModel->images ?? $artistModel->tracks()
+                    ->get()
                     ->map(fn (Track $track): ?array => $track->album?->images)
                     ->filter(fn (?array $images): bool => is_array($images) && $images !== [])
                     ->first() ?? [],
@@ -92,7 +95,7 @@ final class ShowController extends Controller
 
         $cachedAlbums = $artistModel
             ? $artistModel->albums
-                ->map(fn ($album): array => [
+                ->map(fn (Album $album): array => [
                     'id' => $album->spotify_id,
                     'name' => $album->name,
                     'images' => $album->images ?? [],
