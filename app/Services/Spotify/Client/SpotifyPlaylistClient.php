@@ -18,6 +18,14 @@ class SpotifyPlaylistClient
         private readonly ?GlobalSpotifyRateLimit $rateLimit = null,
     ) {}
 
+    public function savedTracks(int $limit = 50, int $offset = 0): Response
+    {
+        return $this->get('/me/tracks', [
+            'limit' => $limit,
+            'offset' => $offset,
+        ]);
+    }
+
     public function currentUserPlaylists(int $limit = 20, int $offset = 0): Response
     {
         return $this->get('/me/playlists', [

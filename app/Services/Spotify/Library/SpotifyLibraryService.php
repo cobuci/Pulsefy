@@ -176,6 +176,280 @@ class SpotifyLibraryService
         ]);
     }
 
+    public function syncLikedTracks(User $user): void
+    {
+        $client = $this->clientFor($user);
+
+        $playlist = Playlist::query()->firstOrCreate(
+            ['user_id' => $user->id, 'spotify_id' => 'liked-songs'],
+            [
+                'name' => 'Liked Songs',
+                'is_liked_playlist' => true,
+                'is_public' => false,
+                'is_collaborative' => false,
+                'tracks_total' => 0,
+                'position' => 0,
+            ],
+        );
+
+        $fingerprintResponse = $client->savedTracks(1, 0);
+
+        if (! $fingerprintResponse->successful()) {
+            Log::channel('spotify')->warning('Could not fetch liked songs fingerprint', [
+                'user_id' => $user->id,
+                'status' => $fingerprintResponse->status(),
+            ]);
+
+            return;
+        }
+
+        $apiTotal = (int) $fingerprintResponse->json('total');
+        $apiFirstId = (string) data_get($fingerprintResponse->json('items.0'), 'track.id', '');
+        $apiFirstAddedAt = (string) data_get($fingerprintResponse->json('items.0'), 'added_at', '');
+
+        $dbTotal = (int) $playlist->tracks_total;
+        $dbFirstTrack = PlaylistTrack::query()
+            ->whereBelongsTo($playlist)
+            ->orderBy('position')
+            ->first(['spotify_track_id', 'added_at']);
+
+        $dbFirstId = $dbFirstTrack ? (string) $dbFirstTrack->spotify_track_id : '';
+        $dbFirstAddedAt = $dbFirstTrack ? (string) $dbFirstTrack->added_at : '';
+
+        $firstItemSame = $apiFirstId === $dbFirstId && $apiFirstAddedAt === $dbFirstAddedAt;
+
+        if ($apiTotal === $dbTotal && $firstItemSame) {
+            return;
+        }
+
+        $isIncrementalAddition = $apiTotal > $dbTotal && $firstItemSame === false && $dbTotal > 0;
+
+        if ($isIncrementalAddition) {
+            $this->syncLikedTracksIncremental($user, $client, $playlist, $apiTotal, $dbTotal, $apiFirstId, $apiFirstAddedAt);
+        } else {
+            $this->syncLikedTracksFull($user, $client, $playlist);
+        }
+    }
+
+    private function syncLikedTracksFull(User $user, SpotifyPlaylistClient $client, Playlist $playlist): void
+    {
+        $offset = 0;
+        $limit = 50;
+        $rows = [];
+        $trackPayloads = [];
+        $hadSuccessfulResponse = false;
+
+        while (true) {
+            $response = $client->savedTracks($limit, $offset);
+
+            if (! $response->successful()) {
+                Log::channel('spotify')->warning('Could not sync liked tracks (full)', [
+                    'user_id' => $user->id,
+                    'status' => $response->status(),
+                ]);
+
+                break;
+            }
+
+            $hadSuccessfulResponse = true;
+            $items = Arr::wrap($response->json('items'));
+
+            if ($items === []) {
+                break;
+            }
+
+            foreach ($items as $position => $item) {
+                $trackPayload = data_get($item, 'track');
+                $trackSpotifyId = (string) data_get($trackPayload, 'id', '');
+
+                if ($trackSpotifyId === '') {
+                    continue;
+                }
+
+                if (is_array($trackPayload) && $trackPayload !== []) {
+                    $trackPayloads[] = $trackPayload;
+                }
+
+                $rows[] = [
+                    'playlist_id' => $playlist->id,
+                    'track_id' => null,
+                    'spotify_track_id' => $trackSpotifyId,
+                    'position' => $offset + $position,
+                    'added_at' => $this->parseSpotifyTimestamp(data_get($item, 'added_at')),
+                    'added_by_spotify_id' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if ($response->json('next') === null) {
+                break;
+            }
+
+            $offset += $limit;
+        }
+
+        if (! $hadSuccessfulResponse) {
+            return;
+        }
+
+        $this->persistLikedTracks($playlist, $rows, $trackPayloads);
+    }
+
+    private function syncLikedTracksIncremental(
+        User $user,
+        SpotifyPlaylistClient $client,
+        Playlist $playlist,
+        int $apiTotal,
+        int $dbTotal,
+        string $apiFirstId,
+        string $apiFirstAddedAt,
+    ): void {
+        $existingKeys = PlaylistTrack::query()
+            ->whereBelongsTo($playlist)
+            ->get(['spotify_track_id', 'added_at'])
+            ->mapWithKeys(fn ($row): array => [$row->spotify_track_id.'|'.$row->added_at => true])
+            ->all();
+
+        $newRows = [];
+        $newTrackPayloads = [];
+        $offset = 0;
+        $limit = 50;
+        $foundOverlap = false;
+
+        while (! $foundOverlap) {
+            $response = $client->savedTracks($limit, $offset);
+
+            if (! $response->successful()) {
+                Log::channel('spotify')->warning('Could not sync liked tracks (incremental)', [
+                    'user_id' => $user->id,
+                    'status' => $response->status(),
+                ]);
+
+                return;
+            }
+
+            $items = Arr::wrap($response->json('items'));
+
+            if ($items === []) {
+                break;
+            }
+
+            foreach ($items as $item) {
+                $trackPayload = data_get($item, 'track');
+                $trackSpotifyId = (string) data_get($trackPayload, 'id', '');
+                $addedAt = $this->parseSpotifyTimestamp(data_get($item, 'added_at'));
+                $key = $trackSpotifyId.'|'.$addedAt;
+
+                if (isset($existingKeys[$key])) {
+                    $foundOverlap = true;
+
+                    break;
+                }
+
+                if ($trackSpotifyId === '') {
+                    continue;
+                }
+
+                if (is_array($trackPayload) && $trackPayload !== []) {
+                    $newTrackPayloads[] = $trackPayload;
+                }
+
+                $newRows[] = [
+                    'playlist_id' => $playlist->id,
+                    'track_id' => null,
+                    'spotify_track_id' => $trackSpotifyId,
+                    'position' => count($newRows),
+                    'added_at' => $addedAt,
+                    'added_by_spotify_id' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if ($response->json('next') === null) {
+                break;
+            }
+
+            $offset += $limit;
+        }
+
+        if ($newRows === []) {
+            return;
+        }
+
+        if ($newTrackPayloads !== []) {
+            ($this->catalogHydration ?? app(SpotifyCatalogHydrationService::class))->hydrateTracks($newTrackPayloads);
+        }
+
+        $newCount = count($newRows);
+
+        DB::transaction(function () use ($playlist, $newRows, $newCount): void {
+            PlaylistTrack::query()
+                ->whereBelongsTo($playlist)
+                ->increment('position', $newCount);
+
+            $trackIdsBySpotifyId = Track::query()
+                ->whereIn('spotify_id', collect($newRows)->pluck('spotify_track_id')->values()->all())
+                ->pluck('id', 'spotify_id');
+
+            $newRows = array_map(function (array $row) use ($trackIdsBySpotifyId): array {
+                $resolvedTrackId = $trackIdsBySpotifyId->get($row['spotify_track_id']);
+
+                if (is_int($resolvedTrackId)) {
+                    $row['track_id'] = $resolvedTrackId;
+                }
+
+                return $row;
+            }, $newRows);
+
+            PlaylistTrack::query()->insert($newRows);
+        });
+
+        $playlist->update([
+            'tracks_total' => $dbTotal + $newCount,
+            'synced_at' => now(),
+            'expires_at' => now()->addMinutes(self::PLAYLIST_TTL_MINUTES),
+        ]);
+    }
+
+    private function persistLikedTracks(Playlist $playlist, array $rows, array $trackPayloads): void
+    {
+        if ($trackPayloads !== []) {
+            ($this->catalogHydration ?? app(SpotifyCatalogHydrationService::class))->hydrateTracks($trackPayloads);
+        }
+
+        DB::transaction(function () use ($playlist, $rows): void {
+            PlaylistTrack::query()->whereBelongsTo($playlist)->delete();
+
+            if ($rows === []) {
+                return;
+            }
+
+            $trackIdsBySpotifyId = Track::query()
+                ->whereIn('spotify_id', collect($rows)->pluck('spotify_track_id')->values()->all())
+                ->pluck('id', 'spotify_id');
+
+            $rows = array_map(function (array $row) use ($trackIdsBySpotifyId): array {
+                $resolvedTrackId = $trackIdsBySpotifyId->get($row['spotify_track_id']);
+
+                if (is_int($resolvedTrackId)) {
+                    $row['track_id'] = $resolvedTrackId;
+                }
+
+                return $row;
+            }, $rows);
+
+            PlaylistTrack::query()->insert($rows);
+        });
+
+        $playlist->update([
+            'tracks_total' => count($rows),
+            'synced_at' => now(),
+            'expires_at' => now()->addMinutes(self::PLAYLIST_TTL_MINUTES),
+        ]);
+    }
+
     private function upsertPlaylist(User $user, array $payload): Playlist
     {
         $spotifyId = (string) data_get($payload, 'id', '');
