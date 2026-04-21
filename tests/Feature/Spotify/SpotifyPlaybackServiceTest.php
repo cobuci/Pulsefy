@@ -13,7 +13,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
     $user = User::factory()->create();
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);
-    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+    $tokenService->shouldReceive('ensureFreshToken')->andReturn('token');
 
     Http::fake([
         'api.spotify.com/v1/me/player*' => Http::response([
@@ -24,6 +24,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
             'currently_playing_type' => 'track',
             'item' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
         ]),
+        'api.spotify.com/v1/me/tracks/contains*' => Http::response([false]),
     ]);
 
     $service = new SpotifyPlaybackService($tokenService);
@@ -36,6 +37,7 @@ test('currentlyPlaying returns track data when a track is playing', function () 
         'progress_ms' => 30000,
         'volume_percent' => null,
         'track' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
+        'is_saved' => false,
     ]);
 });
 

@@ -100,6 +100,38 @@ const lyrics = useSpotifyLyrics(
 
 const insightsOpen = ref(false);
 
+const isPlayingExternally = computed(() => {
+    if (!hasTrack.value || !webPlayer.localDeviceId.value) {
+        return false;
+    }
+
+    return (
+        devices.selectedDeviceId.value !== '' &&
+        devices.selectedDeviceId.value !== webPlayer.localDeviceId.value
+    );
+});
+
+const activeDeviceName = computed(() => {
+    if (!isPlayingExternally.value) {
+        return null;
+    }
+
+    return (
+        devices.selectableDevices.value.find(
+            (d) => d.id === devices.selectedDeviceId.value,
+        )?.name ?? null
+    );
+});
+
+async function transferToLocalPlayer(): Promise<void> {
+    if (!webPlayer.localDeviceId.value) {
+        return;
+    }
+
+    devices.selectedDeviceId.value = webPlayer.localDeviceId.value;
+    await devices.onTransferToSelectedDevice();
+}
+
 watch(() => data.value?.track?.id, () => {
     insightsOpen.value = false;
 });
@@ -1335,6 +1367,37 @@ watch(
                 {{ localStatus }}
             </p>
         </div>
+
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 translate-y-1"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 translate-y-1"
+        >
+            <div
+                v-if="isPlayingExternally"
+                class="flex items-center justify-center gap-2 border-t border-border/40 bg-secondary/60 px-4 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm"
+            >
+                <span class="flex items-center gap-1.5">
+                    <span class="relative flex size-1.5">
+                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+                        <span class="relative inline-flex size-1.5 rounded-full bg-accent" />
+                    </span>
+                    Playing on
+                    <span class="font-medium text-foreground">{{ activeDeviceName ?? 'external device' }}</span>
+                </span>
+                <span class="text-border">·</span>
+                <button
+                    type="button"
+                    class="font-medium text-accent transition-colors hover:text-accent/80"
+                    @click="transferToLocalPlayer"
+                >
+                    Play here
+                </button>
+            </div>
+        </Transition>
     </div>
 
     <TrackInsightsPanel
