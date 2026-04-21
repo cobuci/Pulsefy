@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Heart, Languages, Repeat, Repeat1, Shuffle, X } from 'lucide-vue-next';
+import { Heart, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
@@ -10,6 +10,7 @@ import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
+import TrackInsightsPanel from '@/components/TrackInsightsPanel.vue';
 import VolumeControl from '@/components/player/VolumeControl.vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
@@ -96,6 +97,12 @@ const lyrics = useSpotifyLyrics(
     () => data.value?.track,
     () => progressMs.value,
 );
+
+const insightsOpen = ref(false);
+
+watch(() => data.value?.track?.id, () => {
+    insightsOpen.value = false;
+});
 
 function handleDocumentPointerDown(event: PointerEvent) {
     if (!lyrics.lyricsOpen.value || !playerRootRef.value) {
@@ -1182,6 +1189,23 @@ watch(
                 >
                     <button
                         type="button"
+                        :disabled="!hasTrack"
+                        title="AI Track Insights"
+                        :class="[
+                            'grid size-8 shrink-0 place-items-center rounded-md transition-colors disabled:opacity-50',
+                            insightsOpen
+                                ? 'text-purple-400'
+                                : 'text-muted-foreground hover:text-foreground',
+                            !hasTrack ? 'cursor-not-allowed' : 'cursor-pointer',
+                        ]"
+                        aria-label="AI Track Insights"
+                        @click="insightsOpen = !insightsOpen"
+                    >
+                        <Sparkles class="size-4" />
+                    </button>
+
+                    <button
+                        type="button"
                         :disabled="lyrics.lyricsHttp.processing"
                         :title="
                             lyrics.lyricsOpen.value
@@ -1201,7 +1225,7 @@ watch(
                             lyrics.lyricsOpen.value = !lyrics.lyricsOpen.value
                         "
                     >
-                        <IconKaraoke class="size-4" />
+                        <MicVocal class="size-4" />
                     </button>
 
                     <div class="hidden items-center justify-end gap-2 lg:flex">
@@ -1312,4 +1336,10 @@ watch(
             </p>
         </div>
     </div>
+
+    <TrackInsightsPanel
+        :open="insightsOpen"
+        :track="data?.track ?? null"
+        @close="insightsOpen = false"
+    />
 </template>
