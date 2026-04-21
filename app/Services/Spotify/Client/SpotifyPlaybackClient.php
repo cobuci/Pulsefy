@@ -89,6 +89,21 @@ final class SpotifyPlaybackClient
         ]);
     }
 
+    public function isTrackSaved(string $trackId): Response
+    {
+        return $this->get('/me/library/contains', ['uris' => 'spotify:track:'.$trackId]);
+    }
+
+    public function saveTrack(string $trackId): Response
+    {
+        return $this->put('/me/library', ['uris' => 'spotify:track:'.$trackId]);
+    }
+
+    public function unsaveTrack(string $trackId): Response
+    {
+        return $this->delete('/me/library', ['uris' => 'spotify:track:'.$trackId]);
+    }
+
     private function get(string $path, array $query = []): Response
     {
         return Http::withToken($this->accessToken)
@@ -120,5 +135,13 @@ final class SpotifyPlaybackClient
             ->connectTimeout(5)
             ->asJson()
             ->put(self::BASE_URL.$path, $payload);
+    }
+
+    private function delete(string $path, array $query = []): Response
+    {
+        return Http::withToken($this->accessToken)
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->delete(self::BASE_URL.$path.'?'.http_build_query($query));
     }
 }

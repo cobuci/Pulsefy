@@ -19,6 +19,7 @@ use App\Http\Controllers\Library\UpdatePlaylistVisibilityController as LibraryUp
 use App\Http\Controllers\Player\ControlController as PlayerControlController;
 use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
+use App\Http\Controllers\Player\FavoriteController as PlayerFavoriteController;
 use App\Http\Controllers\Player\LyricsController;
 use App\Http\Controllers\Player\LyricsPronunciationController;
 use App\Http\Controllers\Player\LyricsTranslationController;
@@ -75,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('device-token', DeviceTokenController::class)->name('device-token');
         Route::get('devices', PlayerDevicesController::class)->name('devices');
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
+        Route::post('favorite', PlayerFavoriteController::class)->name('favorite');
     });
 });
 

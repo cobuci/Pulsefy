@@ -34,4 +34,10 @@ interface SpotifyPlaybackProvider
     public function setRepeat(User $user, string $mode): bool;
 
     public function transferPlayback(User $user, string $deviceId, bool $play = true): bool;
+
+    public function isTrackSaved(User $user, string $trackId): bool;
+
+    public function saveTrack(User $user, string $trackId): bool;
+
+    public function unsaveTrack(User $user, string $trackId): bool;
 }

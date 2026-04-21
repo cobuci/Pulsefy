@@ -9,7 +9,7 @@ use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, repeat_state: string, progress_ms: int, volume_percent: ?int, track: array<string, mixed>}
+ * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, repeat_state: string, progress_ms: int, volume_percent: ?int, track: array<string, mixed>, is_saved: bool}
  */
 final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 {
@@ -34,6 +34,8 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
                 return null;
             }
 
+            $trackId = $data['item']['id'] ?? '';
+
             return [
                 'is_playing' => $data['is_playing'] ?? false,
                 'shuffle_state' => $data['shuffle_state'] ?? false,
@@ -41,6 +43,7 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
                 'progress_ms' => $data['progress_ms'] ?? 0,
                 'volume_percent' => $data['device']['volume_percent'] ?? null,
                 'track' => $data['item'],
+                'is_saved' => $trackId !== '' ? $this->isTrackSaved($user, $trackId) : false,
             ];
         } catch (\Throwable $e) {
             Log::channel('spotify')->warning('Spotify currentlyPlaying failed', ['error' => $e->getMessage()]);
@@ -175,6 +178,33 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
     public function transferPlayback(User $user, string $deviceId, bool $play = true): bool
     {
         return $this->statusOk(fn () => $this->client($user)->transferPlayback($deviceId, $play), 'transferPlayback');
+    }
+
+    public function isTrackSaved(User $user, string $trackId): bool
+    {
+        try {
+            $response = $this->client($user)->isTrackSaved($trackId);
+
+            if (in_array($response->status(), [401, 403, 404], true)) {
+                return false;
+            }
+
+            return (bool) data_get($response->throw()->json(), '0', false);
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify isTrackSaved failed', ['error' => $e->getMessage(), 'track_id' => $trackId]);
+
+            return false;
+        }
+    }
+
+    public function saveTrack(User $user, string $trackId): bool
+    {
+        return $this->statusOk(fn () => $this->client($user)->saveTrack($trackId), 'saveTrack');
+    }
+
+    public function unsaveTrack(User $user, string $trackId): bool
+    {
+        return $this->statusOk(fn () => $this->client($user)->unsaveTrack($trackId), 'unsaveTrack');
     }
 
     private function statusOk(\Closure $callback, string $operation): bool
