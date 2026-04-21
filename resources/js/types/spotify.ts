@@ -129,3 +129,34 @@ export interface SpotifyDevice {
     volume_percent: number | null;
     supports_volume: boolean;
 }
+
+export type TrackInsightStatus = 'queued' | 'processing' | 'ready' | 'failed';
+
+export interface TrackInsightsData {
+    summary: string;
+    summary_pt: string;
+    mood: string;
+    mood_pt: string;
+    meaning: string;
+    meaning_pt: string;
+    themes: string[];
+    themes_pt: string[];
+    trivia: string[];
+    trivia_pt: string[];
+    similar: string[];
+    similar_pt: string[];
+}
+
+export interface TrackInsightsResponse {
+    track_id: string;
+    status: TrackInsightStatus | null;
+    insights: TrackInsightsData | null;
+    error_message: string | null;
+}
+
+export interface TrackInsightsUpdatedEvent {
+    trackId: string;
+    status: TrackInsightStatus;
+    insights: TrackInsightsData | null;
+    errorMessage: string | null;
+}
