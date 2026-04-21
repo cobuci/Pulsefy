@@ -24,6 +24,8 @@ test('authenticated users can visit album show page with deferred props', functi
             'id' => 'album-1',
             'name' => 'Album One',
             'images' => [],
+            'album_type' => 'album',
+            'total_tracks' => 10,
             'release_date' => '2024-01-01',
             'external_urls' => ['spotify' => 'https://open.spotify.com/album/album-1'],
         ]),
