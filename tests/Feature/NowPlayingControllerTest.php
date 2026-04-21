@@ -97,6 +97,7 @@ test('returns now-playing data when a track exists and playback is paused', func
             'currently_playing_type' => 'track',
             'item' => ['id' => 'track1', 'name' => 'Song A', 'duration_ms' => 200000],
         ]),
+        'api.spotify.com/v1/me/library/contains*' => Http::response([false], 200),
     ]);
 
     $this->actingAs($user)
@@ -107,6 +108,7 @@ test('returns now-playing data when a track exists and playback is paused', func
             'shuffle_state' => false,
             'progress_ms' => 45000,
             'track' => ['id' => 'track1', 'name' => 'Song A'],
+            'is_saved' => false,
         ]);
 });
 
@@ -121,6 +123,7 @@ test('returns now-playing data when a track is playing', function () {
             'currently_playing_type' => 'track',
             'item' => ['id' => 'track2', 'name' => 'Song B', 'duration_ms' => 210000],
         ]),
+        'api.spotify.com/v1/me/library/contains*' => Http::response([true], 200),
     ]);
 
     $this->actingAs($user)
@@ -131,6 +134,7 @@ test('returns now-playing data when a track is playing', function () {
             'shuffle_state' => false,
             'progress_ms' => 12000,
             'track' => ['id' => 'track2', 'name' => 'Song B'],
+            'is_saved' => true,
         ]);
 });
 
