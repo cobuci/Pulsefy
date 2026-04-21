@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Player;
 
 use App\Http\Controllers\Controller;
+use App\Models\LyricPronunciation;
 use App\Models\LyricTranslation;
 use App\Services\LyricsService;
 use Illuminate\Http\JsonResponse;
@@ -21,18 +22,22 @@ final class LyricsController extends Controller
             'force_refresh' => ['sometimes', 'boolean'],
         ]);
 
+        $trackId = $validated['track_id'];
+
+        $payload = $lyrics->getLyrics(
+            $trackId,
+            $validated['artist'],
+            $validated['track_name'],
+            $validated['album_name'] ?? null,
+            isset($validated['duration']) ? (float) $validated['duration'] : null,
+            $request->boolean('force_refresh'),
+        );
+
         return response()->json(
-            $this->withTranslationData(
+            $this->withPronunciationData(
                 $request,
-                $validated['track_id'],
-                $lyrics->getLyrics(
-                    $validated['track_id'],
-                    $validated['artist'],
-                    $validated['track_name'],
-                    $validated['album_name'] ?? null,
-                    isset($validated['duration']) ? (float) $validated['duration'] : null,
-                    $request->boolean('force_refresh'),
-                )
+                $trackId,
+                $this->withTranslationData($request, $trackId, $payload),
             )
         );
     }
@@ -70,6 +75,43 @@ final class LyricsController extends Controller
                 'provider' => $translation?->provider,
                 'model' => $translation?->model,
                 'error_message' => $translation?->error_message,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withPronunciationData(Request $request, string $trackId, array $payload): array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return $payload + [
+                'romanization' => [
+                    'status' => null,
+                    'romanized_lines' => null,
+                    'provider' => null,
+                    'model' => null,
+                    'error_message' => null,
+                ],
+            ];
+        }
+
+        $pronunciation = LyricPronunciation::query()
+            ->where('user_id', $user->id)
+            ->where('track_id', $trackId)
+            ->latest('id')
+            ->first();
+
+        return $payload + [
+            'romanization' => [
+                'status' => $pronunciation?->status,
+                'romanized_lines' => $pronunciation?->romanized_lines,
+                'provider' => $pronunciation?->provider,
+                'model' => $pronunciation?->model,
+                'error_message' => $pronunciation?->error_message,
             ],
         ];
     }
