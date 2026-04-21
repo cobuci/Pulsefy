@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RunUserSpotifySyncJob;
 use App\Services\Spotify\SpotifyAuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,8 @@ final class SpotifyController extends Controller
         $user = $service->findOrCreateUser($spotifyUser);
 
         Auth::login($user, remember: true);
+
+        RunUserSpotifySyncJob::dispatch($user->id);
 
         return redirect()->intended(route('dashboard'));
     }
