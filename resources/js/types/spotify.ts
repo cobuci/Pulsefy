@@ -61,6 +61,7 @@ export interface NowPlaying {
     progress_ms: number;
     volume_percent: number | null;
     track: SpotifyTrack;
+    is_saved: boolean;
 }
 
 export type LyricsTranslationStatus = 'queued' | 'processing' | 'ready' | 'failed';

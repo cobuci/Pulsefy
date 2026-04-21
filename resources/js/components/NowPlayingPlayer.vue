@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Languages, Repeat, Repeat1, Shuffle, X } from 'lucide-vue-next';
+import { Heart, Languages, Repeat, Repeat1, Shuffle, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconKaraoke from '@/components/icons/IconKaraoke.vue';
@@ -33,7 +33,7 @@ import { formatDuration } from '@/utils/format';
 const POLL_INTERVAL = 30_000;
 const PREVIOUS_RESTART_THRESHOLD_MS = 3_000;
 
-const { nowPlayingData, fetchNowPlaying } = usePlayer();
+const { nowPlayingData, fetchNowPlaying, isCurrentTrackSaved, toggleSaveTrack } = usePlayer();
 const page = usePage<{
     auth: {
         user?: {
@@ -47,6 +47,7 @@ const isPlaying = computed(() => data.value?.is_playing ?? false);
 const isBusy = ref(false);
 const isShuffleBusy = ref(false);
 const isRepeatBusy = ref(false);
+const isFavoriteBusy = ref(false);
 const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
 const activeLyricRef = ref<HTMLElement | null>(null);
@@ -519,6 +520,18 @@ function onPrevious() {
     }
 
     sendCommand(previous.url());
+}
+
+function onToggleFavorite() {
+    if (isFavoriteBusy.value || !hasTrack.value) {
+        return;
+    }
+
+    isFavoriteBusy.value = true;
+
+    void toggleSaveTrack().finally(() => {
+        isFavoriteBusy.value = false;
+    });
 }
 
 function onToggleShuffle() {
@@ -1004,11 +1017,30 @@ watch(
                         </div>
                     </template>
 
+                    <button
+                        v-if="hasTrack"
+                        type="button"
+                        :title="isCurrentTrackSaved ? 'Remove from library' : 'Save to library'"
+                        :disabled="isFavoriteBusy"
+                        :class="[
+                            'ml-1 grid size-7 shrink-0 place-items-center rounded-full transition-colors',
+                            isCurrentTrackSaved
+                                ? 'text-accent'
+                                : 'text-muted-foreground hover:text-foreground',
+                            isFavoriteBusy ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+                        ]"
+                        @click="onToggleFavorite"
+                    >
+                        <Heart
+                            class="size-3.5"
+                            :fill="isCurrentTrackSaved ? 'currentColor' : 'none'"
+                        />
+                    </button>
+
                     <p v-else class="text-xs text-muted-foreground">
                         Nothing playing
                     </p>
                 </div>
-
                 <div class="flex flex-1 flex-col items-center gap-1.5">
                     <div class="flex items-center gap-1">
                         <button

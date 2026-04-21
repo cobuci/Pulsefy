@@ -1,6 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import {
+    favorite as favoriteRoute,
     nowPlaying as nowPlayingRoute,
     pause as pauseRoute,
     play as playRoute,
@@ -11,12 +12,14 @@ import { getCsrfToken } from '@/utils/csrf';
 export type UsePlayerReturn = {
     nowPlayingData: Ref<NowPlaying | null>;
     isPlayingTrack: ComputedRef<(trackId: string) => boolean>;
+    isCurrentTrackSaved: ComputedRef<boolean>;
     fetchNowPlaying: () => Promise<void>;
     pausePlayback: () => Promise<void>;
     playTrack: (
         spotifyUri: string,
         options?: { uris?: string[]; offsetPosition?: number },
     ) => Promise<void>;
+    toggleSaveTrack: () => Promise<void>;
 };
 
 const nowPlayingData = ref<NowPlaying | null>(null);
@@ -28,6 +31,8 @@ const isPlayingTrack = computed(
             nowPlayingData.value.track?.id === trackId
         ),
 );
+
+const isCurrentTrackSaved = computed(() => nowPlayingData.value?.is_saved ?? false);
 
 async function fetchNowPlaying(): Promise<void> {
     if (typeof window === 'undefined') {
@@ -107,12 +112,52 @@ async function pausePlayback(): Promise<void> {
     } catch {}
 }
 
+async function toggleSaveTrack(): Promise<void> {
+    const trackId = nowPlayingData.value?.track?.id;
+
+    if (!trackId || !nowPlayingData.value) {
+        return;
+    }
+
+    const currentlySaved = nowPlayingData.value.is_saved;
+    const nextSaved = !currentlySaved;
+
+    nowPlayingData.value = { ...nowPlayingData.value, is_saved: nextSaved };
+
+    try {
+        const response = await fetch(favoriteRoute.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ track_id: trackId, favorite: nextSaved }),
+        });
+
+        const payload = (await response.json()) as { ok?: boolean; favorite?: boolean };
+
+        if (!payload.ok && nowPlayingData.value) {
+            nowPlayingData.value = {
+                ...nowPlayingData.value,
+                is_saved: typeof payload.favorite === 'boolean' ? payload.favorite : currentlySaved,
+            };
+        }
+    } catch {
+        if (nowPlayingData.value) {
+            nowPlayingData.value = { ...nowPlayingData.value, is_saved: currentlySaved };
+        }
+    }
+}
+
 const playerStore: UsePlayerReturn = {
     nowPlayingData,
     isPlayingTrack,
+    isCurrentTrackSaved,
     fetchNowPlaying,
     pausePlayback,
     playTrack,
+    toggleSaveTrack,
 };
 
 export function usePlayer(): UsePlayerReturn {
