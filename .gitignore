@@ -29,3 +29,4 @@ yarn-error.log
 /.agents
 /.github
 /.junie
+/.playwright-mcp
