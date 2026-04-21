@@ -60,6 +60,8 @@ export interface NowPlaying {
     repeat_state: 'off' | 'track' | 'context';
     progress_ms: number;
     volume_percent: number | null;
+    device_id: string | null;
+    device_name: string | null;
     track: SpotifyTrack;
     is_saved: boolean;
 }

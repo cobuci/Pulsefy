@@ -105,10 +105,9 @@ const isPlayingExternally = computed(() => {
         return false;
     }
 
-    return (
-        devices.selectedDeviceId.value !== '' &&
-        devices.selectedDeviceId.value !== webPlayer.localDeviceId.value
-    );
+    const deviceId = data.value?.device_id;
+
+    return !!deviceId && deviceId !== webPlayer.localDeviceId.value;
 });
 
 const activeDeviceName = computed(() => {
@@ -116,11 +115,7 @@ const activeDeviceName = computed(() => {
         return null;
     }
 
-    return (
-        devices.selectableDevices.value.find(
-            (d) => d.id === devices.selectedDeviceId.value,
-        )?.name ?? null
-    );
+    return data.value?.device_name ?? null;
 });
 
 async function transferToLocalPlayer(): Promise<void> {

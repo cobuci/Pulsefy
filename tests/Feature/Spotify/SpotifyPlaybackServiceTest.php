@@ -36,6 +36,8 @@ test('currentlyPlaying returns track data when a track is playing', function () 
         'repeat_state' => 'context',
         'progress_ms' => 30000,
         'volume_percent' => null,
+        'device_id' => null,
+        'device_name' => null,
         'track' => ['id' => 'track1', 'name' => 'Test Song', 'duration_ms' => 180000],
         'is_saved' => false,
     ]);

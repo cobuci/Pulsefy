@@ -9,7 +9,7 @@ use App\Services\Spotify\SpotifyTokenService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, repeat_state: string, progress_ms: int, volume_percent: ?int, track: array<string, mixed>, is_saved: bool}
+ * @phpstan-type PlaybackPayload array{is_playing: bool, shuffle_state: bool, repeat_state: string, progress_ms: int, volume_percent: ?int, device_id: ?string, device_name: ?string, track: array<string, mixed>, is_saved: bool}
  */
 final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
 {
@@ -42,6 +42,8 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
                 'repeat_state' => $data['repeat_state'] ?? 'off',
                 'progress_ms' => $data['progress_ms'] ?? 0,
                 'volume_percent' => $data['device']['volume_percent'] ?? null,
+                'device_id' => $data['device']['id'] ?? null,
+                'device_name' => $data['device']['name'] ?? null,
                 'track' => $data['item'],
                 'is_saved' => $trackId !== '' ? $this->isTrackSaved($user, $trackId) : false,
             ];
