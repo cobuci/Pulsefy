@@ -44,8 +44,8 @@ test('library show displays cached playlist details and track cache', function (
             ->where('playlist.id', 'playlist-1')
             ->where('playlist.name', 'Daily Mix')
             ->where('playlist.sync_status.isRunning', false)
-            ->where('playlist.items.0.spotify_track_id', 'track-abc')
-            ->where('playlist.items.1.spotify_track_id', 'track-def')
+            ->where('items.data.0.spotify_track_id', 'track-abc')
+            ->where('items.data.1.spotify_track_id', 'track-def')
         );
 });
 
@@ -90,12 +90,12 @@ test('library show includes hydrated local track details when resolved', functio
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Library/Show')
             ->where('playlist.id', 'playlist-hydrated')
-            ->where('playlist.items.0.spotify_track_id', 'track-known')
-            ->where('playlist.items.0.uri', 'spotify:track:track-known')
-            ->where('playlist.items.0.track.id', 'track-known')
-            ->where('playlist.items.0.track.name', 'Known Track')
-            ->where('playlist.items.0.track.artists.0.id', 'artist-known')
-            ->where('playlist.items.0.track.artists.0.name', 'Known Artist')
+            ->where('items.data.0.spotify_track_id', 'track-known')
+            ->where('items.data.0.uri', 'spotify:track:track-known')
+            ->where('items.data.0.track.id', 'track-known')
+            ->where('items.data.0.track.name', 'Known Track')
+            ->where('items.data.0.track.artists.0.id', 'artist-known')
+            ->where('items.data.0.track.artists.0.name', 'Known Artist')
         );
 });
 
@@ -131,6 +131,7 @@ test('library show dispatches playlist sync job when cached items are empty', fu
     $playlist = Playlist::factory()->create([
         'user_id' => $user->id,
         'spotify_id' => 'playlist-empty-items',
+        'tracks_total' => 0,
         'expires_at' => now()->addMinutes(30),
     ]);
 
