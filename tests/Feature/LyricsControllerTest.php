@@ -46,6 +46,13 @@ test('returns cached synced lyrics without calling lrclib', function () {
                 'model' => null,
                 'error_message' => null,
             ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertNothingSent();
@@ -79,6 +86,13 @@ test('fetches lyrics from lrclib and caches synced response', function () {
             'translation' => [
                 'status' => null,
                 'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
                 'provider' => null,
                 'model' => null,
                 'error_message' => null,
@@ -127,6 +141,13 @@ test('returns plain lyrics when only plain lyrics are available', function () {
                 'model' => null,
                 'error_message' => null,
             ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     $this->assertDatabaseHas('lyrics', [
@@ -164,6 +185,13 @@ test('caches no-lyrics result and prevents repeated lrclib calls', function () {
                 'model' => null,
                 'error_message' => null,
             ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'lrclib.net/api/search'));
@@ -183,6 +211,13 @@ test('caches no-lyrics result and prevents repeated lrclib calls', function () {
             'translation' => [
                 'status' => null,
                 'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
                 'provider' => null,
                 'model' => null,
                 'error_message' => null,
@@ -292,6 +327,13 @@ test('tries first artist when spotify artist list is comma separated', function 
                 'model' => null,
                 'error_message' => null,
             ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
         ]);
 });
 
@@ -328,6 +370,13 @@ test('retries stale negative cache records', function () {
             'translation' => [
                 'status' => null,
                 'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
                 'provider' => null,
                 'model' => null,
                 'error_message' => null,
@@ -371,6 +420,13 @@ test('force refresh bypasses cache and refetches lyrics', function () {
             'translation' => [
                 'status' => null,
                 'translated_lines' => null,
+                'provider' => null,
+                'model' => null,
+                'error_message' => null,
+            ],
+            'romanization' => [
+                'status' => null,
+                'romanized_lines' => null,
                 'provider' => null,
                 'model' => null,
                 'error_message' => null,
