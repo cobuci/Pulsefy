@@ -31,3 +31,4 @@ yarn-error.log
 /.junie
 /.playwright-mcp
 .spec/
+/.ai/skills
