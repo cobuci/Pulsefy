@@ -52,6 +52,12 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $top_tracks_count
  * @property-read Collection<int, Track> $tracks
  * @property-read ?int $tracks_count
+ * @property-read Collection<int, TrackInteraction> $trackInteractions
+ * @property-read ?int $track_interactions_count
+ * @property-read Collection<int, DiscoveryLikedTrack> $discoveryLikedTracks
+ * @property-read ?int $discovery_liked_tracks_count
+ * @property-read Collection<int, DailyRecommendation> $dailyRecommendations
+ * @property-read ?int $daily_recommendations_count
  */
 class User extends Authenticatable
 {
@@ -134,5 +140,20 @@ class User extends Authenticatable
     public function isSpotifyTokenExpired(): bool
     {
         return $this->spotify_token_expires_at->subMinutes(5)->isPast();
+    }
+
+    public function trackInteractions(): HasMany
+    {
+        return $this->hasMany(TrackInteraction::class);
+    }
+
+    public function discoveryLikedTracks(): HasMany
+    {
+        return $this->hasMany(DiscoveryLikedTrack::class);
+    }
+
+    public function dailyRecommendations(): HasMany
+    {
+        return $this->hasMany(DailyRecommendation::class);
     }
 }
