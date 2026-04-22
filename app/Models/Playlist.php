@@ -37,8 +37,6 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, PlaylistTrack> $items
  * @property-read ?int $items_count
  * @property-read User $user
- *
- * @mixin \Eloquent
  */
 final class Playlist extends Model
 {

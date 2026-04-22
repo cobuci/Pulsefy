@@ -16,8 +16,6 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read Track $track
  * @property-read User $user
- *
- * @mixin \Eloquent
  */
 class UserRecentPlay extends Model
 {

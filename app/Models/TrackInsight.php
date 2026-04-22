@@ -33,8 +33,6 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $completed_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
- *
- * @mixin \Eloquent
  */
 class TrackInsight extends Model
 {

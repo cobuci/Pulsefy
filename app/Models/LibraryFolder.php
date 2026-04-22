@@ -24,8 +24,6 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Playlist> $playlists
  * @property-read ?int $playlists_count
  * @property-read User $user
- *
- * @mixin \Eloquent
  */
 final class LibraryFolder extends Model
 {

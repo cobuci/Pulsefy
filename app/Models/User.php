@@ -52,8 +52,6 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $top_tracks_count
  * @property-read Collection<int, Track> $tracks
  * @property-read ?int $tracks_count
- *
- * @mixin \Eloquent
  */
 class User extends Authenticatable
 {

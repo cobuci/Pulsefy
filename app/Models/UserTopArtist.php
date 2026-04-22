@@ -19,8 +19,6 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read Artist $artist
  * @property-read User $user
- *
- * @mixin \Eloquent
  */
 class UserTopArtist extends Model
 {

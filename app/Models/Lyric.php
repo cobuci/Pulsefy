@@ -25,8 +25,6 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $pronunciations_count
  * @property-read Collection<int, LyricTranslation> $translations
  * @property-read ?int $translations_count
- *
- * @mixin \Eloquent
  */
 class Lyric extends Model
 {

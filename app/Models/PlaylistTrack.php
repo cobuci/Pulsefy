@@ -20,8 +20,6 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read Playlist $playlist
  * @property-read Track|null $track
- *
- * @mixin \Eloquent
  */
 final class PlaylistTrack extends Model
 {

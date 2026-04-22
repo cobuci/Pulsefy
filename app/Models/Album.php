@@ -24,8 +24,6 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $artists_count
  * @property-read Collection<int, Track> $tracks
  * @property-read ?int $tracks_count
- *
- * @mixin \Eloquent
  */
 class Album extends Model
 {

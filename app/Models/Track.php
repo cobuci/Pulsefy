@@ -27,8 +27,6 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $recent_plays_count
  * @property-read Collection<int, UserTopTrack> $topForUsers
  * @property-read ?int $top_for_users_count
- *
- * @mixin \Eloquent
  */
 class Track extends Model
 {
