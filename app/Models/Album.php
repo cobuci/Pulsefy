@@ -21,9 +21,9 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read Collection<int, Artist> $artists
- * @property-read int|null $artists_count
+ * @property-read ?int $artists_count
  * @property-read Collection<int, Track> $tracks
- * @property-read int|null $tracks_count
+ * @property-read ?int $tracks_count
  *
  * @mixin \Eloquent
  */
