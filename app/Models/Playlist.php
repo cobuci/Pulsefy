@@ -35,7 +35,7 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read LibraryFolder|null $folder
  * @property-read Collection<int, PlaylistTrack> $items
- * @property-read int|null $items_count
+ * @property-read ?int $items_count
  * @property-read User $user
  *
  * @mixin \Eloquent

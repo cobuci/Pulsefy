@@ -29,29 +29,29 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read Collection<int, Artist> $artists
- * @property-read int|null $artists_count
+ * @property-read ?int $artists_count
  * @property-read Collection<int, LibraryFolder> $libraryFolders
- * @property-read int|null $library_folders_count
+ * @property-read ?int $library_folders_count
  * @property-read Collection<int, LyricPronunciation> $lyricPronunciations
- * @property-read int|null $lyric_pronunciations_count
+ * @property-read ?int $lyric_pronunciations_count
  * @property-read Collection<int, LyricTranslation> $lyricTranslations
- * @property-read int|null $lyric_translations_count
+ * @property-read ?int $lyric_translations_count
  * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
- * @property-read int|null $notifications_count
+ * @property-read ?int $notifications_count
  * @property-read Collection<int, Playlist> $playlists
- * @property-read int|null $playlists_count
+ * @property-read ?int $playlists_count
  * @property-read Collection<int, UserRecentPlay> $recentPlays
- * @property-read int|null $recent_plays_count
+ * @property-read ?int $recent_plays_count
  * @property-read Collection<int, SpotifyStat> $spotifyStats
- * @property-read int|null $spotify_stats_count
+ * @property-read ?int $spotify_stats_count
  * @property-read Collection<int, SpotifySyncRun> $syncRuns
- * @property-read int|null $sync_runs_count
+ * @property-read ?int $sync_runs_count
  * @property-read Collection<int, UserTopArtist> $topArtists
- * @property-read int|null $top_artists_count
+ * @property-read ?int $top_artists_count
  * @property-read Collection<int, UserTopTrack> $topTracks
- * @property-read int|null $top_tracks_count
+ * @property-read ?int $top_tracks_count
  * @property-read Collection<int, Track> $tracks
- * @property-read int|null $tracks_count
+ * @property-read ?int $tracks_count
  *
  * @mixin \Eloquent
  */

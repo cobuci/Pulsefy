@@ -19,10 +19,10 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read Collection<int, LibraryFolder> $children
- * @property-read int|null $children_count
+ * @property-read ?int $children_count
  * @property-read LibraryFolder|null $parent
  * @property-read Collection<int, Playlist> $playlists
- * @property-read int|null $playlists_count
+ * @property-read ?int $playlists_count
  * @property-read User $user
  *
  * @mixin \Eloquent

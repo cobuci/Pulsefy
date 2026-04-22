@@ -22,11 +22,11 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $updated_at
  * @property-read Album|null $album
  * @property-read Collection<int, Artist> $artists
- * @property-read int|null $artists_count
+ * @property-read ?int $artists_count
  * @property-read Collection<int, UserRecentPlay> $recentPlays
- * @property-read int|null $recent_plays_count
+ * @property-read ?int $recent_plays_count
  * @property-read Collection<int, UserTopTrack> $topForUsers
- * @property-read int|null $top_for_users_count
+ * @property-read ?int $top_for_users_count
  *
  * @mixin \Eloquent
  */

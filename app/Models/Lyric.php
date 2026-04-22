@@ -22,9 +22,9 @@ use Illuminate\Support\Carbon;
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read Collection<int, LyricPronunciation> $pronunciations
- * @property-read int|null $pronunciations_count
+ * @property-read ?int $pronunciations_count
  * @property-read Collection<int, LyricTranslation> $translations
- * @property-read int|null $translations_count
+ * @property-read ?int $translations_count
  *
  * @mixin \Eloquent
  */
