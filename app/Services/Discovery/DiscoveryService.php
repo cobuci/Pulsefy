@@ -47,7 +47,7 @@ final class DiscoveryService
 
         $exclusionSet = $this->buildExclusionSet($user->id, $recentPlays);
         $affinityMap = $this->affinityBuilder->build($user, $topArtists, $recentPlays);
-        $candidates = $this->candidateResolver->resolve($affinityMap, $topTracks, $exclusionSet, $recentPlays);
+        $candidates = $this->candidateResolver->resolve($user, $affinityMap, $topTracks, $exclusionSet, $recentPlays);
 
         foreach ($candidates as $id => $candidate) {
             $candidates[$id]['match_score'] = $this->scorer->score($candidate);
