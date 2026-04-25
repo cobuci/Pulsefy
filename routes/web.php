@@ -6,6 +6,12 @@ use App\Http\Controllers\Artist\FavoriteController as ArtistFavoriteController;
 use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
 use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Discovery\IgnoreController as DiscoveryIgnoreController;
+use App\Http\Controllers\Discovery\IndexController as DiscoveryIndexController;
+use App\Http\Controllers\Discovery\LikeController as DiscoveryLikeController;
+use App\Http\Controllers\Discovery\LikedController as DiscoveryLikedController;
+use App\Http\Controllers\Discovery\LikedPlaylistController as DiscoveryLikedPlaylistController;
+use App\Http\Controllers\Discovery\SkipController as DiscoverySkipController;
 use App\Http\Controllers\Insights\RefreshController as InsightsRefreshController;
 use App\Http\Controllers\Insights\StatusController as InsightsStatusController;
 use App\Http\Controllers\Library\FolderController as LibraryFolderController;
@@ -97,6 +103,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('transfer', PlayerTransferController::class)->name('transfer');
         Route::get('favorite', PlayerCheckFavoriteController::class)->name('favorite.check');
         Route::post('favorite', PlayerFavoriteController::class)->name('favorite');
+    });
+    Route::prefix('discovery')->name('discovery.')->group(function () {
+        Route::get('/', DiscoveryIndexController::class)->name('index');
+        Route::post('like', DiscoveryLikeController::class)->name('like')->middleware('throttle:30,1');
+        Route::post('skip', DiscoverySkipController::class)->name('skip')->middleware('throttle:60,1');
+        Route::post('ignore', DiscoveryIgnoreController::class)->name('ignore')->middleware('throttle:60,1');
+        Route::get('liked-playlist', DiscoveryLikedPlaylistController::class)->name('liked-playlist');
+        Route::get('liked', DiscoveryLikedController::class)->name('liked');
     });
 });
 

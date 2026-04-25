@@ -32,3 +32,6 @@ yarn-error.log
 /.playwright-mcp
 .spec/
 /.ai/skills
+AGENTS.md
+boost.json
+/specs

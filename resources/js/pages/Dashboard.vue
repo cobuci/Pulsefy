@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
+import { ArrowRight, Compass } from 'lucide-vue-next';
 import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
 import DashboardRecentPlaysSection from '@/components/dashboard/DashboardRecentPlaysSection.vue';
 import DashboardRecommendationsPanel from '@/components/dashboard/DashboardRecommendationsPanel.vue';
@@ -9,6 +10,7 @@ import DashboardTopTracksSection from '@/components/dashboard/DashboardTopTracks
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import { usePlayer } from '@/composables/usePlayer';
+import DiscoveryIndexController from '@/actions/App/Http/Controllers/Discovery/IndexController';
 import { dashboard } from '@/routes';
 import { refresh as refreshInsights } from '@/routes/insights';
 import type {
@@ -237,6 +239,29 @@ function refreshAllInsights() {
             :unique-track-count="uniqueTrackCount"
             :top-genre="topGenre"
         />
+
+        <Link
+            :href="DiscoveryIndexController.url()"
+            class="group relative block overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/15 via-accent/10 to-background p-6 transition-all hover:border-accent/60 hover:shadow-[0_0_24px_0_hsl(var(--accent)/0.15)] sm:p-8"
+        >
+            <div class="pointer-events-none absolute -right-8 -top-12 h-44 w-44 rounded-full bg-accent/20 blur-3xl" />
+            <div class="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+                <div class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_16px_0_hsl(var(--primary)/0.4)]">
+                        <Compass class="h-7 w-7 text-primary-foreground" :stroke-width="2" />
+                    </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">New</div>
+                    <h3 class="mt-0.5 font-bold text-2xl">Discover Stack</h3>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Swipe through fresh tracks tuned to your taste — save the ones that hit.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-sm font-medium text-accent transition-all group-hover:gap-3">
+                    Start discovering
+                    <ArrowRight class="h-4 w-4" />
+                </div>
+            </div>
+        </Link>
 
         <div class="flex items-center justify-end">
             <div class="flex items-center gap-2">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronRight, Eye, EyeOff, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
+import { ChevronRight, Compass, Eye, EyeOff, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import type { ContextMenuItem } from '@/components/ui/context-menu';
@@ -16,6 +16,7 @@ import {
 } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
 import { sync as syncLikedSongs } from '@/routes/library/liked-songs';
+import { liked as discoveryLiked } from '@/routes/discovery';
 
 defineOptions({
     layout: {
@@ -80,6 +81,7 @@ const props = defineProps<{
     }>;
     hiddenCount: number;
     showHidden: boolean;
+    discoveryLikedCount: number;
     syncStatus?: {
         isRunning: boolean;
         hasFailure: boolean;
@@ -701,6 +703,33 @@ function toggleShowHidden() {
                         </div>
                         <div class="mt-1 text-xs text-muted-foreground">
                             {{ likedPlaylist.tracks_total }} tracks
+                        </div>
+                    </Link>
+                </div>
+
+                <!-- Discovery Liked Tracks -->
+                <div
+                    v-if="activeFolderId === null"
+                    class="group relative"
+                >
+                    <Link
+                        :href="discoveryLiked().url"
+                        class="block w-full rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
+                    >
+                        <div class="mb-6 flex items-start justify-between">
+                            <div class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20">
+                                <Compass class="size-5 text-accent" />
+                            </div>
+                            <span class="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent uppercase">
+                                Discovery
+                            </span>
+                        </div>
+
+                        <div class="truncate font-display text-base font-bold text-foreground">
+                            Liked from Discovery
+                        </div>
+                        <div class="mt-1 text-xs text-muted-foreground">
+                            {{ discoveryLikedCount }} tracks
                         </div>
                     </Link>
                 </div>

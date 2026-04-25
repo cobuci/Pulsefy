@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Library;
 
 use App\Http\Controllers\Controller;
+use App\Models\DiscoveryLikedTrack;
 use App\Models\LibraryFolder;
 use App\Models\Playlist;
 use App\Services\Spotify\Library\LibrarySyncStatusService;
@@ -84,6 +85,9 @@ final class IndexController extends Controller
                 ->count(),
             'showHidden' => $showHidden,
             'syncStatus' => $this->statusService->userStatus($user->id),
+            'discoveryLikedCount' => DiscoveryLikedTrack::query()
+                ->whereBelongsTo($user)
+                ->count(),
         ]);
     }
 }

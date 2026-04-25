@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePlayer } from '@/composables/usePlayer';
 import { useTrackContextMenu } from '@/composables/useTrackContextMenu';
 import { dashboard, recentlyPlayed } from '@/routes';
-import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
 import type { SpotifyTrack } from '@/types/spotify';
 import { formatDuration } from '@/utils/format';
@@ -160,39 +159,38 @@ const totalEntries = computed(() => {
                                 class="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-secondary/60"
                                 @contextmenu="openTrackContextMenu($event, entry.track)"
                             >
-                                <div class="relative w-6 shrink-0 text-center">
+                                <div class="relative flex size-5 w-6 shrink-0 items-center justify-center">
                                     <span
-                                        v-if="!isPlayingTrack(entry.track.id)"
-                                        class="text-sm text-muted-foreground tabular-nums group-hover:hidden"
+                                        class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-muted-foreground transition-opacity duration-150"
+                                        :class="isPlayingTrack(entry.track.id) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'"
                                     >
                                         •
                                     </span>
+
                                     <button
+                                        v-if="!isPlayingTrack(entry.track.id)"
                                         type="button"
-                                        class="hidden w-6 cursor-pointer place-items-center text-foreground group-hover:grid"
-                                        :aria-label="'Play'"
+                                        class="absolute inset-0 m-auto size-3.5 text-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100"
                                         @click="handlePlay(entry.track)"
                                     >
                                         <IconPlay class="size-3.5" />
                                     </button>
-                                    <button
-                                        v-if="isPlayingTrack(entry.track.id)"
-                                        type="button"
-                                        class="relative grid w-6 cursor-pointer place-items-center text-accent"
-                                        :aria-label="'Pause'"
-                                        @click="handlePlay(entry.track)"
+
+                                    <div
+                                        v-else
+                                        class="absolute inset-0 m-auto flex items-end justify-center gap-0.5"
                                     >
                                         <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" />
-                                        <span
-                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
-                                            style="animation-delay: 0.15s"
-                                        />
-                                        <span
-                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
-                                            style="animation-delay: 0.3s"
-                                        />
-                                        <IconPause class="absolute inset-0 m-auto size-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-                                    </button>
+                                        <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" style="animation-delay: 0.15s" />
+                                        <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" style="animation-delay: 0.3s" />
+                                        <button
+                                            type="button"
+                                            class="absolute inset-0 m-auto opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                                            @click="handlePlay(entry.track)"
+                                        >
+                                            <IconPause class="size-3.5 text-accent" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <img
@@ -207,19 +205,18 @@ const totalEntries = computed(() => {
                                 />
 
                                 <div class="min-w-0 flex-1">
-                                    <Link
-                                        :href="
-                                            albumShow(entry.track.album.id).url
-                                        "
+                                    <p
                                         class="truncate text-sm font-medium"
-                                        :class="
-                                            isPlayingTrack(entry.track.id)
-                                                ? 'text-accent'
-                                                : 'text-foreground'
-                                        "
+                                        :class="isPlayingTrack(entry.track.id) ? 'text-accent' : 'text-foreground'"
                                     >
-                                        {{ entry.track.album.name }}
-                                    </Link>
+                                        {{ entry.track.name }}
+                                    </p>
+                                    <div
+                                        v-if="isPlayingTrack(entry.track.id)"
+                                        class="mt-1 h-0.5 w-20 overflow-hidden rounded-full bg-accent/25"
+                                    >
+                                        <div class="bg-gradient-primary h-full w-full animate-pulse" />
+                                    </div>
                                     <p
                                         class="truncate text-xs text-muted-foreground"
                                     >
