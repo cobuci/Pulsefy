@@ -16,25 +16,32 @@ final class LikedController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        $total = DiscoveryLikedTrack::query()
+            ->where('user_id', $user->id)
+            ->count();
+
         return Inertia::render('Discovery/Liked', [
+            'total' => $total,
             'likedTracks' => Inertia::scroll(
                 /** @phpstan-ignore return.type */
                 fn () => DiscoveryLikedTrack::query()
                     ->where('user_id', $user->id)
-                    ->with('track.artists', 'track.album')
+                    ->with('track.artists')
                     ->latest('liked_at')
-                    ->paginate(20)
+                    ->paginate(50)
                     ->through(fn (DiscoveryLikedTrack $liked) => [
                         'id' => $liked->id,
                         'spotify_id' => $liked->track->spotify_id,
+                        'uri' => 'spotify:track:'.$liked->track->spotify_id,
                         'name' => $liked->track->name,
-                        /** @phpstan-ignore nullsafe.neverNull */
-                        'artist_name' => $liked->track->artists->first()?->artist_name ?? '',
-                        /** @phpstan-ignore nullsafe.neverNull */
-                        'album_name' => $liked->track->album?->name ?? '',
+                        'duration_ms' => $liked->track->duration_ms,
                         'image_url' => $liked->track->image_url,
+                        /** @phpstan-ignore nullsafe.neverNull */
+                        'artists' => $liked->track->artists->map(fn ($a) => [
+                            'id' => $a->artist_id,
+                            'name' => $a->artist_name,
+                        ])->values(),
                         'liked_at' => $liked->liked_at->toDateString(),
-                        'liked_at_formatted' => $liked->liked_at->format('M j, Y'),
                     ])
             ),
         ]);
