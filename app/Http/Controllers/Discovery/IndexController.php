@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Discovery;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateDiscoveryRecommendationsJob;
 use App\Models\DailyRecommendation;
+use App\Models\TrackInteraction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,17 +31,25 @@ final class IndexController extends Controller
             ]);
         }
 
+        $interactedIds = TrackInteraction::query()
+            ->where('user_id', $user->id)
+            ->whereIn('spotify_id', $daily->tracks->pluck('spotify_id'))
+            ->pluck('spotify_id')
+            ->flip()
+            ->all();
+
         return Inertia::render('Discovery/Index', [
             'status' => 'ready',
-            'recommendations' => $daily->tracks->map(fn ($t) => [
-                'spotify_id' => $t->spotify_id,
-                'name' => $t->name,
-                'artist' => $t->artist_name,
-                'album' => $t->album_name,
-                'image_url' => $t->image_url,
-                'match_score' => $t->match_score,
-                'preview_url' => $t->preview_url,
-            ])->values()->all(),
+            'recommendations' => $daily->tracks
+                ->reject(fn ($t) => isset($interactedIds[$t->spotify_id]))
+                ->map(fn ($t) => [
+                    'spotify_id' => $t->spotify_id,
+                    'name' => $t->name,
+                    'artist' => $t->artist_name,
+                    'album' => $t->album_name,
+                    'image_url' => $t->image_url,
+                    'match_score' => $t->match_score,
+                ])->values()->all(),
         ]);
     }
 }
