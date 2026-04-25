@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useHttp, usePoll } from '@inertiajs/vue3';
-import { Heart, Pause, Play, RotateCcw, Sparkles, X } from 'lucide-vue-next';
+import { Heart, Pause, Play, SkipForward, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSwipe } from '@/composables/useSwipe';
 import LikeController from '@/actions/App/Http/Controllers/Discovery/LikeController';
 import SkipController from '@/actions/App/Http/Controllers/Discovery/SkipController';
+import IgnoreController from '@/actions/App/Http/Controllers/Discovery/IgnoreController';
 import { index as discoveryIndex } from '@/routes/discovery';
 
 interface Recommendation {
@@ -52,6 +53,22 @@ watch(
 );
 
 const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } = usePlayer();
+
+function ignore() {
+    const track = currentTrack.value;
+    if (!track || processing.value) return;
+
+    processing.value = true;
+    ignoreHttp.spotify_id = track.spotify_id;
+    ignoreHttp.post(IgnoreController.url(), {
+        onSuccess: () => {
+            currentIndex.value++;
+        },
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+}
 
 const currentIndex = ref(0);
 const cardRef = ref<HTMLElement | null>(null);
@@ -132,6 +149,7 @@ const likeHttp = useHttp({
 });
 
 const skipHttp = useHttp({ spotify_id: '' });
+const ignoreHttp = useHttp({ spotify_id: '' });
 
 const swipe = useSwipe(cardRef, {
     threshold: 80,
@@ -269,13 +287,16 @@ const skipOverlayOpacity = computed(() =>
                         </span>
                     </div>
 
-                    <div class="absolute inset-x-0 bottom-0 space-y-3 p-6">
+                    <div class="absolute inset-x-0 bottom-0 space-y-1 p-6">
                         <h2 class="text-2xl font-bold leading-tight">{{ currentTrack.name }}</h2>
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="text-muted-foreground truncate text-sm">
-                                {{ currentTrack.artist }}
-                                <span v-if="currentTrack.album"> · {{ currentTrack.album }}</span>
+                        <p v-if="currentTrack.artist" class="text-foreground/80 text-sm font-medium">
+                            {{ currentTrack.artist }}
+                        </p>
+                        <div class="flex items-center justify-between gap-3 pt-1">
+                            <p v-if="currentTrack.album" class="text-muted-foreground truncate text-sm">
+                                {{ currentTrack.album }}
                             </p>
+                            <div v-else class="flex-1" />
                             <button
                                 class="bg-background/40 hover:bg-background/70 text-foreground flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-110"
                                 :aria-label="isCurrentTrackPlaying ? 'Pause' : 'Play'"
@@ -303,31 +324,47 @@ const skipOverlayOpacity = computed(() =>
             </div>
 
             <div class="flex items-center justify-center gap-5">
-                <button
-                    :disabled="stackEmpty || processing"
-                    aria-label="Skip"
-                    class="border-border bg-card hover:border-destructive/60 hover:text-destructive grid h-14 w-14 cursor-pointer place-items-center rounded-full border transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                    @click="commit('left')"
-                >
-                    <X class="h-6 w-6" />
-                </button>
+                <div class="group relative flex flex-col items-center">
+                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                        Dislike
+                    </span>
+                    <button
+                        :disabled="stackEmpty || processing"
+                        aria-label="Skip"
+                        class="border-border bg-card hover:border-destructive/60 hover:text-destructive grid h-14 w-14 cursor-pointer place-items-center rounded-full border transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                        @click="commit('left')"
+                    >
+                        <X class="h-6 w-6" />
+                    </button>
+                </div>
 
-                <button
-                    :disabled="true"
-                    aria-label="Undo"
-                    class="border-border bg-card grid h-12 w-12 place-items-center rounded-full border transition-all disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                    <RotateCcw class="h-5 w-5" />
-                </button>
+                <div class="group relative flex flex-col items-center">
+                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                        Ignore
+                    </span>
+                    <button
+                        :disabled="stackEmpty || processing"
+                        aria-label="Ignore"
+                        class="border-border bg-card hover:border-muted-foreground/60 hover:text-muted-foreground grid h-12 w-12 cursor-pointer place-items-center rounded-full border transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
+                        @click="ignore"
+                    >
+                        <SkipForward class="h-5 w-5" />
+                    </button>
+                </div>
 
-                <button
-                    :disabled="stackEmpty || processing"
-                    aria-label="Save"
-                    class="bg-primary text-primary-foreground grid h-14 w-14 cursor-pointer place-items-center rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                    @click="commit('right')"
-                >
-                    <Heart class="h-6 w-6" fill="currentColor" />
-                </button>
+                <div class="group relative flex flex-col items-center">
+                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                        Save
+                    </span>
+                    <button
+                        :disabled="stackEmpty || processing"
+                        aria-label="Save"
+                        class="bg-primary text-primary-foreground grid h-14 w-14 cursor-pointer place-items-center rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                        @click="commit('right')"
+                    >
+                        <Heart class="h-6 w-6" fill="currentColor" />
+                    </button>
+                </div>
             </div>
 
             <div class="text-muted-foreground mt-8 flex items-center justify-center gap-6 text-xs">
