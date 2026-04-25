@@ -46,6 +46,11 @@ final class GeminiRecommendationResolver
         $token = $this->tokenService->ensureFreshToken($user);
         $searchClient = new SpotifySearchClient($token);
 
+        $affinityLower = array_combine(
+            array_map('mb_strtolower', array_keys($affinityMap)),
+            array_values($affinityMap),
+        );
+
         $candidates = [];
 
         foreach ($tracks as $suggestion) {
@@ -69,7 +74,7 @@ final class GeminiRecommendationResolver
             }
 
             $candidates[$id] = array_merge($result, [
-                'artist_affinity' => $affinityMap[$artistName] ?? 0.0,
+                'artist_affinity' => $affinityLower[mb_strtolower($artistName)] ?? 0.0,
                 'lastfm_match' => 0.0,
                 'seed_track_match' => 0.0,
                 'recent_play_days_ago' => null,
