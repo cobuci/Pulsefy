@@ -6,6 +6,7 @@ use App\Http\Controllers\Artist\FavoriteController as ArtistFavoriteController;
 use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
 use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Discovery\IgnoreController as DiscoveryIgnoreController;
 use App\Http\Controllers\Discovery\IndexController as DiscoveryIndexController;
 use App\Http\Controllers\Discovery\LikeController as DiscoveryLikeController;
 use App\Http\Controllers\Discovery\LikedController as DiscoveryLikedController;
@@ -107,6 +108,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', DiscoveryIndexController::class)->name('index');
         Route::post('like', DiscoveryLikeController::class)->name('like')->middleware('throttle:30,1');
         Route::post('skip', DiscoverySkipController::class)->name('skip')->middleware('throttle:60,1');
+        Route::post('ignore', DiscoveryIgnoreController::class)->name('ignore')->middleware('throttle:60,1');
         Route::get('liked-playlist', DiscoveryLikedPlaylistController::class)->name('liked-playlist');
         Route::get('liked', DiscoveryLikedController::class)->name('liked');
     });

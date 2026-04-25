@@ -53,7 +53,9 @@ class TrackInteraction extends Model
     #[Scope]
     public function activelySuppressed(Builder $query): void
     {
-        $query->where('type', 'skip')->where('expires_at', '>', now());
+        $query->where(function (Builder $q): void {
+            $q->where('type', 'skip')->where('expires_at', '>', now());
+        })->orWhere('type', 'ignore');
     }
 
     #[Scope]

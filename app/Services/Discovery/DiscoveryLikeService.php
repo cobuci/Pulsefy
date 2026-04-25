@@ -36,6 +36,21 @@ final class DiscoveryLikeService
         Cache::forget("discovery:{$user->id}:".now()->toDateString());
     }
 
+    public function ignore(User $user, string $spotifyId): void
+    {
+        $track = Track::query()->firstOrCreate(
+            ['spotify_id' => $spotifyId],
+            ['name' => ''],
+        );
+
+        TrackInteraction::updateOrCreate(
+            ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'ignore'],
+            ['interacted_at' => now(), 'expires_at' => null],
+        );
+
+        Cache::forget("discovery:{$user->id}:".now()->toDateString());
+    }
+
     public function skip(User $user, string $spotifyId): void
     {
         $track = Track::query()->firstOrCreate(
