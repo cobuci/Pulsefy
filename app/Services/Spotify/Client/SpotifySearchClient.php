@@ -28,6 +28,47 @@ class SpotifySearchClient
         ]);
     }
 
+    /**
+     * Search for a specific track by name and artist.
+     *
+     * @return array{spotify_id: string, name: string, artist: string, album: string, image_url: string|null, preview_url: string|null}|null
+     */
+    public function searchTrack(string $trackName, string $artistName): ?array
+    {
+        $query = sprintf('track:"%s" artist:"%s"', $trackName, $artistName);
+
+        $response = $this->get('/search', [
+            'q' => $query,
+            'type' => 'track',
+            'limit' => 1,
+            'market' => 'US',
+        ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $item = $response->json('tracks.items.0');
+
+        if (! is_array($item) || empty($item['id'])) {
+            return null;
+        }
+
+        $images = $item['album']['images'] ?? [];
+        $imageUrl = is_array($images) && isset($images[0]['url']) ? (string) $images[0]['url'] : null;
+
+        $firstArtist = $item['artists'][0]['name'] ?? $artistName;
+
+        return [
+            'spotify_id' => (string) $item['id'],
+            'name' => (string) $item['name'],
+            'artist' => (string) $firstArtist,
+            'album' => (string) ($item['album']['name'] ?? ''),
+            'image_url' => $imageUrl,
+            'preview_url' => isset($item['preview_url']) ? (string) $item['preview_url'] : null,
+        ];
+    }
+
     private function get(string $path, array $query = []): Response
     {
         return $this->request('GET', $path, ['query' => $query]);
