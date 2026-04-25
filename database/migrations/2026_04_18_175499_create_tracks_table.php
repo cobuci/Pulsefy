@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('tracks', function (Blueprint $table) {
@@ -18,6 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedInteger('duration_ms')->default(0);
             $table->boolean('explicit')->default(false);
+            $table->string('image_url')->nullable();
             $table->timestamp('metadata_synced_at')->nullable();
             $table->timestamps();
 
@@ -25,9 +23,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tracks');

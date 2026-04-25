@@ -11,15 +11,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
- * @property string $spotify_id
- * @property string $name
- * @property string $artist_name
- * @property string $album_name
- * @property ?string $image_url
+ * @property int $track_id
  * @property Carbon $liked_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read User $user
+ * @property-read Track $track
  */
 class DiscoveryLikedTrack extends Model
 {
@@ -38,5 +35,10 @@ class DiscoveryLikedTrack extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(Track::class);
     }
 }

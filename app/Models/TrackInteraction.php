@@ -13,13 +13,17 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
- * @property string $spotify_id
+ * @property int $track_id
  * @property string $type
  * @property Carbon $interacted_at
  * @property ?Carbon $expires_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read User $user
+ * @property-read Track $track
+ *
+ * @method static Builder<TrackInteraction> activelySuppressed()
+ * @method static Builder<TrackInteraction> suppressedForUser(int $userId)
  */
 class TrackInteraction extends Model
 {
@@ -41,6 +45,11 @@ class TrackInteraction extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(Track::class);
+    }
+
     #[Scope]
     public function activelySuppressed(Builder $query): void
     {
@@ -50,6 +59,7 @@ class TrackInteraction extends Model
     #[Scope]
     public function suppressedForUser(Builder $query, int $userId): void
     {
+        /** @phpstan-ignore method.notFound */
         $query->activelySuppressed()->where('user_id', $userId);
     }
 }

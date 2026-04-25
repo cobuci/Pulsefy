@@ -11,15 +11,11 @@ return new class extends Migration
         Schema::create('discovery_liked_tracks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('spotify_id');
-            $table->string('name');
-            $table->string('artist_name');
-            $table->string('album_name');
-            $table->string('image_url')->nullable();
+            $table->foreignId('track_id')->constrained('tracks')->cascadeOnDelete();
             $table->timestamp('liked_at');
             $table->timestamps();
 
-            $table->unique(['user_id', 'spotify_id']);
+            $table->unique(['user_id', 'track_id']);
             $table->index(['user_id', 'liked_at']);
         });
     }

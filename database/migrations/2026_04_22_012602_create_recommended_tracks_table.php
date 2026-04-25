@@ -11,18 +11,12 @@ return new class extends Migration
         Schema::create('recommended_tracks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('daily_recommendation_id')->constrained()->cascadeOnDelete();
-            $table->string('spotify_id');
-            $table->string('name');
-            $table->string('artist_name');
-            $table->string('album_name');
-            $table->string('image_url')->nullable();
-            $table->string('preview_url')->nullable();
+            $table->foreignId('track_id')->constrained('tracks')->cascadeOnDelete();
             $table->unsignedTinyInteger('match_score');
             $table->unsignedTinyInteger('position');
             $table->timestamps();
 
             $table->index('daily_recommendation_id');
-            $table->index('spotify_id');
         });
     }
 

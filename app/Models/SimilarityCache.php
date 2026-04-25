@@ -18,6 +18,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon $expires_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
+ *
+ * @method static Builder<SimilarityCache> valid()
+ * @method static Builder<SimilarityCache> stale()
  */
 class SimilarityCache extends Model
 {

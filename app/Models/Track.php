@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property int $duration_ms
  * @property bool $explicit
+ * @property ?string $image_url
  * @property ?Carbon $metadata_synced_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
@@ -27,6 +28,9 @@ use Illuminate\Support\Carbon;
  * @property-read ?int $recent_plays_count
  * @property-read Collection<int, UserTopTrack> $topForUsers
  * @property-read ?int $top_for_users_count
+ * @property-read Collection<int, RecommendedTrack> $recommendations
+ * @property-read Collection<int, DiscoveryLikedTrack> $discoveryLikes
+ * @property-read Collection<int, TrackInteraction> $interactions
  */
 class Track extends Model
 {
@@ -61,5 +65,20 @@ class Track extends Model
     public function recentPlays(): HasMany
     {
         return $this->hasMany(UserRecentPlay::class);
+    }
+
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(RecommendedTrack::class);
+    }
+
+    public function discoveryLikes(): HasMany
+    {
+        return $this->hasMany(DiscoveryLikedTrack::class);
+    }
+
+    public function interactions(): HasMany
+    {
+        return $this->hasMany(TrackInteraction::class);
     }
 }

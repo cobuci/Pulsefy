@@ -11,17 +11,13 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $daily_recommendation_id
- * @property string $spotify_id
- * @property string $name
- * @property string $artist_name
- * @property string $album_name
- * @property ?string $image_url
- * @property ?string $preview_url
+ * @property int $track_id
  * @property int $match_score
  * @property int $position
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read DailyRecommendation $recommendation
+ * @property-read Track $track
  */
 class RecommendedTrack extends Model
 {
@@ -41,5 +37,10 @@ class RecommendedTrack extends Model
     public function recommendation(): BelongsTo
     {
         return $this->belongsTo(DailyRecommendation::class, 'daily_recommendation_id');
+    }
+
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(Track::class);
     }
 }

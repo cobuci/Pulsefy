@@ -11,13 +11,13 @@ return new class extends Migration
         Schema::create('track_interactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('spotify_id');
+            $table->foreignId('track_id')->constrained('tracks')->cascadeOnDelete();
             $table->string('type', 10);
             $table->timestamp('interacted_at');
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['user_id', 'spotify_id', 'type']);
+            $table->unique(['user_id', 'track_id', 'type']);
             $table->index(['user_id', 'type', 'expires_at']);
         });
     }
