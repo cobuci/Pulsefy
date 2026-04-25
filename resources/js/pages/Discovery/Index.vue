@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useHttp } from '@inertiajs/vue3';
+import { useHttp, usePoll } from '@inertiajs/vue3';
 import { Heart, RotateCcw, Sparkles, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref } from 'vue';
 import { useSwipe } from '@/composables/useSwipe';
 import LikeController from '@/actions/App/Http/Controllers/Discovery/LikeController';
 import SkipController from '@/actions/App/Http/Controllers/Discovery/SkipController';
@@ -18,7 +19,8 @@ interface Recommendation {
 }
 
 const props = defineProps<{
-    recommendations?: Recommendation[];
+    status: 'generating' | 'ready';
+    recommendations: Recommendation[];
 }>();
 
 defineOptions({
@@ -31,6 +33,24 @@ defineOptions({
         ],
     },
 });
+
+const { start: startPolling, stop: stopPolling } = usePoll(
+    4000,
+    { only: ['status', 'recommendations'] },
+    { autoStart: false },
+);
+
+watch(
+    () => props.status,
+    (status) => {
+        if (status === 'generating') {
+            startPolling();
+        } else {
+            stopPolling();
+        }
+    },
+    { immediate: true },
+);
 
 const currentIndex = ref(0);
 const cardRef = ref<HTMLElement | null>(null);
@@ -47,19 +67,17 @@ const likeHttp = useHttp({
 
 const skipHttp = useHttp({ spotify_id: '' });
 
-const currentTrack = computed(() =>
-    props.recommendations ? props.recommendations[currentIndex.value] ?? null : null,
-);
+const currentTrack = computed(() => props.recommendations[currentIndex.value] ?? null);
 
 const stackEmpty = computed(
     () =>
-        props.recommendations !== undefined &&
+        props.status === 'ready' &&
         (props.recommendations.length === 0 || currentIndex.value >= props.recommendations.length),
 );
 
 const belowMinimum = computed(
     () =>
-        props.recommendations !== undefined &&
+        props.status === 'ready' &&
         props.recommendations.length > 0 &&
         props.recommendations.length < 20,
 );
@@ -167,13 +185,19 @@ const skipOverlayOpacity = computed(() =>
         >
             <span class="text-accent font-semibold">Limited recommendations available.</span>
             <span class="text-muted-foreground ml-1">
-                Showing {{ recommendations?.length }} tracks. Listen more on Spotify to unlock a fuller
+                Showing {{ recommendations.length }} tracks. Listen more on Spotify to unlock a fuller
                 card deck.
             </span>
         </div>
 
-        <div v-if="recommendations === undefined" class="mx-auto w-full max-w-[380px]">
+        <div v-if="status === 'generating'" class="mx-auto w-full max-w-[380px]">
             <div class="bg-card border-border aspect-[3/4] animate-pulse rounded-3xl border" />
+            <div class="mt-4 text-center">
+                <p class="text-muted-foreground flex items-center justify-center gap-2 text-sm">
+                    <Sparkles class="text-accent h-3.5 w-3.5 animate-pulse" />
+                    Generating your recommendations…
+                </p>
+            </div>
             <div class="mt-6 flex items-center justify-center gap-5">
                 <div class="bg-card border-border h-14 w-14 animate-pulse rounded-full border" />
                 <div class="bg-card border-border h-12 w-12 animate-pulse rounded-full border" />
@@ -258,7 +282,7 @@ const skipOverlayOpacity = computed(() =>
                     </div>
                 </div>
 
-                <template v-if="!stackEmpty && recommendations">
+                <template v-if="!stackEmpty && recommendations.length">
                     <div
                         v-for="offset in [1, 2]"
                         :key="offset"

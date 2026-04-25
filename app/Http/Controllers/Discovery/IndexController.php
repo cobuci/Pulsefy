@@ -3,17 +3,44 @@
 namespace App\Http\Controllers\Discovery;
 
 use App\Http\Controllers\Controller;
-use App\Services\Discovery\DiscoveryService;
+use App\Jobs\GenerateDiscoveryRecommendationsJob;
+use App\Models\DailyRecommendation;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class IndexController extends Controller
 {
-    public function __invoke(Request $request, DiscoveryService $discovery): Response
+    public function __invoke(Request $request): Response
     {
+        $user = $request->user();
+
+        $daily = DailyRecommendation::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', now()->toDateString())
+            ->with('tracks')
+            ->first();
+
+        if ($daily === null) {
+            GenerateDiscoveryRecommendationsJob::dispatch($user);
+
+            return Inertia::render('Discovery/Index', [
+                'status' => 'generating',
+                'recommendations' => [],
+            ]);
+        }
+
         return Inertia::render('Discovery/Index', [
-            'recommendations' => Inertia::defer(fn () => $discovery->generate($request->user())),
+            'status' => 'ready',
+            'recommendations' => $daily->tracks->map(fn ($t) => [
+                'spotify_id' => $t->spotify_id,
+                'name' => $t->name,
+                'artist' => $t->artist_name,
+                'album' => $t->album_name,
+                'image_url' => $t->image_url,
+                'match_score' => $t->match_score,
+                'preview_url' => $t->preview_url,
+            ])->values()->all(),
         ]);
     }
 }
