@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useHttp, usePoll } from '@inertiajs/vue3';
-import { Heart, RotateCcw, Sparkles, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, watch } from 'vue';
-import { ref } from 'vue';
+import { Heart, Pause, Play, RotateCcw, Sparkles, X } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { usePlayer } from '@/composables/usePlayer';
 import { useSwipe } from '@/composables/useSwipe';
 import LikeController from '@/actions/App/Http/Controllers/Discovery/LikeController';
 import SkipController from '@/actions/App/Http/Controllers/Discovery/SkipController';
@@ -15,7 +15,6 @@ interface Recommendation {
     album: string;
     image_url: string | null;
     match_score: number;
-    preview_url: string | null;
 }
 
 const props = defineProps<{
@@ -52,20 +51,12 @@ watch(
     { immediate: true },
 );
 
+const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } = usePlayer();
+
 const currentIndex = ref(0);
 const cardRef = ref<HTMLElement | null>(null);
 const stats = ref({ saved: 0, skipped: 0 });
 const processing = ref(false);
-
-const likeHttp = useHttp({
-    spotify_id: '',
-    name: '',
-    artist: '',
-    album: '',
-    album_art: null as string | null,
-});
-
-const skipHttp = useHttp({ spotify_id: '' });
 
 const currentTrack = computed(() => props.recommendations[currentIndex.value] ?? null);
 
@@ -75,12 +66,25 @@ const stackEmpty = computed(
         (props.recommendations.length === 0 || currentIndex.value >= props.recommendations.length),
 );
 
-const belowMinimum = computed(
-    () =>
-        props.status === 'ready' &&
-        props.recommendations.length > 0 &&
-        props.recommendations.length < 20,
-);
+const isCurrentTrackPlaying = computed(() => {
+    if (!currentTrack.value) return false;
+    return isPlayingTrack.value(currentTrack.value.spotify_id) && nowPlayingData.value?.is_playing === true;
+});
+
+function togglePlayback() {
+    if (!currentTrack.value) return;
+    if (isCurrentTrackPlaying.value) {
+        pausePlayback();
+    } else {
+        playTrack(`spotify:track:${currentTrack.value.spotify_id}`);
+    }
+}
+
+watch(currentTrack, (track) => {
+    if (track) {
+        playTrack(`spotify:track:${track.spotify_id}`);
+    }
+});
 
 function commit(dir: 'left' | 'right') {
     const track = currentTrack.value;
@@ -119,6 +123,16 @@ function commit(dir: 'left' | 'right') {
     }
 }
 
+const likeHttp = useHttp({
+    spotify_id: '',
+    name: '',
+    artist: '',
+    album: '',
+    album_art: null as string | null,
+});
+
+const skipHttp = useHttp({ spotify_id: '' });
+
 const swipe = useSwipe(cardRef, {
     threshold: 80,
     onSwipeLeft: () => commit('left'),
@@ -132,6 +146,11 @@ watch(cardRef, () => {
 
 onMounted(() => {
     swipe.attach();
+    window.addEventListener('keydown', onKey);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', onKey);
 });
 
 function onKey(e: KeyboardEvent) {
@@ -145,9 +164,6 @@ function onKey(e: KeyboardEvent) {
         commit('left');
     }
 }
-
-onMounted(() => window.addEventListener('keydown', onKey));
-onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 const cardStyle = computed(() => ({
     transform: `translateX(${swipe.deltaX.value}px) rotate(${swipe.deltaX.value * 0.04}deg)`,
@@ -177,17 +193,6 @@ const skipOverlayOpacity = computed(() =>
                 <kbd class="bg-secondary text-foreground/80 mx-0.5 rounded px-1.5 py-0.5">→</kbd>
                 arrow keys
             </p>
-        </div>
-
-        <div
-            v-if="belowMinimum"
-            class="bg-accent/10 border-accent/30 mb-6 rounded-xl border px-4 py-3 text-sm"
-        >
-            <span class="text-accent font-semibold">Limited recommendations available.</span>
-            <span class="text-muted-foreground ml-1">
-                Showing {{ recommendations.length }} tracks. Listen more on Spotify to unlock a fuller
-                card deck.
-            </span>
         </div>
 
         <div v-if="status === 'generating'" class="mx-auto w-full max-w-[380px]">
@@ -257,28 +262,29 @@ const skipOverlayOpacity = computed(() =>
                         SKIP
                     </div>
 
-                    <div class="absolute inset-x-0 top-0 h-[55%] overflow-hidden">
-                        <img
-                            v-if="currentTrack.image_url"
-                            :src="currentTrack.image_url"
-                            :alt="currentTrack.name"
-                            class="h-full w-full object-cover"
-                        />
-                        <div class="from-transparent to-background/95 absolute inset-0 bg-gradient-to-b" />
-                        <div class="bg-background/40 border-accent/30 absolute top-4 left-4 flex items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-md">
-                            <Sparkles class="text-accent h-3 w-3" />
-                            <span class="text-accent text-[11px] font-bold tabular-nums">
-                                {{ currentTrack.match_score }}% match
-                            </span>
-                        </div>
+                    <div class="bg-background/40 border-accent/30 absolute top-4 left-4 flex items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-md">
+                        <Sparkles class="text-accent h-3 w-3" />
+                        <span class="text-accent text-[11px] font-bold tabular-nums">
+                            {{ currentTrack.match_score }}% match
+                        </span>
                     </div>
 
                     <div class="absolute inset-x-0 bottom-0 space-y-3 p-6">
                         <h2 class="text-2xl font-bold leading-tight">{{ currentTrack.name }}</h2>
-                        <p class="text-muted-foreground text-sm">
-                            {{ currentTrack.artist }}
-                            <span v-if="currentTrack.album"> · {{ currentTrack.album }}</span>
-                        </p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-muted-foreground truncate text-sm">
+                                {{ currentTrack.artist }}
+                                <span v-if="currentTrack.album"> · {{ currentTrack.album }}</span>
+                            </p>
+                            <button
+                                class="bg-background/40 hover:bg-background/70 text-foreground flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-110"
+                                :aria-label="isCurrentTrackPlaying ? 'Pause' : 'Play'"
+                                @click.stop="togglePlayback"
+                            >
+                                <Pause v-if="isCurrentTrackPlaying" class="h-4 w-4" fill="currentColor" />
+                                <Play v-else class="h-4 w-4" fill="currentColor" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
