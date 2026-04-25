@@ -17,7 +17,6 @@ final class GeminiRecommendationResolver
         private readonly DiscoveryRecommendationAgent $agent,
     ) {}
 
-
     public function resolve(
         User $user,
         array $affinityMap,
@@ -80,6 +79,7 @@ final class GeminiRecommendationResolver
 
             $candidates[$spotifyId] = [
                 'track_id' => $track->id,
+                'artist_name' => mb_strtolower($artistName),
                 'artist_affinity' => $affinityLower[mb_strtolower($artistName)] ?? 0.0,
                 'lastfm_match' => 0.0,
                 'seed_track_match' => 0.0,

@@ -46,11 +46,12 @@ final class DiscoveryService
         $recentPlays = UserRecentPlay::query()->where('user_id', $user->id)->latest('played_at')->limit(200)->with('track.artists')->get();
 
         $exclusionSet = $this->buildExclusionSet($user->id, $recentPlays);
+        $penalizedArtists = $this->buildPenalizedArtists($user->id);
         $affinityMap = $this->affinityBuilder->build($user, $topArtists, $recentPlays);
         $candidates = $this->candidateResolver->resolve($user, $affinityMap, $topTracks, $exclusionSet, $recentPlays);
 
         foreach ($candidates as $id => $candidate) {
-            $candidates[$id]['match_score'] = $this->scorer->score($candidate);
+            $candidates[$id]['match_score'] = $this->scorer->score($candidate, $penalizedArtists);
         }
 
         $recommendations = $this->selectAndShape($candidates, $user->id);
@@ -63,6 +64,25 @@ final class DiscoveryService
         Cache::put($cacheKey, $recommendations, $ttl > 0 ? $ttl : 60);
 
         return $recommendations;
+    }
+
+    /**
+     * @return array<string, true> lowercase artist names with active skips
+     */
+    private function buildPenalizedArtists(int $userId): array
+    {
+        return TrackInteraction::query()
+            ->where('track_interactions.user_id', $userId)
+            ->where('track_interactions.type', 'skip')
+            ->where('track_interactions.expires_at', '>', now())
+            ->join('tracks', 'tracks.id', '=', 'track_interactions.track_id')
+            ->join('artist_track', 'artist_track.track_id', '=', 'tracks.id')
+            ->join('artists', 'artists.id', '=', 'artist_track.artist_model_id')
+            ->pluck('artists.artist_name')
+            ->map(fn (string $name) => mb_strtolower($name))
+            ->flip()
+            ->map(fn () => true)
+            ->all();
     }
 
     /**
