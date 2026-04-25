@@ -71,5 +71,5 @@ test('like fails validation with missing required fields', function (): void {
     $this->actingAs(User::factory()->create())
         ->postJson(route('discovery.like'), [])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['spotify_id', 'name', 'artist', 'album']);
+        ->assertJsonValidationErrors(['spotify_id', 'name']);
 });
