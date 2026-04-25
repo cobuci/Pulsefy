@@ -1,6 +1,7 @@
 <?php
 
 use App\Ai\Agents\DiscoveryRecommendationAgent;
+use App\Models\Artist;
 use App\Models\DiscoveryLikedTrack;
 use App\Models\Track;
 use App\Models\TrackInteraction;
@@ -8,6 +9,21 @@ use App\Models\User;
 use App\Services\Discovery\DiscoveryService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+
+function makeArtist(string $name): Artist
+{
+    return Artist::query()->create([
+        'artist_id' => 'spotify_'.str()->random(10),
+        'artist_name' => $name,
+        'genres' => [],
+        'images' => [],
+        'popularity' => 50,
+        'uri' => 'spotify:artist:'.str()->random(10),
+        'external_urls' => [],
+        'fetched_at' => now(),
+        'expires_at' => now()->addDays(7),
+    ]);
+}
 
 it('returns empty array when user has no top artists or recent plays', function (): void {
     $user = User::factory()->create();
@@ -121,4 +137,57 @@ it('boosts affinity for artists of previously liked tracks', function (): void {
     $result = app(DiscoveryService::class)->generate($user);
 
     expect($result)->toBeArray();
+});
+
+it('includes artist in penalized set when track has active skip', function (): void {
+    $user = User::factory()->create();
+    $artist = makeArtist('Radiohead');
+    $track = Track::factory()->create();
+    $track->artists()->attach($artist);
+
+    TrackInteraction::factory()->skip()->create([
+        'user_id' => $user->id,
+        'track_id' => $track->id,
+    ]);
+
+    $penalized = TrackInteraction::query()
+        ->where('track_interactions.user_id', $user->id)
+        ->where('track_interactions.type', 'skip')
+        ->where('track_interactions.expires_at', '>', now())
+        ->join('tracks', 'tracks.id', '=', 'track_interactions.track_id')
+        ->join('artist_track', 'artist_track.track_id', '=', 'tracks.id')
+        ->join('artists', 'artists.id', '=', 'artist_track.artist_model_id')
+        ->pluck('artists.artist_name')
+        ->map(fn (string $name) => mb_strtolower($name))
+        ->all();
+
+    expect($penalized)->toContain('radiohead');
+});
+
+it('does not include artist in penalized set when skip has expired', function (): void {
+    $user = User::factory()->create();
+    $artist = makeArtist('Radiohead');
+    $track = Track::factory()->create();
+    $track->artists()->attach($artist);
+
+    TrackInteraction::factory()->create([
+        'user_id' => $user->id,
+        'track_id' => $track->id,
+        'type' => 'skip',
+        'interacted_at' => now()->subDays(20),
+        'expires_at' => now()->subDays(6),
+    ]);
+
+    $penalized = TrackInteraction::query()
+        ->where('track_interactions.user_id', $user->id)
+        ->where('track_interactions.type', 'skip')
+        ->where('track_interactions.expires_at', '>', now())
+        ->join('tracks', 'tracks.id', '=', 'track_interactions.track_id')
+        ->join('artist_track', 'artist_track.track_id', '=', 'tracks.id')
+        ->join('artists', 'artists.id', '=', 'artist_track.artist_model_id')
+        ->pluck('artists.artist_name')
+        ->map(fn (string $name) => mb_strtolower($name))
+        ->all();
+
+    expect($penalized)->not->toContain('radiohead');
 });
