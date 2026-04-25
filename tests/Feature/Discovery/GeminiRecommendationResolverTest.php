@@ -1,12 +1,10 @@
 <?php
 
 use App\Ai\Agents\DiscoveryRecommendationAgent;
+use App\Models\Track;
 use App\Models\User;
 use App\Services\Discovery\GeminiRecommendationResolver;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-
-uses(RefreshDatabase::class);
 
 it('returns empty array when agent throws', function (): void {
     $user = User::factory()->create();
@@ -89,12 +87,15 @@ it('resolves tracks via spotify search and returns candidates', function (): voi
     );
 
     expect($result)->toHaveKey('SPOTIFYID001');
+
+    $track = Track::query()->where('spotify_id', 'SPOTIFYID001')->first();
+
+    expect($track)->not->toBeNull()
+        ->and($track->name)->toBe('Hallowed Be Thy Name')
+        ->and($track->image_url)->toBe('https://example.com/img.jpg');
+
     expect($result['SPOTIFYID001'])->toMatchArray([
-        'spotify_id' => 'SPOTIFYID001',
-        'name' => 'Hallowed Be Thy Name',
-        'artist' => 'Iron Maiden',
-        'album' => 'The Number of the Beast',
-        'image_url' => 'https://example.com/img.jpg',
+        'track_id' => $track->id,
         'artist_affinity' => 60.0,
     ]);
 });

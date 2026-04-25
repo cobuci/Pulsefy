@@ -2,14 +2,12 @@
 
 use App\Ai\Agents\DiscoveryRecommendationAgent;
 use App\Models\DiscoveryLikedTrack;
+use App\Models\Track;
 use App\Models\TrackInteraction;
 use App\Models\User;
 use App\Services\Discovery\DiscoveryService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-
-uses(RefreshDatabase::class);
 
 it('returns empty array when user has no top artists or recent plays', function (): void {
     $user = User::factory()->create();
@@ -24,11 +22,11 @@ it('returns empty array when user has no top artists or recent plays', function 
 
 it('excludes tracks with active skip suppression', function (): void {
     $user = User::factory()->create();
-    $suppressedSpotifyId = 'AAAAAAAAAAAAAAAAAAAAAA';
+    $track = Track::factory()->create(['spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA']);
 
     TrackInteraction::factory()->skip()->create([
         'user_id' => $user->id,
-        'spotify_id' => $suppressedSpotifyId,
+        'track_id' => $track->id,
     ]);
 
     DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
@@ -39,20 +37,20 @@ it('excludes tracks with active skip suppression', function (): void {
     $result = app(DiscoveryService::class)->generate($user);
 
     $returnedIds = array_column($result, 'spotify_id');
-    expect($returnedIds)->not->toContain($suppressedSpotifyId);
+    expect($returnedIds)->not->toContain('AAAAAAAAAAAAAAAAAAAAAA');
 });
 
 it('does not exclude liked tracks from recommendations', function (): void {
     $user = User::factory()->create();
-    $likedSpotifyId = 'BBBBBBBBBBBBBBBBBBBBBB';
+    $track = Track::factory()->create(['spotify_id' => 'BBBBBBBBBBBBBBBBBBBBBB']);
 
     TrackInteraction::factory()->like()->create([
         'user_id' => $user->id,
-        'spotify_id' => $likedSpotifyId,
+        'track_id' => $track->id,
     ]);
 
-    $suppressed = TrackInteraction::query()->suppressedForUser($user->id)->pluck('spotify_id');
-    expect($suppressed)->not->toContain($likedSpotifyId);
+    $suppressed = TrackInteraction::query()->suppressedForUser($user->id)->pluck('track_id');
+    expect($suppressed)->not->toContain($track->id);
 });
 
 it('proceeds gracefully when last.fm returns failure', function (): void {
@@ -74,13 +72,8 @@ it('returns cached recommendations on second call without regenerating', functio
 
     $cached = [
         [
-            'spotify_id' => 'CCCCCCCCCCCCCCCCCCCCCC',
-            'name' => 'Cached Track',
-            'artist' => 'Some Artist',
-            'album' => 'Some Album',
-            'image_url' => null,
+            'track_id' => 1,
             'match_score' => 75,
-            'preview_url' => null,
         ],
     ];
     Cache::put($cacheKey, $cached, 3600);
@@ -113,10 +106,11 @@ it('sets cache after generating recommendations', function (): void {
 
 it('boosts affinity for artists of previously liked tracks', function (): void {
     $user = User::factory()->create();
+    $track = Track::factory()->create();
 
     DiscoveryLikedTrack::factory()->create([
         'user_id' => $user->id,
-        'artist_name' => 'Liked Artist',
+        'track_id' => $track->id,
     ]);
 
     DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);

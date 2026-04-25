@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\DiscoveryLikedTrack;
+use App\Models\Track;
 use App\Models\User;
 
 test('guests cannot access liked playlist', function () {
@@ -21,8 +22,11 @@ test('returns only the authenticated users liked tracks', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
 
-    DiscoveryLikedTrack::factory()->create(['user_id' => $user->id, 'spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA']);
-    DiscoveryLikedTrack::factory()->create(['user_id' => $other->id, 'spotify_id' => 'BBBBBBBBBBBBBBBBBBBBBB']);
+    $trackA = Track::factory()->create(['spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA']);
+    $trackB = Track::factory()->create(['spotify_id' => 'BBBBBBBBBBBBBBBBBBBBBB']);
+
+    DiscoveryLikedTrack::factory()->create(['user_id' => $user->id, 'track_id' => $trackA->id]);
+    DiscoveryLikedTrack::factory()->create(['user_id' => $other->id, 'track_id' => $trackB->id]);
 
     $this->actingAs($user)
         ->getJson(route('discovery.liked-playlist'))
@@ -34,14 +38,17 @@ test('returns only the authenticated users liked tracks', function () {
 test('results are ordered by liked_at descending', function () {
     $user = User::factory()->create();
 
+    $trackA = Track::factory()->create(['spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA']);
+    $trackB = Track::factory()->create(['spotify_id' => 'BBBBBBBBBBBBBBBBBBBBBB']);
+
     DiscoveryLikedTrack::factory()->create([
         'user_id' => $user->id,
-        'spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA',
+        'track_id' => $trackA->id,
         'liked_at' => now()->subDay(),
     ]);
     DiscoveryLikedTrack::factory()->create([
         'user_id' => $user->id,
-        'spotify_id' => 'BBBBBBBBBBBBBBBBBBBBBB',
+        'track_id' => $trackB->id,
         'liked_at' => now(),
     ]);
 
