@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\Agents\DiscoveryRecommendationAgent;
 use App\Models\DiscoveryLikedTrack;
 use App\Models\TrackInteraction;
 use App\Models\User;
@@ -13,7 +14,8 @@ uses(RefreshDatabase::class);
 it('returns empty array when user has no top artists or recent plays', function (): void {
     $user = User::factory()->create();
 
-    Http::fake(); // No Last.fm calls expected
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
+    Http::fake();
 
     $result = app(DiscoveryService::class)->generate($user);
 
@@ -29,6 +31,7 @@ it('excludes tracks with active skip suppression', function (): void {
         'spotify_id' => $suppressedSpotifyId,
     ]);
 
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
     Http::fake([
         'ws.audioscrobbler.com/*' => Http::response(['similarartists' => ['artist' => []]], 200),
     ]);
@@ -43,26 +46,23 @@ it('does not exclude liked tracks from recommendations', function (): void {
     $user = User::factory()->create();
     $likedSpotifyId = 'BBBBBBBBBBBBBBBBBBBBBB';
 
-    // Only a like interaction (type=like, no expires_at) — should NOT be in suppression
     TrackInteraction::factory()->like()->create([
         'user_id' => $user->id,
         'spotify_id' => $likedSpotifyId,
     ]);
 
-    // The liked track is not excluded from recommendations by the service
-    // (suppression only applies to 'skip' type with active expires_at)
     $suppressed = TrackInteraction::query()->suppressedForUser($user->id)->pluck('spotify_id');
     expect($suppressed)->not->toContain($likedSpotifyId);
 });
 
-it('proceeds with spotify-only data when last.fm returns failure', function (): void {
+it('proceeds gracefully when last.fm returns failure', function (): void {
     $user = User::factory()->create();
 
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
     Http::fake([
         'ws.audioscrobbler.com/*' => Http::response(['error' => 6, 'message' => 'Artist not found'], 200),
     ]);
 
-    // Should not throw — returns empty array gracefully
     $result = app(DiscoveryService::class)->generate($user);
 
     expect($result)->toBeArray();
@@ -85,11 +85,13 @@ it('returns cached recommendations on second call without regenerating', functio
     ];
     Cache::put($cacheKey, $cached, 3600);
 
-    Http::fake(); // No HTTP should be made on cache hit
+    DiscoveryRecommendationAgent::fake()->preventStrayPrompts();
+    Http::fake();
 
     $result = app(DiscoveryService::class)->generate($user);
 
     Http::assertNothingSent();
+    DiscoveryRecommendationAgent::assertNeverPrompted();
     expect($result)->toBe($cached);
 });
 
@@ -99,6 +101,7 @@ it('sets cache after generating recommendations', function (): void {
 
     Cache::forget($cacheKey);
 
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
     Http::fake([
         'ws.audioscrobbler.com/*' => Http::response(['similarartists' => ['artist' => []]], 200),
     ]);
@@ -111,19 +114,17 @@ it('sets cache after generating recommendations', function (): void {
 it('boosts affinity for artists of previously liked tracks', function (): void {
     $user = User::factory()->create();
 
-    // Create a liked track for an artist not in the affinity map
     DiscoveryLikedTrack::factory()->create([
         'user_id' => $user->id,
         'artist_name' => 'Liked Artist',
     ]);
 
-    // The service should not throw and should process the liked artist boost path
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
     Http::fake([
         'ws.audioscrobbler.com/*' => Http::response(['similarartists' => ['artist' => []]], 200),
     ]);
 
     $result = app(DiscoveryService::class)->generate($user);
 
-    // Result is an array (service ran without error)
     expect($result)->toBeArray();
 });
