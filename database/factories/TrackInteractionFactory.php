@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Track;
 use App\Models\TrackInteraction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -15,7 +16,7 @@ class TrackInteractionFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'spotify_id' => $this->faker->unique()->regexify('[A-Za-z0-9]{22}'),
+            'track_id' => Track::factory(),
             'type' => 'like',
             'interacted_at' => now(),
             'expires_at' => null,
