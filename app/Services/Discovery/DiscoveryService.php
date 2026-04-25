@@ -71,7 +71,13 @@ final class DiscoveryService
      */
     private function buildExclusionSet(int $userId, Collection $recentPlays): array
     {
-        $suppressed = TrackInteraction::query()->suppressedForUser($userId)->pluck('spotify_id')->flip()->all();
+        $suppressed = TrackInteraction::query()
+            /** @phpstan-ignore method.notFound */
+            ->suppressedForUser($userId)
+            ->join('tracks', 'tracks.id', '=', 'track_interactions.track_id')
+            ->pluck('tracks.spotify_id')
+            ->flip()
+            ->all();
 
         $cutoff = now()->subDays(self::SUPPRESSION_WINDOW_DAYS);
         $recent = $recentPlays
@@ -81,7 +87,12 @@ final class DiscoveryService
             ->flip()
             ->all();
 
-        $liked = DiscoveryLikedTrack::query()->where('user_id', $userId)->pluck('spotify_id')->flip()->all();
+        $liked = DiscoveryLikedTrack::query()
+            ->where('user_id', $userId)
+            ->join('tracks', 'tracks.id', '=', 'discovery_liked_tracks.track_id')
+            ->pluck('tracks.spotify_id')
+            ->flip()
+            ->all();
 
         return array_merge($suppressed, $recent, $liked);
     }
@@ -102,13 +113,8 @@ final class DiscoveryService
         $keys = array_slice($keys, 0, $count);
 
         return array_values(array_map(fn (string $key) => [
-            'spotify_id' => $top[$key]['spotify_id'],
-            'name' => $top[$key]['name'],
-            'artist' => $top[$key]['artist'],
-            'album' => $top[$key]['album'],
-            'image_url' => $top[$key]['image_url'],
+            'track_id' => $top[$key]['track_id'],
             'match_score' => $top[$key]['match_score'],
-            'preview_url' => $top[$key]['preview_url'],
         ], $keys));
     }
 
@@ -134,13 +140,8 @@ final class DiscoveryService
 
         foreach ($recommendations as $position => $rec) {
             RecommendedTrack::updateOrCreate(
-                ['daily_recommendation_id' => $daily->id, 'spotify_id' => $rec['spotify_id']],
+                ['daily_recommendation_id' => $daily->id, 'track_id' => $rec['track_id']],
                 [
-                    'name' => $rec['name'],
-                    'artist_name' => $rec['artist'],
-                    'album_name' => $rec['album'],
-                    'image_url' => $rec['image_url'],
-                    'preview_url' => $rec['preview_url'],
                     'match_score' => $rec['match_score'],
                     'position' => $position + 1,
                 ],

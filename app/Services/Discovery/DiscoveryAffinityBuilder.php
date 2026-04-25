@@ -83,8 +83,11 @@ final class DiscoveryAffinityBuilder
     private function applyLikesBoost(array $map, User $user): array
     {
         DiscoveryLikedTrack::query()
-            ->where('user_id', $user->id)
-            ->pluck('artist_name')
+            ->where('discovery_liked_tracks.user_id', $user->id)
+            ->join('tracks', 'tracks.id', '=', 'discovery_liked_tracks.track_id')
+            ->join('artist_track', 'artist_track.track_id', '=', 'tracks.id')
+            ->join('artists', 'artists.id', '=', 'artist_track.artist_model_id')
+            ->pluck('artists.artist_name')
             ->filter()
             ->unique()
             ->each(function (string $name) use (&$map): void {

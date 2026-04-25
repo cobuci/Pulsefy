@@ -3,6 +3,7 @@
 namespace App\Services\Discovery;
 
 use App\Models\DiscoveryLikedTrack;
+use App\Models\Track;
 use App\Models\TrackInteraction;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -14,19 +15,21 @@ final class DiscoveryLikeService
      */
     public function like(User $user, array $trackData): void
     {
-        DiscoveryLikedTrack::updateOrCreate(
-            ['user_id' => $user->id, 'spotify_id' => $trackData['spotify_id']],
+        $track = Track::query()->firstOrCreate(
+            ['spotify_id' => $trackData['spotify_id']],
             [
                 'name' => $trackData['name'],
-                'artist_name' => $trackData['artist'],
-                'album_name' => $trackData['album'],
                 'image_url' => $trackData['album_art'] ?? null,
-                'liked_at' => now(),
             ],
         );
 
+        DiscoveryLikedTrack::updateOrCreate(
+            ['user_id' => $user->id, 'track_id' => $track->id],
+            ['liked_at' => now()],
+        );
+
         TrackInteraction::updateOrCreate(
-            ['user_id' => $user->id, 'spotify_id' => $trackData['spotify_id'], 'type' => 'like'],
+            ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'like'],
             ['interacted_at' => now(), 'expires_at' => null],
         );
 
@@ -35,8 +38,13 @@ final class DiscoveryLikeService
 
     public function skip(User $user, string $spotifyId): void
     {
+        $track = Track::query()->firstOrCreate(
+            ['spotify_id' => $spotifyId],
+            ['name' => ''],
+        );
+
         TrackInteraction::updateOrCreate(
-            ['user_id' => $user->id, 'spotify_id' => $spotifyId, 'type' => 'skip'],
+            ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'skip'],
             ['interacted_at' => now(), 'expires_at' => now()->addDays(14)],
         );
 

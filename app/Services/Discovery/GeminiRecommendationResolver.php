@@ -3,6 +3,7 @@
 namespace App\Services\Discovery;
 
 use App\Ai\Agents\DiscoveryRecommendationAgent;
+use App\Models\Track;
 use App\Models\User;
 use App\Services\Spotify\Client\SpotifySearchClient;
 use App\Services\Spotify\SpotifyTokenService;
@@ -16,13 +17,7 @@ final class GeminiRecommendationResolver
         private readonly DiscoveryRecommendationAgent $agent,
     ) {}
 
-    /**
-     * @param  array<string, float>  $affinityMap
-     * @param  array<string, float>  $similarArtists
-     * @param  string[]  $topTrackNames
-     * @param  array<string, mixed>  $exclusionSet
-     * @return array<string, array<string, mixed>>
-     */
+
     public function resolve(
         User $user,
         array $affinityMap,
@@ -63,22 +58,33 @@ final class GeminiRecommendationResolver
 
             $result = $searchClient->searchTrack($trackName, $artistName);
 
-            if ($result === null || isset($exclusionSet[$result['spotify_id']])) {
+            if ($result === null) {
                 continue;
             }
 
-            $id = $result['spotify_id'];
+            $spotifyId = $result['spotify_id'];
 
-            if (isset($candidates[$id])) {
+            if (isset($exclusionSet[$spotifyId]) || isset($candidates[$spotifyId])) {
                 continue;
             }
 
-            $candidates[$id] = array_merge($result, [
+            $attributes = ['name' => $result['name']];
+            if ($result['image_url'] !== null) {
+                $attributes['image_url'] = $result['image_url'];
+            }
+
+            $track = Track::query()->updateOrCreate(
+                ['spotify_id' => $spotifyId],
+                $attributes,
+            );
+
+            $candidates[$spotifyId] = [
+                'track_id' => $track->id,
                 'artist_affinity' => $affinityLower[mb_strtolower($artistName)] ?? 0.0,
                 'lastfm_match' => 0.0,
                 'seed_track_match' => 0.0,
                 'recent_play_days_ago' => null,
-            ]);
+            ];
         }
 
         return $candidates;

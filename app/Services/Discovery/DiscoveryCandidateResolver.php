@@ -75,6 +75,7 @@ final class DiscoveryCandidateResolver
         $cached = SimilarityCache::query()
             ->where('type', 'artist')
             ->whereIn('key', $artistNames)
+            /** @phpstan-ignore method.notFound */
             ->valid()
             ->get()
             ->keyBy('key');
@@ -98,7 +99,7 @@ final class DiscoveryCandidateResolver
         return $candidates;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<int, array{name: string, mbid: string, match: string}> */
     private function fetchAndCacheArtistSimilarity(string $name): array
     {
         $payload = $this->lastFm->artistSimilar($name);
