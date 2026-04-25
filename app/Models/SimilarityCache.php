@@ -36,7 +36,7 @@ class SimilarityCache extends Model
     }
 
     #[Scope]
-    public function fresh(Builder $query): void
+    public function valid(Builder $query): void
     {
         $query->where('expires_at', '>', now());
     }

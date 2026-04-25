@@ -96,7 +96,7 @@ final class DiscoveryCandidateResolver
         $cached = SimilarityCache::query()
             ->where('type', 'artist')
             ->whereIn('key', $artistNames)
-            ->fresh()
+            ->valid()
             ->get()
             ->keyBy('key');
 
@@ -154,7 +154,7 @@ final class DiscoveryCandidateResolver
             }
 
             $cacheKey = $artistName.'||'.$track->name;
-            $entry = SimilarityCache::query()->where('type', 'track')->where('key', $cacheKey)->fresh()->first();
+            $entry = SimilarityCache::query()->where('type', 'track')->where('key', $cacheKey)->valid()->first();
 
             $payload = $entry?->payload ?? $this->fetchAndCacheTrackSimilarity($artistName, $track->name, $cacheKey);
 
