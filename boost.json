@@ -1,8 +1,6 @@
 {
     "agents": [
-        "junie",
-        "opencode",
-        "copilot"
+        "cursor"
     ],
     "guidelines": true,
     "mcp": true,
@@ -19,6 +17,16 @@
         "inertia-vue-development",
         "tailwindcss-development",
         "echo-vue-development",
-        "echo-development"
+        "echo-development",
+        "spec-caveman-compress",
+        "spec-checklist",
+        "spec-clarify",
+        "spec-constitution",
+        "spec-implement",
+        "spec-init",
+        "spec-laravel-security-audit",
+        "spec-plan",
+        "spec-specify",
+        "spec-tasks"
     ]
 }
