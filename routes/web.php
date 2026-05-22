@@ -6,12 +6,7 @@ use App\Http\Controllers\Artist\FavoriteController as ArtistFavoriteController;
 use App\Http\Controllers\Artist\IndexController as ArtistIndexController;
 use App\Http\Controllers\Artist\ShowController as ArtistShowController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Discovery\IgnoreController as DiscoveryIgnoreController;
-use App\Http\Controllers\Discovery\IndexController as DiscoveryIndexController;
-use App\Http\Controllers\Discovery\LikeController as DiscoveryLikeController;
-use App\Http\Controllers\Discovery\LikedController as DiscoveryLikedController;
-use App\Http\Controllers\Discovery\LikedPlaylistController as DiscoveryLikedPlaylistController;
-use App\Http\Controllers\Discovery\SkipController as DiscoverySkipController;
+use App\Http\Controllers\Discovery\DiscoveryController;
 use App\Http\Controllers\Insights\RefreshController as InsightsRefreshController;
 use App\Http\Controllers\Insights\StatusController as InsightsStatusController;
 use App\Http\Controllers\Library\FolderController as LibraryFolderController;
@@ -29,12 +24,8 @@ use App\Http\Controllers\Player\DevicesController as PlayerDevicesController;
 use App\Http\Controllers\Player\DeviceTokenController;
 use App\Http\Controllers\Player\FavoriteController as PlayerFavoriteController;
 use App\Http\Controllers\Player\LyricsController;
-use App\Http\Controllers\Player\LyricsPronunciationController;
-use App\Http\Controllers\Player\LyricsTranslationController;
 use App\Http\Controllers\Player\NowPlayingController;
 use App\Http\Controllers\Player\TrackInsightsController;
-use App\Http\Controllers\Player\TrackInsightsRegenerateController;
-use App\Http\Controllers\Player\TrackInsightsStatusController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
 use App\Http\Controllers\Search\IndexController as SearchIndexController;
@@ -82,12 +73,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('insights/refresh', InsightsRefreshController::class)->name('insights.refresh');
     Route::get('insights/status', InsightsStatusController::class)->name('insights.status');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
-    Route::get('player/lyrics', LyricsController::class)->name('player.lyrics');
-    Route::post('player/lyrics/translate', LyricsTranslationController::class)->name('player.lyrics.translate');
-    Route::post('player/lyrics/romanize', LyricsPronunciationController::class)->name('player.lyrics.romanize');
-    Route::get('player/track-insights', TrackInsightsStatusController::class)->name('player.track-insights.status');
-    Route::post('player/track-insights', TrackInsightsController::class)->name('player.track-insights');
-    Route::post('player/track-insights/regenerate', TrackInsightsRegenerateController::class)->name('player.track-insights.regenerate');
+    Route::get('player/lyrics', [LyricsController::class, 'show'])->name('player.lyrics');
+    Route::post('player/lyrics/translate', [LyricsController::class, 'translate'])->name('player.lyrics.translate');
+    Route::post('player/lyrics/romanize', [LyricsController::class, 'romanize'])->name('player.lyrics.romanize');
+    Route::get('player/track-insights', [TrackInsightsController::class, 'status'])->name('player.track-insights.status');
+    Route::post('player/track-insights', [TrackInsightsController::class, 'store'])->name('player.track-insights');
+    Route::post('player/track-insights/regenerate', [TrackInsightsController::class, 'regenerate'])->name('player.track-insights.regenerate');
 
     Route::prefix('player')->name('player.')->group(function () {
         Route::post('play', [PlayerControlController::class, 'play'])->name('play');
@@ -105,12 +96,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('favorite', PlayerFavoriteController::class)->name('favorite');
     });
     Route::prefix('discovery')->name('discovery.')->group(function () {
-        Route::get('/', DiscoveryIndexController::class)->name('index');
-        Route::post('like', DiscoveryLikeController::class)->name('like')->middleware('throttle:30,1');
-        Route::post('skip', DiscoverySkipController::class)->name('skip')->middleware('throttle:60,1');
-        Route::post('ignore', DiscoveryIgnoreController::class)->name('ignore')->middleware('throttle:60,1');
-        Route::get('liked-playlist', DiscoveryLikedPlaylistController::class)->name('liked-playlist');
-        Route::get('liked', DiscoveryLikedController::class)->name('liked');
+        Route::get('/', [DiscoveryController::class, 'index'])->name('index');
+        Route::post('like', [DiscoveryController::class, 'like'])->name('like')->middleware('throttle:30,1');
+        Route::post('skip', [DiscoveryController::class, 'skip'])->name('skip')->middleware('throttle:60,1');
+        Route::post('ignore', [DiscoveryController::class, 'ignore'])->name('ignore')->middleware('throttle:60,1');
+        Route::get('liked-playlist', [DiscoveryController::class, 'likedPlaylist'])->name('liked-playlist');
+        Route::get('liked', [DiscoveryController::class, 'liked'])->name('liked');
     });
 });
 

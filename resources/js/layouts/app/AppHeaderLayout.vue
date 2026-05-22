@@ -55,9 +55,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <AppShell variant="header" @contextmenu="openGlobalContextMenu">
+    <AppShell @contextmenu="openGlobalContextMenu">
         <AppHeader :breadcrumbs="breadcrumbs" />
-        <AppContent variant="header" class="pt-16 pb-24">
+        <AppContent class="pt-16 pb-24">
             <slot />
         </AppContent>
         <NowPlayingPlayer />

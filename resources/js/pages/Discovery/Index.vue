@@ -4,11 +4,8 @@ import { Heart, Pause, Play, SkipForward, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSwipe } from '@/composables/useSwipe';
-import LikeController from '@/actions/App/Http/Controllers/Discovery/LikeController';
-import SkipController from '@/actions/App/Http/Controllers/Discovery/SkipController';
-import IgnoreController from '@/actions/App/Http/Controllers/Discovery/IgnoreController';
+import { like as discoveryLike, skip as discoverySkip, ignore as discoveryIgnore } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
 import { index as discoveryIndex } from '@/routes/discovery';
-
 interface Recommendation {
     spotify_id: string;
     name: string;
@@ -51,7 +48,6 @@ watch(
     },
     { immediate: true },
 );
-
 const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } = usePlayer();
 
 function ignore() {
@@ -60,7 +56,7 @@ function ignore() {
 
     processing.value = true;
     ignoreHttp.spotify_id = track.spotify_id;
-    ignoreHttp.post(IgnoreController.url(), {
+    ignoreHttp.post(discoveryIgnore.url(), {
         onSuccess: () => {
             currentIndex.value++;
         },
@@ -117,7 +113,7 @@ function commit(dir: 'left' | 'right') {
             album: track.album,
             album_art: track.image_url,
         });
-        likeHttp.post(LikeController.url(), {
+        likeHttp.post(discoveryLike.url(), {
             onSuccess: () => {
                 stats.value.saved++;
                 currentIndex.value++;
@@ -128,7 +124,7 @@ function commit(dir: 'left' | 'right') {
         });
     } else {
         skipHttp.spotify_id = track.spotify_id;
-        skipHttp.post(SkipController.url(), {
+        skipHttp.post(discoverySkip.url(), {
             onSuccess: () => {
                 stats.value.skipped++;
                 currentIndex.value++;

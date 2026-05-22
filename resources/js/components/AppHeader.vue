@@ -322,6 +322,7 @@ onUnmounted(() => {
                                 />
                                 {{ item.title }}
                             </Link>
+
                         </nav>
                     </SheetContent>
                 </Sheet>
@@ -374,7 +375,7 @@ onUnmounted(() => {
                 </kbd>
             </button>
 
-            <div>
+            <div class="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger :as-child="true">
                         <Button
