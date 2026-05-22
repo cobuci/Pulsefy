@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { useHttp, usePoll } from '@inertiajs/vue3';
-import { Heart, Pause, Play, SkipForward, Sparkles, X } from 'lucide-vue-next';
+import { router, useHttp, usePoll } from '@inertiajs/vue3';
+import { Heart, Pause, Play, RefreshCw, SkipForward, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSwipe } from '@/composables/useSwipe';
-import { like as discoveryLike, skip as discoverySkip, ignore as discoveryIgnore } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
+import {
+    like as discoveryLike,
+    skip as discoverySkip,
+    ignore as discoveryIgnore,
+    retry as discoveryRetry,
+} from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
 import { index as discoveryIndex } from '@/routes/discovery';
+
 interface Recommendation {
     spotify_id: string;
     name: string;
@@ -15,9 +21,16 @@ interface Recommendation {
     match_score: number;
 }
 
+type DiscoveryStatus = 'generating' | 'ready' | 'failed' | 'empty';
+
+const POLL_INTERVAL_MS = 4000;
+const MAX_POLL_ATTEMPTS = 45;
+
 const props = defineProps<{
-    status: 'generating' | 'ready';
+    status: DiscoveryStatus;
     recommendations: Recommendation[];
+    error_message: string | null;
+    can_retry: boolean;
 }>();
 
 defineOptions({
@@ -31,9 +44,26 @@ defineOptions({
     },
 });
 
+const pollAttempts = ref(0);
+const pollTimedOut = ref(false);
+
 const { start: startPolling, stop: stopPolling } = usePoll(
-    4000,
-    { only: ['status', 'recommendations'] },
+    POLL_INTERVAL_MS,
+    {
+        only: ['status', 'recommendations', 'error_message', 'can_retry'],
+        onFinish: () => {
+            if (props.status !== 'generating') {
+                return;
+            }
+
+            pollAttempts.value++;
+
+            if (pollAttempts.value >= MAX_POLL_ATTEMPTS) {
+                pollTimedOut.value = true;
+                stopPolling();
+            }
+        },
+    },
     { autoStart: false },
 );
 
@@ -41,6 +71,8 @@ watch(
     () => props.status,
     (status) => {
         if (status === 'generating') {
+            pollAttempts.value = 0;
+            pollTimedOut.value = false;
             startPolling();
         } else {
             stopPolling();
@@ -48,6 +80,43 @@ watch(
     },
     { immediate: true },
 );
+
+const showGenerating = computed(() => props.status === 'generating' && !pollTimedOut.value);
+const showFailed = computed(
+    () => props.status === 'failed' || pollTimedOut.value,
+);
+const showEmpty = computed(() => props.status === 'empty');
+const showReady = computed(() => props.status === 'ready');
+
+const displayError = computed(() => {
+    if (pollTimedOut.value) {
+        return 'Recommendation generation is taking longer than expected. Please try again.';
+    }
+
+    return props.error_message ?? 'Recommendation generation failed. Please try again.';
+});
+
+const retrying = ref(false);
+
+function retryGeneration() {
+    if (!props.can_retry && !pollTimedOut.value) {
+        return;
+    }
+
+    retrying.value = true;
+    router.post(
+        discoveryRetry.url(),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                retrying.value = false;
+                pollAttempts.value = 0;
+                pollTimedOut.value = false;
+            },
+        },
+    );
+}
 const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } = usePlayer();
 
 function ignore() {
@@ -75,7 +144,7 @@ const currentTrack = computed(() => props.recommendations[currentIndex.value] ??
 
 const stackEmpty = computed(
     () =>
-        props.status === 'ready' &&
+        showReady.value &&
         (props.recommendations.length === 0 || currentIndex.value >= props.recommendations.length),
 );
 
@@ -209,7 +278,7 @@ const skipOverlayOpacity = computed(() =>
             </p>
         </div>
 
-        <div v-if="status === 'generating'" class="mx-auto w-full max-w-[380px]">
+        <div v-if="showGenerating" class="mx-auto w-full max-w-[380px]">
             <div class="bg-card border-border aspect-[3/4] animate-pulse rounded-3xl border" />
             <div class="mt-4 text-center">
                 <p class="text-muted-foreground flex items-center justify-center gap-2 text-sm">
@@ -224,7 +293,53 @@ const skipOverlayOpacity = computed(() =>
             </div>
         </div>
 
-        <div v-else>
+        <div
+            v-else-if="showFailed"
+            class="border-border mx-auto grid w-full max-w-[380px] place-items-center rounded-3xl border border-dashed px-6 py-16 text-center aspect-[3/4]"
+        >
+            <div>
+                <Sparkles class="text-destructive mx-auto mb-3 h-8 w-8" />
+                <h3 class="text-xl font-bold">Could not generate recommendations</h3>
+                <p class="text-muted-foreground mt-2 text-sm">
+                    {{ displayError }}
+                </p>
+                <button
+                    v-if="can_retry || pollTimedOut"
+                    type="button"
+                    class="bg-primary text-primary-foreground mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
+                    :disabled="retrying"
+                    @click="retryGeneration"
+                >
+                    <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': retrying }" />
+                    Try again
+                </button>
+            </div>
+        </div>
+
+        <div
+            v-else-if="showEmpty"
+            class="border-border mx-auto grid w-full max-w-[380px] place-items-center rounded-3xl border border-dashed px-6 py-16 text-center aspect-[3/4]"
+        >
+            <div>
+                <Sparkles class="text-accent mx-auto mb-3 h-8 w-8" />
+                <h3 class="text-xl font-bold">No recommendations today</h3>
+                <p class="text-muted-foreground mt-2 text-sm">
+                    We could not find new tracks for your taste profile. Sync your Spotify listening data and try again.
+                </p>
+                <button
+                    v-if="can_retry"
+                    type="button"
+                    class="bg-primary text-primary-foreground mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
+                    :disabled="retrying"
+                    @click="retryGeneration"
+                >
+                    <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': retrying }" />
+                    Try again
+                </button>
+            </div>
+        </div>
+
+        <div v-else-if="showReady">
             <div class="relative mx-auto mb-8 aspect-[3/4] w-full max-w-[380px]">
                 <div
                     v-if="stackEmpty"
