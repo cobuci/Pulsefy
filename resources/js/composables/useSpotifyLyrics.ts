@@ -5,11 +5,52 @@ import { romanize as romanizeLyrics, translate as translateLyrics } from '@/rout
 import type { LyricsResponse, LyricsPronunciationStatus, LyricsTranslationStatus, SpotifyTrack } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 
-export type ParsedLyricLine = {
-    timeMs: number;
+export type DisplayLyricLine = {
+    sourceIndex: number;
     text: string;
-    translation: string | null;
+    timeMs: number | null;
 };
+
+const LRC_TIMESTAMP_PATTERN = /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/;
+
+function parseTimestampedLine(line: string, sourceIndex: number): DisplayLyricLine | null {
+    const match = line.match(LRC_TIMESTAMP_PATTERN);
+
+    if (!match) {
+        return null;
+    }
+
+    const minutes = Number(match[1]);
+    const seconds = Number(match[2]);
+    const fraction = (match[3] ?? '0').padEnd(3, '0').slice(0, 3);
+    const milliseconds = Number(fraction);
+    const text = (match[4] ?? '').trim();
+
+    return {
+        sourceIndex,
+        text,
+        timeMs: minutes * 60_000 + seconds * 1_000 + milliseconds,
+    };
+}
+
+function parseLyricsLines(rawLyrics: string, synced: boolean): DisplayLyricLine[] {
+    const lines = rawLyrics.split('\n');
+
+    if (synced) {
+        return lines
+            .map((line, sourceIndex) => parseTimestampedLine(line, sourceIndex))
+            .filter((line): line is DisplayLyricLine => line !== null && line.text !== '')
+            .sort((a, b) => (a.timeMs ?? 0) - (b.timeMs ?? 0));
+    }
+
+    return lines
+        .map((line, sourceIndex) => ({
+            sourceIndex,
+            text: line.trim(),
+            timeMs: null,
+        }))
+        .filter((line) => line.text !== '');
+}
 
 export function useSpotifyLyrics(
     currentTrack: () => SpotifyTrack | undefined,
@@ -23,6 +64,20 @@ export function useSpotifyLyrics(
     const lyricsData = computed<LyricsResponse | null>(() => {
         return (lyricsHttp.response as LyricsResponse | null) ?? null;
     });
+
+    const lyricsAreSynced = computed(() => lyricsData.value?.synced === true);
+
+    const displayLyricLines = computed<DisplayLyricLine[]>(() => {
+        const payload = lyricsData.value;
+
+        if (!payload?.lyrics || payload.type === 'none') {
+            return [];
+        }
+
+        return parseLyricsLines(payload.lyrics, payload.synced);
+    });
+
+    const hasLyricsContent = computed(() => displayLyricLines.value.length > 0);
 
     const translatedLinesByIndex = computed(() => {
         const lines = lyricsData.value?.translation?.translated_lines ?? [];
@@ -181,51 +236,17 @@ export function useSpotifyLyrics(
         }
     }
 
-    const parsedSyncedLyrics = computed<ParsedLyricLine[]>(() => {
-        if (lyricsData.value?.type !== 'synced' || !lyricsData.value.lyrics) {
-            return [];
-        }
-
-        const lines = lyricsData.value.lyrics.split('\n');
-
-        const parsedLines: Array<ParsedLyricLine | null> = lines.map(
-            (line: string): ParsedLyricLine | null => {
-                const match = line.match(
-                    /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/,
-                );
-
-                if (!match) {
-                    return null;
-                }
-
-                const minutes = Number(match[1]);
-                const seconds = Number(match[2]);
-                const fraction = (match[3] ?? '0').padEnd(3, '0').slice(0, 3);
-                const milliseconds = Number(fraction);
-                const text = match[4] ?? '';
-
-                return {
-                    timeMs: minutes * 60_000 + seconds * 1_000 + milliseconds,
-                    text,
-                    translation: null,
-                };
-            },
-        );
-
-        return parsedLines
-            .filter((line: ParsedLyricLine | null): line is ParsedLyricLine => line !== null)
-            .sort((a: ParsedLyricLine, b: ParsedLyricLine) => a.timeMs - b.timeMs);
-    });
-
     const activeLyricLineIndex = computed(() => {
-        if (!parsedSyncedLyrics.value.length) {
+        if (!lyricsAreSynced.value || !displayLyricLines.value.length) {
             return -1;
         }
 
         let index = -1;
 
-        for (let i = 0; i < parsedSyncedLyrics.value.length; i += 1) {
-            if (progressMs() >= parsedSyncedLyrics.value[i].timeMs) {
+        for (let i = 0; i < displayLyricLines.value.length; i += 1) {
+            const line = displayLyricLines.value[i];
+
+            if (line.timeMs !== null && progressMs() >= line.timeMs) {
                 index = i;
             } else {
                 break;
@@ -241,9 +262,11 @@ export function useSpotifyLyrics(
         romanizationRequestBusy,
         lyricsOpen,
         lyricsData,
+        lyricsAreSynced,
+        hasLyricsContent,
         translatedLinesByIndex,
         romanizedLinesByIndex,
-        parsedSyncedLyrics,
+        displayLyricLines,
         activeLyricLineIndex,
         fetchLyricsForCurrentTrack,
         retryLyricsFetch,
