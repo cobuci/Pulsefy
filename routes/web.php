@@ -99,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::prefix('discovery')->name('discovery.')->group(function () {
         Route::get('/', [DiscoveryController::class, 'index'])->name('index');
+        Route::post('retry', [DiscoveryController::class, 'retry'])->name('retry')->middleware('throttle:5,1');
         Route::post('like', [DiscoveryController::class, 'like'])->name('like')->middleware('throttle:30,1');
         Route::post('skip', [DiscoveryController::class, 'skip'])->name('skip')->middleware('throttle:60,1');
         Route::post('ignore', [DiscoveryController::class, 'ignore'])->name('ignore')->middleware('throttle:60,1');

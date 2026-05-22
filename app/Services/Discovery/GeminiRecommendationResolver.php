@@ -43,7 +43,12 @@ final class GeminiRecommendationResolver
         $affinityLower = array_combine(
             array_map('mb_strtolower', array_keys($affinityMap)),
             array_values($affinityMap),
-        );
+        ) ?: [];
+
+        $similarLower = array_combine(
+            array_map('mb_strtolower', array_keys($similarArtists)),
+            array_values($similarArtists),
+        ) ?: [];
 
         $candidates = [];
 
@@ -77,11 +82,15 @@ final class GeminiRecommendationResolver
                 $attributes,
             );
 
+            $artistKey = mb_strtolower($artistName);
+            $lastfmRaw = (float) ($similarLower[$artistKey] ?? 0);
+            $lastfmMatch = $lastfmRaw <= 1.0 ? $lastfmRaw * 100.0 : min(100.0, $lastfmRaw);
+
             $candidates[$spotifyId] = [
                 'track_id' => $track->id,
-                'artist_name' => mb_strtolower($artistName),
-                'artist_affinity' => $affinityLower[mb_strtolower($artistName)] ?? 0.0,
-                'lastfm_match' => 0.0,
+                'artist_name' => $artistKey,
+                'artist_affinity' => $affinityLower[$artistKey] ?? 0.0,
+                'lastfm_match' => $lastfmMatch,
                 'seed_track_match' => 0.0,
                 'recent_play_days_ago' => null,
             ];

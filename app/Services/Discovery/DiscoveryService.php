@@ -2,6 +2,7 @@
 
 namespace App\Services\Discovery;
 
+use App\Enums\DailyRecommendationStatus;
 use App\Models\DailyRecommendation;
 use App\Models\DiscoveryLikedTrack;
 use App\Models\RecommendedTrack;
@@ -34,12 +35,15 @@ final class DiscoveryService
      */
     public function generate(User $user): array
     {
-        $cacheKey = "discovery:{$user->id}:".now()->toDateString();
+        $cacheKey = $this->cacheKey($user->id);
+
         $cached = Cache::get($cacheKey);
 
-        if (is_array($cached)) {
+        if (is_array($cached) && $cached !== []) {
             return $cached;
         }
+
+        $daily = $this->findToday($user);
 
         $topArtists = UserTopArtist::query()->where('user_id', $user->id)->with('artist')->get();
         $topTracks = UserTopTrack::query()->where('user_id', $user->id)->with('track.artists')->get();
@@ -56,14 +60,80 @@ final class DiscoveryService
 
         $recommendations = $this->selectAndShape($candidates, $user->id);
 
+        $daily ??= DailyRecommendation::query()->updateOrCreate(
+            ['user_id' => $user->id, 'date' => $this->today()],
+            ['generated_at' => now(), 'started_at' => now()],
+        );
+
         if ($recommendations !== []) {
             $this->persist($user, $recommendations);
+            $daily->update([
+                'status' => DailyRecommendationStatus::Ready,
+                'generated_at' => now(),
+                'error_message' => null,
+            ]);
+
+            $ttl = now()->secondsUntilEndOfDay();
+            Cache::put($cacheKey, $recommendations, $ttl > 0 ? $ttl : 60);
+        } else {
+            RecommendedTrack::query()
+                ->where('daily_recommendation_id', $daily->id)
+                ->delete();
+
+            $daily->update([
+                'status' => DailyRecommendationStatus::Empty,
+                'generated_at' => now(),
+                'error_message' => null,
+            ]);
+
+            Cache::forget($cacheKey);
         }
 
-        $ttl = now()->secondsUntilEndOfDay();
-        Cache::put($cacheKey, $recommendations, $ttl > 0 ? $ttl : 60);
-
         return $recommendations;
+    }
+
+    public function cacheKey(int $userId): string
+    {
+        return "discovery:{$userId}:".now()->toDateString();
+    }
+
+    public function beginGeneration(User $user): DailyRecommendation
+    {
+        Cache::forget($this->cacheKey($user->id));
+
+        $daily = $this->findToday($user);
+
+        if ($daily !== null) {
+            $daily->update([
+                'status' => DailyRecommendationStatus::Processing,
+                'generated_at' => now(),
+                'started_at' => now(),
+                'error_message' => null,
+            ]);
+
+            return $daily->refresh();
+        }
+
+        return DailyRecommendation::query()->create([
+            'user_id' => $user->id,
+            'date' => $this->today(),
+            'status' => DailyRecommendationStatus::Processing,
+            'generated_at' => now(),
+            'started_at' => now(),
+        ]);
+    }
+
+    private function today(): string
+    {
+        return now()->toDateString();
+    }
+
+    private function findToday(User $user): ?DailyRecommendation
+    {
+        return DailyRecommendation::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', $this->today())
+            ->first();
     }
 
     /**
@@ -71,7 +141,7 @@ final class DiscoveryService
      */
     private function buildPenalizedArtists(int $userId): array
     {
-        return TrackInteraction::query()
+        $names = TrackInteraction::query()
             ->where('track_interactions.user_id', $userId)
             ->where('track_interactions.type', 'skip')
             ->where('track_interactions.expires_at', '>', now())
@@ -80,9 +150,11 @@ final class DiscoveryService
             ->join('artists', 'artists.id', '=', 'artist_track.artist_model_id')
             ->pluck('artists.artist_name')
             ->map(fn (string $name) => mb_strtolower($name))
-            ->flip()
-            ->map(fn () => true)
+            ->unique()
+            ->values()
             ->all();
+
+        return array_fill_keys($names, true);
     }
 
     /**
@@ -154,7 +226,7 @@ final class DiscoveryService
     private function persist(User $user, array $recommendations): void
     {
         $daily = DailyRecommendation::updateOrCreate(
-            ['user_id' => $user->id, 'date' => now()->toDateString()],
+            ['user_id' => $user->id, 'date' => $this->today()],
             ['generated_at' => now()],
         );
 

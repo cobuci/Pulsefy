@@ -14,7 +14,9 @@ final class DiscoveryScorer
      */
     public function score(array $candidate, array $penalizedArtists = []): int
     {
-        $affinity = min(100.0, max(0.0, (float) ($candidate['artist_affinity'] ?? 0))) / 100.0;
+        $affinityMap = min(100.0, max(0.0, (float) ($candidate['artist_affinity'] ?? 0)));
+        $lastfmMatch = min(100.0, max(0.0, (float) ($candidate['lastfm_match'] ?? 0)));
+        $affinity = max($affinityMap, $lastfmMatch) / 100.0;
 
         $artistName = mb_strtolower((string) ($candidate['artist_name'] ?? ''));
         if ($artistName !== '' && isset($penalizedArtists[$artistName])) {
