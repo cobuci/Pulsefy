@@ -17,6 +17,7 @@ class DiscoveryLikedTrackFactory extends Factory
         return [
             'user_id' => User::factory(),
             'track_id' => Track::factory(),
+            'artist_name' => fake()->name(),
             'liked_at' => now(),
         ];
     }

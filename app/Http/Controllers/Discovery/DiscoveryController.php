@@ -9,7 +9,6 @@ use App\Http\Requests\Discovery\LikeTrackRequest;
 use App\Http\Requests\Discovery\SkipTrackRequest;
 use App\Jobs\GenerateDiscoveryRecommendationsJob;
 use App\Models\DailyRecommendation;
-use App\Models\DiscoveryLikedTrack;
 use App\Models\TrackInteraction;
 use App\Models\User;
 use App\Services\Discovery\DiscoveryLikeService;
@@ -30,7 +29,7 @@ final class DiscoveryController extends Controller
         $daily = DailyRecommendation::query()
             ->where('user_id', $user->id)
             ->whereDate('date', now()->toDateString())
-            ->with(['tracks.track.artists', 'tracks.track.album'])
+            ->with(['tracks.track.album'])
             ->first();
 
         if ($daily === null) {
@@ -111,75 +110,6 @@ final class DiscoveryController extends Controller
         return response()->json(['ok' => true, 'ignored' => true]);
     }
 
-    public function liked(Request $request): Response
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        $total = DiscoveryLikedTrack::query()
-            ->where('user_id', $user->id)
-            ->count();
-
-        return Inertia::render('Discovery/Liked', [
-            'total' => $total,
-            'likedTracks' => Inertia::scroll(
-                /** @phpstan-ignore return.type */
-                fn () => DiscoveryLikedTrack::query()
-                    ->where('user_id', $user->id)
-                    ->with('track.artists')
-                    ->latest('liked_at')
-                    ->paginate(50)
-                    ->through(fn (DiscoveryLikedTrack $liked) => [
-                        'id' => $liked->id,
-                        'spotify_id' => $liked->track->spotify_id,
-                        'uri' => 'spotify:track:'.$liked->track->spotify_id,
-                        'name' => $liked->track->name,
-                        'duration_ms' => $liked->track->duration_ms,
-                        'image_url' => $liked->track->image_url,
-                        'artists' => $liked->track->artists->map(fn ($a) => [
-                            'id' => $a->artist_id,
-                            'name' => $a->artist_name,
-                        ])->values()->all(),
-                        'liked_at' => $liked->liked_at->toDateString(),
-                    ])
-            ),
-        ]);
-    }
-
-    public function likedPlaylist(Request $request): JsonResponse
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        $perPage = min((int) $request->query('per_page', 20), 50);
-
-        $paginator = DiscoveryLikedTrack::query()
-            ->where('user_id', $user->id)
-            ->with('track.artists', 'track.album')
-            ->latest('liked_at')
-            ->paginate($perPage);
-
-        return response()->json([
-            'data' => collect($paginator->items())->map(fn (DiscoveryLikedTrack $liked) => [
-                'id' => $liked->id,
-                'spotify_id' => $liked->track->spotify_id,
-                'name' => $liked->track->name,
-                /** @phpstan-ignore nullsafe.neverNull */
-                'artist_name' => $liked->track->artists->first()?->artist_name ?? '',
-                /** @phpstan-ignore nullsafe.neverNull */
-                'album_name' => $liked->track->album?->name ?? '',
-                'image_url' => $liked->track->image_url,
-                'liked_at' => $liked->liked_at->toDateString(),
-            ])->values(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-            ],
-        ]);
-    }
-
     private function generatingResponse(): Response
     {
         return Inertia::render('Discovery/Index', [
@@ -206,8 +136,7 @@ final class DiscoveryController extends Controller
                 ->map(fn ($rt) => [
                     'spotify_id' => $rt->track->spotify_id,
                     'name' => $rt->track->name,
-                    /** @phpstan-ignore nullsafe.neverNull */
-                    'artist' => $rt->track->artists->first()?->artist_name ?? '',
+                    'artist' => $rt->artist_name,
                     /** @phpstan-ignore nullsafe.neverNull */
                     'album' => $rt->track->album?->name ?? '',
                     'image_url' => $rt->track->image_url,

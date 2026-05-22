@@ -17,6 +17,7 @@ class RecommendedTrackFactory extends Factory
         return [
             'daily_recommendation_id' => DailyRecommendation::factory(),
             'track_id' => Track::factory(),
+            'artist_name' => fake()->name(),
             'match_score' => $this->faker->numberBetween(10, 100),
             'position' => $this->faker->numberBetween(1, 50),
         ];

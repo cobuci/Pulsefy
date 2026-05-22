@@ -127,6 +127,7 @@ test('returns ready status with recommendations when they exist for today', func
     RecommendedTrack::factory()->create([
         'daily_recommendation_id' => $daily->id,
         'track_id' => $track->id,
+        'artist_name' => 'Test Artist',
         'match_score' => 80,
         'position' => 1,
     ]);
@@ -139,6 +140,7 @@ test('returns ready status with recommendations when they exist for today', func
             ->where('status', 'ready')
             ->has('recommendations', 1)
             ->where('recommendations.0.spotify_id', 'TRACK001')
+            ->where('recommendations.0.artist', 'Test Artist')
             ->where('recommendations.0.match_score', 80)
         );
 

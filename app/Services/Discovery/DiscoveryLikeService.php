@@ -23,9 +23,14 @@ final class DiscoveryLikeService
             ],
         );
 
+        $artistName = trim((string) ($trackData['artist'] ?? ''));
+
         DiscoveryLikedTrack::updateOrCreate(
             ['user_id' => $user->id, 'track_id' => $track->id],
-            ['liked_at' => now()],
+            [
+                'liked_at' => now(),
+                'artist_name' => $artistName,
+            ],
         );
 
         TrackInteraction::updateOrCreate(

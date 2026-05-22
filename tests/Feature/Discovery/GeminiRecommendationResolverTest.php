@@ -94,6 +94,8 @@ it('resolves tracks via spotify search and returns candidates', function (): voi
         ->and($track->name)->toBe('Hallowed Be Thy Name')
         ->and($track->image_url)->toBe('https://example.com/img.jpg');
 
+    expect($result['SPOTIFYID001']['display_artist'])->toBe('Iron Maiden');
+
     expect($result['SPOTIFYID001'])->toMatchArray([
         'track_id' => $track->id,
         'artist_affinity' => 60.0,

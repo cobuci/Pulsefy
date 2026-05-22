@@ -41,6 +41,13 @@ test('like saves track to discovery liked tracks', function (): void {
                 ->where('track_id', $track->id)
                 ->exists()
         )->toBeTrue();
+
+    $liked = DiscoveryLikedTrack::query()
+        ->where('user_id', $user->id)
+        ->where('track_id', $track->id)
+        ->first();
+
+    expect($liked?->artist_name)->toBe('Test Artist');
 });
 
 test('like records a like interaction', function (): void {

@@ -207,6 +207,7 @@ final class DiscoveryService
         return array_values(array_map(fn (string $key) => [
             'track_id' => $top[$key]['track_id'],
             'match_score' => $top[$key]['match_score'],
+            'artist_name' => (string) ($top[$key]['display_artist'] ?? ''),
         ], $keys));
     }
 
@@ -234,6 +235,7 @@ final class DiscoveryService
             RecommendedTrack::updateOrCreate(
                 ['daily_recommendation_id' => $daily->id, 'track_id' => $rec['track_id']],
                 [
+                    'artist_name' => $rec['artist_name'] ?? '',
                     'match_score' => $rec['match_score'],
                     'position' => $position + 1,
                 ],

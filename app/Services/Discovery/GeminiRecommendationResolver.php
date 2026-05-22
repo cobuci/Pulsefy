@@ -89,6 +89,7 @@ final class GeminiRecommendationResolver
             $candidates[$spotifyId] = [
                 'track_id' => $track->id,
                 'artist_name' => $artistKey,
+                'display_artist' => $artistName,
                 'artist_affinity' => $affinityLower[$artistKey] ?? 0.0,
                 'lastfm_match' => $lastfmMatch,
                 'seed_track_match' => 0.0,

@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $user_id
  * @property int $track_id
+ * @property string $artist_name
  * @property Carbon $liked_at
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at

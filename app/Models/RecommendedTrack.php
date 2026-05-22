@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $daily_recommendation_id
  * @property int $track_id
+ * @property string $artist_name
  * @property int $match_score
  * @property int $position
  * @property ?Carbon $created_at
