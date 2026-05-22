@@ -56,6 +56,44 @@ final readonly class SpotifyPlaybackService implements SpotifyPlaybackProvider
         }
     }
 
+    public function nextQueuedTrack(User $user): ?array
+    {
+        try {
+            $response = $this->client($user)->queue();
+
+            if (in_array($response->status(), [204, 401, 403], true) || $response->body() === '') {
+                return null;
+            }
+
+            $response->throw();
+
+            $queue = $response->json('queue', []);
+
+            if (! is_array($queue) || $queue === []) {
+                return null;
+            }
+
+            $track = $queue[0];
+
+            if (! is_array($track) || empty($track['id'])) {
+                return null;
+            }
+
+            return [
+                'id' => $track['id'],
+                'name' => $track['name'] ?? '',
+                'artists' => $track['artists'] ?? [],
+                'album' => $track['album'] ?? ['images' => []],
+                'duration_ms' => $track['duration_ms'] ?? 0,
+                'external_urls' => $track['external_urls'] ?? ['spotify' => ''],
+            ];
+        } catch (\Throwable $e) {
+            Log::channel('spotify')->warning('Spotify nextQueuedTrack failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
     public function devices(User $user): array
     {
         try {

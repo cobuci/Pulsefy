@@ -388,3 +388,66 @@ test('unsaveTrack removes track from liked playlist in DB after successful API c
             ->exists()
     )->toBeFalse();
 });
+
+test('nextQueuedTrack returns first queue track', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/queue' => Http::response([
+            'queue' => [
+                [
+                    'id' => 'queued-1',
+                    'name' => 'Queued Track',
+                    'artists' => [['name' => 'Queued Artist']],
+                    'album' => ['images' => []],
+                    'duration_ms' => 180000,
+                    'external_urls' => ['spotify' => 'https://open.spotify.com/track/queued-1'],
+                ],
+            ],
+        ]),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+    $result = $service->nextQueuedTrack($user);
+
+    expect($result)->toMatchArray([
+        'id' => 'queued-1',
+        'name' => 'Queued Track',
+        'duration_ms' => 180000,
+    ]);
+});
+
+test('nextQueuedTrack returns null when queue is empty', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/queue' => Http::response([
+            'queue' => [],
+        ]),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->nextQueuedTrack($user))->toBeNull();
+});
+
+test('nextQueuedTrack returns null when spotify responds with 204', function () {
+    $user = User::factory()->create();
+
+    $tokenService = Mockery::mock(SpotifyTokenService::class);
+    $tokenService->shouldReceive('ensureFreshToken')->once()->andReturn('token');
+
+    Http::fake([
+        'api.spotify.com/v1/me/player/queue' => Http::response(null, 204),
+    ]);
+
+    $service = new SpotifyPlaybackService($tokenService);
+
+    expect($service->nextQueuedTrack($user))->toBeNull();
+});

@@ -54,6 +54,19 @@ export interface RecentPlay {
 
 export type TimeRange = 'short_term' | 'medium_term' | 'long_term';
 
+export interface QueuedTrackPreview {
+    id: string;
+    name: string;
+    artists: Array<{ id?: string; name: string }>;
+    album?: Pick<SpotifyAlbum, 'images'>;
+    duration_ms?: number;
+    external_urls?: { spotify: string };
+}
+
+export interface PlayerQueueResponse {
+    next_track: QueuedTrackPreview | null;
+}
+
 export interface NowPlaying {
     is_playing: boolean;
     shuffle_state: boolean;

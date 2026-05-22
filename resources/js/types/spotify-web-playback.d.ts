@@ -31,6 +31,8 @@ export interface SpotifyWebPlaybackState {
     shuffle: boolean;
     track_window: {
         current_track: SpotifyWebPlaybackTrack;
+        previous_tracks?: SpotifyWebPlaybackTrack[];
+        next_tracks?: SpotifyWebPlaybackTrack[];
     };
 }
 
