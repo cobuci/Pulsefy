@@ -27,6 +27,7 @@ import {
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
+import { cn, toUrl } from '@/lib/utils';
 import { dashboard, recentlyPlayed } from '@/routes';
 import { index as artistsIndex } from '@/routes/artists';
 import { index as discoveryIndex } from '@/routes/discovery';
@@ -60,7 +61,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 const auth = computed(() => page.props.auth);
-const { whenCurrentUrl } = useCurrentUrl();
+const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
 const searchOpen = ref(false);
 const searchQuery = ref('');
 const searchActiveIndex = ref(0);
@@ -70,7 +71,23 @@ const searchHttp = useHttp<SpotlightSearchResponse>();
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastIssuedSearchQuery = '';
 
-const activeItemStyles = 'text-foreground bg-secondary';
+const exactMatchNavPaths = new Set(['/dashboard', '/recently-played']);
+
+function isNavItemActive(href: NavItem['href']): boolean {
+    const path = toUrl(href);
+
+    if (exactMatchNavPaths.has(path)) {
+        return isCurrentUrl(href);
+    }
+
+    return isCurrentOrParentUrl(href);
+}
+
+const desktopNavLinkClass =
+    'relative text-foreground font-medium after:absolute after:inset-x-2 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-accent/80';
+
+const mobileNavLinkClass =
+    'border-l-2 border-accent bg-secondary/40 font-medium text-foreground';
 
 const mainNavItems: NavItem[] = [
     {
@@ -307,11 +324,10 @@ onUnmounted(() => {
                                 v-for="item in mainNavItems"
                                 :key="item.title"
                                 :href="item.href"
-                                class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                                 :class="
-                                    whenCurrentUrl(
-                                        item.href,
-                                        'bg-secondary font-semibold text-foreground',
+                                    cn(
+                                        'flex items-center gap-x-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground',
+                                        isNavItemActive(item.href) && mobileNavLinkClass,
                                     )
                                 "
                             >
@@ -347,11 +363,13 @@ onUnmounted(() => {
                             :key="index"
                         >
                             <Link
-                                :class="[
-                                    navigationMenuTriggerStyle(),
-                                    'h-9 cursor-pointer rounded-md bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground',
-                                    whenCurrentUrl(item.href, activeItemStyles),
-                                ]"
+                                :class="
+                                    cn(
+                                        navigationMenuTriggerStyle(),
+                                        'h-9 cursor-pointer rounded-md bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground',
+                                        isNavItemActive(item.href) && desktopNavLinkClass,
+                                    )
+                                "
                                 :href="item.href"
                             >
                                 {{ item.title }}

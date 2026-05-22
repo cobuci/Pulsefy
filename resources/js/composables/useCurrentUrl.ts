@@ -23,14 +23,24 @@ export type UseCurrentUrlReturn = {
 };
 
 const page = usePage();
-const currentUrlReactive = computed(
-    () =>
+
+function normalizePath(path: string): string {
+    if (path.length > 1 && path.endsWith('/')) {
+        return path.slice(0, -1);
+    }
+
+    return path;
+}
+
+const currentUrlReactive = computed(() =>
+    normalizePath(
         new URL(
             page.url,
             typeof window !== 'undefined'
                 ? window.location.origin
                 : 'http://localhost',
         ).pathname,
+    ),
 );
 
 export function useCurrentUrl(): UseCurrentUrlReturn {
@@ -39,11 +49,16 @@ export function useCurrentUrl(): UseCurrentUrlReturn {
         currentUrl?: string,
         startsWith: boolean = false,
     ) {
-        const urlToCompare = currentUrl ?? currentUrlReactive.value;
-        const urlString = toUrl(urlToCheck);
+        const urlToCompare = normalizePath(currentUrl ?? currentUrlReactive.value);
+        const urlString = normalizePath(toUrl(urlToCheck));
 
-        const comparePath = (path: string): boolean =>
-            startsWith ? urlToCompare.startsWith(path) : path === urlToCompare;
+        const comparePath = (path: string): boolean => {
+            if (startsWith) {
+                return urlToCompare === path || urlToCompare.startsWith(`${path}/`);
+            }
+
+            return path === urlToCompare;
+        };
 
         if (!urlString.startsWith('http')) {
             return comparePath(urlString);
@@ -52,7 +67,7 @@ export function useCurrentUrl(): UseCurrentUrlReturn {
         try {
             const absoluteUrl = new URL(urlString);
 
-            return comparePath(absoluteUrl.pathname);
+            return comparePath(normalizePath(absoluteUrl.pathname));
         } catch {
             return false;
         }
