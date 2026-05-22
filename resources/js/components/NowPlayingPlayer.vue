@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Heart, Languages, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
+import { AlertCircle, Heart, Languages, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
@@ -265,9 +265,9 @@ const romanizationButtonLabel = computed(() => {
     return 'Romanize';
 });
 
-function renderedSecondaryLine(index: number, fallbackText: string): string {
+function renderedSecondaryLine(sourceIndex: number, fallbackText: string): string {
     if (lyricsSecondaryMode.value === 'romanization') {
-        const romanizedLine = lyrics.romanizedLinesByIndex.value.get(index);
+        const romanizedLine = lyrics.romanizedLinesByIndex.value.get(sourceIndex);
 
         if (!romanizedLine) {
             return fallbackText;
@@ -280,7 +280,7 @@ function renderedSecondaryLine(index: number, fallbackText: string): string {
         return romanizedLine.en ?? fallbackText;
     }
 
-    const translatedLine = lyrics.translatedLinesByIndex.value.get(index);
+    const translatedLine = lyrics.translatedLinesByIndex.value.get(sourceIndex);
 
     if (!translatedLine) {
         return fallbackText;
@@ -912,25 +912,41 @@ watch(
                                 <div class="h-5 w-3/4 animate-pulse rounded bg-muted" />
                             </div>
 
-                            <template
-                                v-else-if="lyrics.lyricsData.value?.type === 'synced'"
+                            <div
+                                v-else-if="lyrics.hasLyricsContent.value"
+                                class="space-y-4"
                             >
-                                <button
-                                    v-for="(line, index) in lyrics.parsedSyncedLyrics
-                                        .value"
-                                    :key="`${line.timeMs}-${index}`"
-                                    type="button"
-                                    :ref="(element) => setActiveLyricRef(element, index)"
-                                    :disabled="seekBusy || !hasTrack"
+                                <div
+                                    v-if="!lyrics.lyricsAreSynced.value"
+                                    class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90"
+                                >
+                                    <AlertCircle class="mt-0.5 size-4 shrink-0 text-amber-300" />
+                                    <p>
+                                        These lyrics are not synchronized with playback.
+                                    </p>
+                                </div>
+
+                                <component
+                                    :is="lyrics.lyricsAreSynced.value ? 'button' : 'div'"
+                                    v-for="(line, displayIndex) in lyrics.displayLyricLines.value"
+                                    :key="`${lyrics.lyricsAreSynced.value ? 'synced' : 'plain'}-${line.sourceIndex}`"
+                                    :type="lyrics.lyricsAreSynced.value ? 'button' : undefined"
+                                    :ref="lyrics.lyricsAreSynced.value ? (element) => setActiveLyricRef(element, displayIndex) : undefined"
+                                    :disabled="lyrics.lyricsAreSynced.value ? seekBusy || !hasTrack : undefined"
                                     :class="[
-                                        'w-full cursor-pointer rounded-md px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50',
-                                        index === lyrics.activeLyricLineIndex.value
-                                            ? 'bg-muted/60 font-semibold text-foreground [text-shadow:0_0_26px_color-mix(in_oklab,var(--accent)_45%,transparent)]'
-                                            : index < lyrics.activeLyricLineIndex.value
-                                              ? 'text-muted-foreground/45'
-                                              : 'text-muted-foreground/70',
+                                        'w-full rounded-md px-3 py-2 text-left transition-all',
+                                        lyrics.lyricsAreSynced.value
+                                            ? [
+                                                  'cursor-pointer disabled:cursor-not-allowed disabled:opacity-50',
+                                                  displayIndex === lyrics.activeLyricLineIndex.value
+                                                      ? 'bg-muted/60 font-semibold text-foreground [text-shadow:0_0_26px_color-mix(in_oklab,var(--accent)_45%,transparent)]'
+                                                      : displayIndex < lyrics.activeLyricLineIndex.value
+                                                        ? 'text-muted-foreground/45'
+                                                        : 'text-muted-foreground/70',
+                                              ]
+                                            : 'text-foreground',
                                     ]"
-                                    @click="onLyricLineClick(line.timeMs)"
+                                    @click="lyrics.lyricsAreSynced.value && line.timeMs !== null ? onLyricLineClick(line.timeMs) : undefined"
                                 >
                                     <p class="font-display text-xl leading-tight sm:text-3xl">
                                         {{ line.text || '♪' }}
@@ -940,16 +956,10 @@ watch(
                                         v-if="lyricsSecondaryMode !== 'none'"
                                         class="mt-1 border-l-2 border-accent/70 pl-3 text-sm italic text-accent/90"
                                     >
-                                        {{ renderedSecondaryLine(index, line.text || '♪') }}
+                                        {{ renderedSecondaryLine(line.sourceIndex, line.text || '♪') }}
                                     </p>
-                                </button>
-                            </template>
-
-                            <pre
-                                v-else-if="lyrics.lyricsData.value?.type === 'plain'"
-                                class="text-sm leading-6 whitespace-pre-wrap text-foreground"
-                                >{{ lyrics.lyricsData.value?.lyrics }}</pre
-                            >
+                                </component>
+                            </div>
 
                             <div
                                 v-else
