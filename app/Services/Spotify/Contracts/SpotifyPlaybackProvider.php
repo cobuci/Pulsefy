@@ -8,6 +8,11 @@ interface SpotifyPlaybackProvider
 {
     public function currentlyPlaying(User $user): ?array;
 
+    /**
+     * @return array{id: string, name: string, artists: array<int, array<string, mixed>>, album: array<string, mixed>, duration_ms: int, external_urls: array<string, string>}|null
+     */
+    public function nextQueuedTrack(User $user): ?array;
+
     public function devices(User $user): array;
 
     public function resumePlay(User $user): bool;

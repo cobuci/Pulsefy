@@ -25,6 +25,7 @@ use App\Http\Controllers\Player\DeviceTokenController;
 use App\Http\Controllers\Player\FavoriteController as PlayerFavoriteController;
 use App\Http\Controllers\Player\LyricsController;
 use App\Http\Controllers\Player\NowPlayingController;
+use App\Http\Controllers\Player\QueueController;
 use App\Http\Controllers\Player\TrackInsightsController;
 use App\Http\Controllers\Player\TransferController as PlayerTransferController;
 use App\Http\Controllers\RecentlyPlayedController;
@@ -73,6 +74,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('insights/refresh', InsightsRefreshController::class)->name('insights.refresh');
     Route::get('insights/status', InsightsStatusController::class)->name('insights.status');
     Route::get('player/now-playing', NowPlayingController::class)->name('player.now-playing');
+    Route::get('player/queue', QueueController::class)->middleware('throttle:60,1')->name('player.queue');
     Route::get('player/lyrics', [LyricsController::class, 'show'])->name('player.lyrics');
     Route::post('player/lyrics/translate', [LyricsController::class, 'translate'])->name('player.lyrics.translate');
     Route::post('player/lyrics/romanize', [LyricsController::class, 'romanize'])->name('player.lyrics.romanize');

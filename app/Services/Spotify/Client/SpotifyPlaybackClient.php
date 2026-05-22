@@ -16,6 +16,11 @@ final class SpotifyPlaybackClient
         return $this->get('/me/player', ['additional_types' => 'track']);
     }
 
+    public function queue(): Response
+    {
+        return $this->get('/me/player/queue');
+    }
+
     public function devices(): Response
     {
         return $this->get('/me/player/devices');
