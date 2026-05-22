@@ -16,7 +16,6 @@ test('guests are redirected to login', function () {
 test('authenticated users see the discovery page', function () {
     Queue::fake();
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->get(route('discovery.index'))
         ->assertOk()
@@ -28,7 +27,6 @@ test('authenticated users see the discovery page', function () {
 test('dispatches job and returns generating status when no recommendations exist for today', function () {
     Queue::fake();
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->get(route('discovery.index'))
         ->assertOk()

@@ -99,8 +99,6 @@ export function useSpotifyLyrics(
             });
 
             if (!response.ok) {
-                await fetchLyrics(true);
-
                 return;
             }
 
@@ -157,8 +155,6 @@ export function useSpotifyLyrics(
             });
 
             if (!response.ok) {
-                await fetchLyrics(true);
-
                 return;
             }
 

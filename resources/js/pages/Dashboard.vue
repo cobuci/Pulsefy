@@ -10,7 +10,7 @@ import DashboardTopTracksSection from '@/components/dashboard/DashboardTopTracks
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import { usePlayer } from '@/composables/usePlayer';
-import DiscoveryIndexController from '@/actions/App/Http/Controllers/Discovery/IndexController';
+import { index as discoveryIndex } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
 import { dashboard } from '@/routes';
 import { refresh as refreshInsights } from '@/routes/insights';
 import type {
@@ -241,7 +241,7 @@ function refreshAllInsights() {
         />
 
         <Link
-            :href="DiscoveryIndexController.url()"
+            :href="discoveryIndex().url"
             class="group relative block overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/15 via-accent/10 to-background p-6 transition-all hover:border-accent/60 hover:shadow-[0_0_24px_0_hsl(var(--accent)/0.15)] sm:p-8"
         >
             <div class="pointer-events-none absolute -right-8 -top-12 h-44 w-44 rounded-full bg-accent/20 blur-3xl" />

@@ -31,7 +31,6 @@ test('romanization endpoint queues romanization job when lyrics exist', function
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->postJson(route('player.lyrics.romanize'), [
             'track_id' => 'spotify_track_romanize_1',
@@ -77,7 +76,6 @@ test('lyrics endpoint includes romanization payload for current user', function 
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)->postJson(route('player.lyrics.romanize'), [
         'track_id' => 'spotify_track_romanize_2',
         'artist' => 'Adele',
@@ -127,7 +125,6 @@ test('romanization endpoint returns validation error when there are no lyrics to
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->postJson(route('player.lyrics.romanize'), [
             'track_id' => 'spotify_track_romanize_none',
@@ -155,7 +152,6 @@ test('stale processing pronunciation is marked failed before re-queuing', functi
     ]);
 
     $user = User::factory()->create();
-
     $lyric = Lyric::factory()->create([
         'track_id' => 'spotify_track_stale_romanize',
         'artist_name' => 'Adele',

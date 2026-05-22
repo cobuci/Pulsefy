@@ -23,7 +23,6 @@ test('translation endpoint queues translation job when lyrics exist', function (
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->postJson(route('player.lyrics.translate'), [
             'track_id' => 'spotify_track_translate_1',
@@ -66,7 +65,6 @@ test('lyrics endpoint includes translation payload for current user', function (
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)->postJson(route('player.lyrics.translate'), [
         'track_id' => 'spotify_track_translate_2',
         'artist' => 'Adele',
@@ -115,7 +113,6 @@ test('translation endpoint returns validation error when there are no lyrics to 
     ]);
 
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->postJson(route('player.lyrics.translate'), [
             'track_id' => 'spotify_track_translate_none',
@@ -143,7 +140,6 @@ test('stale processing translation is marked failed before re-queuing', function
     ]);
 
     $user = User::factory()->create();
-
     $lyric = Lyric::factory()->create([
         'track_id' => 'spotify_track_stale_processing',
         'artist_name' => 'Adele',

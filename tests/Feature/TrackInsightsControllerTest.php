@@ -10,7 +10,6 @@ test('POST track-insights queues generation job and returns 202', function () {
     Queue::fake();
 
     $user = User::factory()->create();
-
     $this->actingAs($user)
         ->postJson(route('player.track-insights'), [
             'track_id' => 'spotify_insights_ctrl_1',

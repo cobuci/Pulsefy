@@ -65,8 +65,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Teleport to="body" defer>
-        <template v-if="isMounted">
+    <Teleport v-if="isMounted" to="body">
         <!-- Full-page backdrop (blurs everything including the player) -->
         <Transition
             enter-active-class="transition-opacity duration-300"
@@ -273,6 +272,5 @@ onUnmounted(() => {
                 </footer>
             </aside>
         </Transition>
-        </template>
     </Teleport>
 </template>

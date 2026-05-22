@@ -1,7 +1,5 @@
 import { computed, ref } from 'vue';
-import TrackInsightsController from '@/actions/App/Http/Controllers/Player/TrackInsightsController';
-import TrackInsightsRegenerateController from '@/actions/App/Http/Controllers/Player/TrackInsightsRegenerateController';
-import TrackInsightsStatusController from '@/actions/App/Http/Controllers/Player/TrackInsightsStatusController';
+import { status as trackInsightsStatus, store as trackInsightsStore, regenerate as trackInsightsRegenerate } from '@/actions/App/Http/Controllers/Player/TrackInsightsController';
 import type { NowPlaying, TrackInsightsData, TrackInsightStatus, TrackInsightsResponse, TrackInsightsUpdatedEvent } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 
@@ -49,7 +47,7 @@ export function useTrackInsights() {
     async function fetchStatus(trackId: string): Promise<void> {
         try {
             const response = await fetch(
-                TrackInsightsStatusController.url({ query: { track_id: trackId } }),
+                trackInsightsStatus.url({ query: { track_id: trackId } }),
                 {
                     headers: {
                         Accept: 'application/json',
@@ -83,7 +81,7 @@ export function useTrackInsights() {
         isBusy.value = true;
 
         try {
-            const response = await fetch(TrackInsightsController.url(), {
+            const response = await fetch(trackInsightsStore.url(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -121,7 +119,7 @@ export function useTrackInsights() {
         errorMessage.value = null;
 
         try {
-            const response = await fetch(TrackInsightsRegenerateController.url(), {
+            const response = await fetch(trackInsightsRegenerate.url(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -138,8 +136,6 @@ export function useTrackInsights() {
             });
 
             if (!response.ok) {
-                await fetchStatus(track.id);
-
                 return;
             }
 
