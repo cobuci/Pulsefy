@@ -1,7 +1,9 @@
 <?php
 
 use App\Ai\Agents\DiscoveryRecommendationAgent;
+use App\Enums\DailyRecommendationStatus;
 use App\Models\Artist;
+use App\Models\DailyRecommendation;
 use App\Models\DiscoveryLikedTrack;
 use App\Models\Track;
 use App\Models\TrackInteraction;
@@ -34,6 +36,10 @@ it('returns empty array when user has no top artists or recent plays', function 
     $result = app(DiscoveryService::class)->generate($user);
 
     expect($result)->toBeArray()->toBeEmpty();
+
+    $daily = DailyRecommendation::query()->where('user_id', $user->id)->first();
+    expect($daily)->not->toBeNull()
+        ->and($daily->status)->toBe(DailyRecommendationStatus::Empty);
 });
 
 it('excludes tracks with active skip suppression', function (): void {
@@ -104,9 +110,9 @@ it('returns cached recommendations on second call without regenerating', functio
     expect($result)->toBe($cached);
 });
 
-it('sets cache after generating recommendations', function (): void {
+it('does not cache empty generation results', function (): void {
     $user = User::factory()->create();
-    $cacheKey = "discovery:{$user->id}:".now()->toDateString();
+    $cacheKey = app(DiscoveryService::class)->cacheKey($user->id);
 
     Cache::forget($cacheKey);
 
@@ -117,7 +123,7 @@ it('sets cache after generating recommendations', function (): void {
 
     app(DiscoveryService::class)->generate($user);
 
-    expect(Cache::has($cacheKey))->toBeTrue();
+    expect(Cache::has($cacheKey))->toBeFalse();
 });
 
 it('boosts affinity for artists of previously liked tracks', function (): void {

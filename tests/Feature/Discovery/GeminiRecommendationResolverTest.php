@@ -97,6 +97,7 @@ it('resolves tracks via spotify search and returns candidates', function (): voi
     expect($result['SPOTIFYID001'])->toMatchArray([
         'track_id' => $track->id,
         'artist_affinity' => 60.0,
+        'lastfm_match' => 90.0,
     ]);
 });
 

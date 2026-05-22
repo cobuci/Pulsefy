@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DailyRecommendationStatus;
 use App\Jobs\GenerateDiscoveryRecommendationsJob;
 use App\Models\DailyRecommendation;
 use App\Models\RecommendedTrack;
@@ -24,7 +25,7 @@ test('authenticated users see the discovery page', function () {
         );
 });
 
-test('dispatches job and returns generating status when no recommendations exist for today', function () {
+test('creates daily record dispatches job and returns generating status when no recommendations exist for today', function () {
     Queue::fake();
     $user = User::factory()->create();
     $this->actingAs($user)
@@ -34,9 +35,86 @@ test('dispatches job and returns generating status when no recommendations exist
             ->component('Discovery/Index')
             ->where('status', 'generating')
             ->where('recommendations', [])
+            ->where('can_retry', false)
         );
 
+    expect(DailyRecommendation::query()->where('user_id', $user->id)->count())->toBe(1);
+
+    $daily = DailyRecommendation::query()->where('user_id', $user->id)->first();
+    expect($daily->status)->toBe(DailyRecommendationStatus::Processing);
+
     Queue::assertPushed(GenerateDiscoveryRecommendationsJob::class, fn ($job) => $job->user->id === $user->id);
+});
+
+test('does not dispatch job again while generation is in progress', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->processing()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->get(route('discovery.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('status', 'generating')
+        );
+
+    Queue::assertNotPushed(GenerateDiscoveryRecommendationsJob::class);
+});
+
+test('marks stale processing as failed and returns failed status', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->create([
+        'user_id' => $user->id,
+        'status' => DailyRecommendationStatus::Processing,
+        'started_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('discovery.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('status', 'failed')
+            ->where('can_retry', true)
+            ->has('error_message')
+        );
+
+    $daily = DailyRecommendation::query()->where('user_id', $user->id)->first();
+    expect($daily->status)->toBe(DailyRecommendationStatus::Failed);
+});
+
+test('returns failed status when generation failed', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->failed('Gemini unavailable')->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->get(route('discovery.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('status', 'failed')
+            ->where('error_message', 'Gemini unavailable')
+            ->where('can_retry', true)
+        );
+});
+
+test('returns empty status when generation produced no tracks', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->empty()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->get(route('discovery.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('status', 'empty')
+            ->where('recommendations', [])
+            ->where('can_retry', true)
+        );
 });
 
 test('returns ready status with recommendations when they exist for today', function () {
@@ -61,7 +139,37 @@ test('returns ready status with recommendations when they exist for today', func
             ->where('status', 'ready')
             ->has('recommendations', 1)
             ->where('recommendations.0.spotify_id', 'TRACK001')
+            ->where('recommendations.0.match_score', 80)
         );
+
+    Queue::assertNotPushed(GenerateDiscoveryRecommendationsJob::class);
+});
+
+test('retry restarts generation for failed daily recommendations', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->failed()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post(route('discovery.retry'))
+        ->assertRedirect(route('discovery.index'));
+
+    $daily = DailyRecommendation::query()->where('user_id', $user->id)->first();
+    expect($daily->status)->toBe(DailyRecommendationStatus::Processing);
+
+    Queue::assertPushed(GenerateDiscoveryRecommendationsJob::class);
+});
+
+test('retry does not dispatch when generation is already in progress', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    DailyRecommendation::factory()->forToday()->processing()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post(route('discovery.retry'))
+        ->assertRedirect(route('discovery.index'));
 
     Queue::assertNotPushed(GenerateDiscoveryRecommendationsJob::class);
 });

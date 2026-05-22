@@ -75,3 +75,25 @@ test('recency contributes to score when track was recently played', function ():
 
     expect($this->scorer->score($candidate))->toBe(30);
 });
+
+test('lastfm match contributes when artist affinity is zero', function (): void {
+    $candidate = [
+        'artist_name' => 'iron maiden',
+        'artist_affinity' => 0.0,
+        'lastfm_match' => 90.0,
+        'recent_play_days_ago' => null,
+    ];
+
+    expect($this->scorer->score($candidate))->toBe(63);
+});
+
+test('uses the higher of artist affinity and lastfm match', function (): void {
+    $candidate = [
+        'artist_name' => 'metallica',
+        'artist_affinity' => 40.0,
+        'lastfm_match' => 85.0,
+        'recent_play_days_ago' => null,
+    ];
+
+    expect($this->scorer->score($candidate))->toBe(60);
+});
