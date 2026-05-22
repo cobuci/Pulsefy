@@ -5,18 +5,16 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/composables/usePlayer';
-import { show as artistShow } from '@/routes/artists';
-import { index as libraryIndex } from '@/routes/library';
-import { liked as likedRoute } from '@/routes/discovery';
+import { discoveryLiked as discoveryLikedRoute, index as libraryIndex } from '@/routes/library';
 
 interface LikedTrack {
     id: number;
     spotify_id: string;
     uri: string;
     name: string;
+    artist_name: string;
     duration_ms: number;
     image_url: string | null;
-    artists: Array<{ id: string; name: string }>;
     liked_at: string;
 }
 
@@ -28,7 +26,7 @@ const props = defineProps<{
 setLayoutProps({
     breadcrumbs: [
         { title: 'Library', href: libraryIndex() },
-        { title: 'Liked from Discovery', href: likedRoute() },
+        { title: 'Liked from Discovery', href: discoveryLikedRoute() },
     ],
 });
 
@@ -150,7 +148,7 @@ function formatDuration(ms: number): string {
 
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                    Discovery Playlist
+                    Library
                 </p>
                 <h1 class="mt-1 truncate font-display text-3xl font-bold text-foreground">
                     Liked from Discovery
@@ -237,15 +235,11 @@ function formatDuration(ms: number): string {
                             >
                                 <div class="bg-gradient-primary h-full w-full animate-pulse" />
                             </div>
-                            <p class="truncate text-[11px] text-muted-foreground">
-                                <template v-for="(artist, i) in track.artists" :key="artist.id">
-                                    <a
-                                        :href="artistShow(artist.id).url"
-                                        class="hover:text-foreground"
-                                        @click.stop
-                                    >{{ artist.name }}</a>
-                                    <span v-if="i < track.artists.length - 1">, </span>
-                                </template>
+                            <p
+                                v-if="track.artist_name"
+                                class="truncate text-[11px] text-muted-foreground"
+                            >
+                                {{ track.artist_name }}
                             </p>
                         </div>
 

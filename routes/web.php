@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Discovery\DiscoveryController;
 use App\Http\Controllers\Insights\RefreshController as InsightsRefreshController;
 use App\Http\Controllers\Insights\StatusController as InsightsStatusController;
+use App\Http\Controllers\Library\DiscoveryLikedController as LibraryDiscoveryLikedController;
 use App\Http\Controllers\Library\FolderController as LibraryFolderController;
 use App\Http\Controllers\Library\IndexController as LibraryIndexController;
 use App\Http\Controllers\Library\MovePlaylistController as LibraryMovePlaylistController;
@@ -58,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('artists/{artistId}', ArtistShowController::class)->name('artists.show');
     Route::post('artists/{artistId}/favorite', ArtistFavoriteController::class)->name('artists.favorite');
     Route::get('library', LibraryIndexController::class)->name('library.index');
+    Route::get('library/discovery-liked', LibraryDiscoveryLikedController::class)->name('library.discovery-liked');
     Route::get('library/{playlistId}', LibraryShowController::class)->name('library.show');
     Route::post('library/refresh', LibraryRefreshController::class)->name('library.refresh');
     Route::post('library/liked-songs/sync', LibrarySyncLikedSongsController::class)->name('library.liked-songs.sync');
@@ -103,8 +105,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('like', [DiscoveryController::class, 'like'])->name('like')->middleware('throttle:30,1');
         Route::post('skip', [DiscoveryController::class, 'skip'])->name('skip')->middleware('throttle:60,1');
         Route::post('ignore', [DiscoveryController::class, 'ignore'])->name('ignore')->middleware('throttle:60,1');
-        Route::get('liked-playlist', [DiscoveryController::class, 'likedPlaylist'])->name('liked-playlist');
-        Route::get('liked', [DiscoveryController::class, 'liked'])->name('liked');
+        Route::redirect('liked', '/library/discovery-liked');
     });
 });
 

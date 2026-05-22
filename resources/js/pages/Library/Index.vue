@@ -16,7 +16,7 @@ import {
 } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
 import { sync as syncLikedSongs } from '@/routes/library/liked-songs';
-import { liked as discoveryLiked } from '@/routes/discovery';
+import { discoveryLiked } from '@/routes/library';
 
 defineOptions({
     layout: {
