@@ -15,7 +15,6 @@ import {
     NavigationMenu,
     NavigationMenuItem,
     NavigationMenuList,
-    navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
 import {
     Sheet,
@@ -83,11 +82,14 @@ function isNavItemActive(href: NavItem['href']): boolean {
     return isCurrentOrParentUrl(href);
 }
 
-const desktopNavLinkClass =
-    'relative text-foreground font-medium after:absolute after:inset-x-2 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-accent/80';
+const desktopNavLinkBaseClass =
+    'relative inline-flex h-9 w-max cursor-pointer items-center justify-center rounded-md bg-transparent px-3 text-sm font-medium text-muted-foreground outline-none transition-[color,opacity] after:pointer-events-none after:absolute after:inset-x-2 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-accent/70 after:opacity-0 after:transition-opacity hover:bg-transparent hover:text-foreground hover:after:opacity-60 focus:bg-transparent focus:text-foreground focus-visible:ring-0 focus-visible:outline-none active:bg-transparent data-[state=open]:bg-transparent';
 
-const mobileNavLinkClass =
-    'border-l-2 border-accent bg-secondary/40 font-medium text-foreground';
+const desktopNavLinkActiveClass =
+    'text-foreground font-medium after:bg-accent/80 after:opacity-100 hover:after:opacity-100';
+
+const mobileNavLinkActiveClass =
+    'border-l-2 border-accent font-medium text-foreground';
 
 const mainNavItems: NavItem[] = [
     {
@@ -326,8 +328,8 @@ onUnmounted(() => {
                                 :href="item.href"
                                 :class="
                                     cn(
-                                        'flex items-center gap-x-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground',
-                                        isNavItemActive(item.href) && mobileNavLinkClass,
+                                        'flex items-center gap-x-3 rounded-lg border-l-2 border-transparent bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground hover:border-accent/50',
+                                        isNavItemActive(item.href) && mobileNavLinkActiveClass,
                                     )
                                 "
                             >
@@ -365,9 +367,8 @@ onUnmounted(() => {
                             <Link
                                 :class="
                                     cn(
-                                        navigationMenuTriggerStyle(),
-                                        'h-9 cursor-pointer rounded-md bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground',
-                                        isNavItemActive(item.href) && desktopNavLinkClass,
+                                        desktopNavLinkBaseClass,
+                                        isNavItemActive(item.href) && desktopNavLinkActiveClass,
                                     )
                                 "
                                 :href="item.href"
