@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DailyRecommendationStatus;
 use Database\Factories\DailyRecommendationFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,9 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property Carbon $date
  * @property Carbon $generated_at
+ * @property DailyRecommendationStatus $status
+ * @property ?Carbon $started_at
+ * @property ?string $error_message
  * @property ?Carbon $created_at
  * @property ?Carbon $updated_at
  * @property-read User $user
@@ -23,6 +27,8 @@ use Illuminate\Support\Carbon;
  */
 class DailyRecommendation extends Model
 {
+    public const int STALE_MINUTES = 3;
+
     /** @use HasFactory<DailyRecommendationFactory> */
     use HasFactory;
 
@@ -31,8 +37,10 @@ class DailyRecommendation extends Model
     protected function casts(): array
     {
         return [
-            'date' => 'datetime',
+            'date' => 'date',
             'generated_at' => 'datetime',
+            'status' => DailyRecommendationStatus::class,
+            'started_at' => 'datetime',
         ];
     }
 
@@ -44,5 +52,26 @@ class DailyRecommendation extends Model
     public function tracks(): HasMany
     {
         return $this->hasMany(RecommendedTrack::class)->orderBy('position');
+    }
+
+    public function isStale(): bool
+    {
+        if (! $this->status->isPending()) {
+            return false;
+        }
+
+        if ($this->started_at === null) {
+            return false;
+        }
+
+        return $this->started_at->copy()->addMinutes(self::STALE_MINUTES)->isPast();
+    }
+
+    public function markFailed(string $message): void
+    {
+        $this->update([
+            'status' => DailyRecommendationStatus::Failed,
+            'error_message' => $message,
+        ]);
     }
 }
