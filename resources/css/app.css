@@ -308,3 +308,38 @@
         transform-origin: bottom;
     }
 }
+
+/* Player track toasts (now playing / up next) — unlayered overrides vue-sonner */
+[data-sonner-toaster][data-y-position='top'][data-x-position='right'] {
+    top: calc(4rem + 0.75rem) !important;
+    right: 1.5rem !important;
+}
+
+[data-sonner-toast].player-track-toast,
+[data-sonner-toast].player-track-toast[data-styled='true'],
+[data-sonner-toast].upcoming-track-toast,
+[data-sonner-toast].upcoming-track-toast[data-styled='true'] {
+    width: auto !important;
+    min-width: 272px;
+    max-width: 340px;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background-color: var(--card) !important;
+    background-image: none !important;
+    color: var(--card-foreground) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0.875rem !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.28) !important;
+}
+
+[data-sonner-toast].player-track-toast [data-close-button],
+[data-sonner-toast].upcoming-track-toast [data-close-button] {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    background-color: var(--muted) !important;
+    border-color: var(--border) !important;
+    color: var(--card-foreground) !important;
+}

@@ -3,19 +3,21 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { Heart, Languages, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
-import IconKaraoke from '@/components/icons/IconKaraoke.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
 import IconNext from '@/components/icons/IconNext.vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import IconPlay from '@/components/icons/IconPlay.vue';
 import IconPrevious from '@/components/icons/IconPrevious.vue';
 import IconRefresh from '@/components/icons/IconRefresh.vue';
-import TrackInsightsPanel from '@/components/TrackInsightsPanel.vue';
 import VolumeControl from '@/components/player/VolumeControl.vue';
+import TrackInsightsPanel from '@/components/TrackInsightsPanel.vue';
+import { mapWebPlaybackTrackToPreview } from '@/composables/playerTrackToast';
+import { useNowPlayingStartedNotification } from '@/composables/useNowPlayingStartedNotification';
 import { usePlayer } from '@/composables/usePlayer';
 import { useSpotifyDevices } from '@/composables/useSpotifyDevices';
 import { useSpotifyLyrics } from '@/composables/useSpotifyLyrics';
 import { useSpotifyWebPlayer } from '@/composables/useSpotifyWebPlayer';
+import { useUpcomingTrackNotification } from '@/composables/useUpcomingTrackNotification';
 import { show as albumShow } from '@/routes/albums';
 import { show as artistShow } from '@/routes/artists';
 import {
@@ -27,7 +29,11 @@ import {
     seek,
     shuffle as shuffleRoute,
 } from '@/routes/player';
-import type { LyricsPronunciationUpdatedEvent, LyricsTranslationUpdatedEvent } from '@/types/spotify';
+import type {
+    LyricsPronunciationUpdatedEvent,
+    LyricsTranslationUpdatedEvent,
+    QueuedTrackPreview,
+} from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 import { formatDuration } from '@/utils/format';
 
@@ -75,6 +81,20 @@ const progressMs = computed(() => {
     return (displayedProgressPct.value / 100) * data.value.track.duration_ms;
 });
 
+/** Prefer Spotify-reported progress when available (accurate right after a track change). */
+const playbackProgressMs = computed(() => {
+    if (!data.value?.track) {
+        return 0;
+    }
+
+    return data.value.progress_ms ?? progressMs.value;
+});
+
+const trackDurationMs = computed(() => data.value?.track?.duration_ms ?? 0);
+const currentTrackId = computed(() => data.value?.track?.id ?? null);
+const currentTrack = computed(() => data.value?.track ?? null);
+const localSdkNextTrack = ref<QueuedTrackPreview | null>(null);
+
 const webPlayer = useSpotifyWebPlayer(
     (message) => {
         localStatus.value = message;
@@ -116,6 +136,26 @@ const activeDeviceName = computed(() => {
     }
 
     return data.value?.device_name ?? null;
+});
+
+const preferApiQueue = computed(
+    () => isPlayingExternally.value || !webPlayer.localPlaybackActive.value,
+);
+
+useUpcomingTrackNotification({
+    progressMs,
+    durationMs: trackDurationMs,
+    isPlaying,
+    currentTrackId,
+    localNextTrack: localSdkNextTrack,
+    preferApiQueue,
+});
+
+useNowPlayingStartedNotification({
+    currentTrackId,
+    isPlaying,
+    progressMs: playbackProgressMs,
+    currentTrack,
 });
 
 async function transferToLocalPlayer(): Promise<void> {
@@ -327,6 +367,11 @@ onMounted(() => {
     document.addEventListener('pointerdown', handleDocumentPointerDown);
     document.addEventListener('keydown', handleLyricsHotkeys);
     void webPlayer.initLocalPlayer((state) => {
+        const sdkNext = state?.track_window?.next_tracks?.[0];
+        localSdkNextTrack.value = sdkNext
+            ? mapWebPlaybackTrackToPreview(sdkNext)
+            : null;
+
         webPlayer.syncFromLocalState(
             state,
             () => void fetchNowPlaying(),
