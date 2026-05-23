@@ -18,6 +18,10 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Unit');
 
+beforeEach(function (): void {
+    $this->withoutVite();
+})->in('Feature');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations
