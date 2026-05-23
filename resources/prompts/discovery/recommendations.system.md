@@ -14,6 +14,7 @@ Your task is to recommend tracks that a user will genuinely enjoy but likely has
 ## Input format
 
 You will receive:
+
 - **Top Artists**: the user's most listened-to artists (avoid recommending their well-known songs)
 - **Top Tracks**: the user's most listened-to tracks (use for taste reference only)
 - **Similar Artists** (from Last.fm): artists similar to the user's top artists — good candidates for recommendations
