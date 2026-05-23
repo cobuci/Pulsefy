@@ -223,6 +223,8 @@ test('recentlyPlayed returns empty array when spotify responds with 401', functi
 });
 
 test('topItemsSnapshot fetches paginated top tracks and artists', function () {
+    config()->set('services.lastfm.api_key', 'test-key');
+
     $user = User::factory()->create();
 
     $tokenService = Mockery::mock(SpotifyTokenService::class);

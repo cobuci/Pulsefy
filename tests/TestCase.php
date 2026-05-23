@@ -8,8 +8,8 @@ abstract class TestCase extends BaseTestCase
 {
     protected function setUp(): void
     {
-        $this->afterApplicationCreated(fn () => $this->withoutVite());
-
         parent::setUp();
+
+        $this->withoutVite();
     }
 }
