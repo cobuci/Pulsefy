@@ -10,6 +10,8 @@ use App\Services\Spotify\Contracts\SpotifyStatsProvider;
 use App\Services\Spotify\Insights\SpotifyInsightsService;
 use App\Services\Spotify\Playback\SpotifyPlaybackService;
 use App\Services\Spotify\SpotifyService;
+use App\Services\Spotify\Support\GlobalSpotifyRateLimit;
+use App\Services\Spotify\Support\NullGlobalSpotifyRateLimit;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
@@ -24,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        if ($this->app->environment('testing')) {
+            $this->app->singleton(GlobalSpotifyRateLimit::class, NullGlobalSpotifyRateLimit::class);
+        }
+
         $this->app->bind(SpotifyStatsProvider::class, SpotifyService::class);
         $this->app->bind(SpotifyArtistProvider::class, SpotifyArtistService::class);
         $this->app->bind(SpotifyInsightsProvider::class, SpotifyInsightsService::class);
