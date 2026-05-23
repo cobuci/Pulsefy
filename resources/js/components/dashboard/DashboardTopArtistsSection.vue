@@ -25,8 +25,15 @@ defineProps<{
         </SectionHeader>
         <Deferred data="topArtists">
             <template #fallback>
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                    <ArtistCard v-for="n in 4" :key="n" :rank="n" :loading="true" />
+                <div
+                    class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+                >
+                    <ArtistCard
+                        v-for="n in 4"
+                        :key="n"
+                        :rank="n"
+                        :loading="true"
+                    />
                 </div>
             </template>
 

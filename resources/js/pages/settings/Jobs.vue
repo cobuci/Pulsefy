@@ -29,10 +29,15 @@ defineOptions({
         />
 
         <div class="space-y-4">
-            <div class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card">
-                <p class="text-sm font-medium text-foreground">Backfill artist genres</p>
+            <div
+                class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card"
+            >
+                <p class="text-sm font-medium text-foreground">
+                    Backfill artist genres
+                </p>
                 <p class="mt-1 text-xs text-muted-foreground">
-                    Queue the Last.fm genre backfill for artists that still have empty genres.
+                    Queue the Last.fm genre backfill for artists that still have
+                    empty genres.
                 </p>
 
                 <Form
@@ -41,7 +46,11 @@ defineOptions({
                     class="mt-4"
                     v-slot="{ processing }"
                 >
-                    <input type="hidden" name="job" value="backfill_artist_genres" />
+                    <input
+                        type="hidden"
+                        name="job"
+                        value="backfill_artist_genres"
+                    />
 
                     <Button :disabled="processing" class="text-xs">
                         Dispatch genre backfill
@@ -49,10 +58,15 @@ defineOptions({
                 </Form>
             </div>
 
-            <div class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card">
-                <p class="text-sm font-medium text-foreground">Sync current user Spotify data</p>
+            <div
+                class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card"
+            >
+                <p class="text-sm font-medium text-foreground">
+                    Sync current user Spotify data
+                </p>
                 <p class="mt-1 text-xs text-muted-foreground">
-                    Queue a full sync for top artists, top tracks, and recent plays.
+                    Queue a full sync for top artists, top tracks, and recent
+                    plays.
                 </p>
 
                 <Form

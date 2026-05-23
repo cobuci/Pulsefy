@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { AlertCircle, Heart, Languages, MicVocal, Repeat, Repeat1, Shuffle, Sparkles, X } from 'lucide-vue-next';
+import {
+    AlertCircle,
+    Heart,
+    Languages,
+    MicVocal,
+    Repeat,
+    Repeat1,
+    Shuffle,
+    Sparkles,
+    X,
+} from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import IconDevice from '@/components/icons/IconDevice.vue';
 import IconMusicNote from '@/components/icons/IconMusicNote.vue';
@@ -40,7 +50,12 @@ import { formatDuration } from '@/utils/format';
 const POLL_INTERVAL = 30_000;
 const PREVIOUS_RESTART_THRESHOLD_MS = 3_000;
 
-const { nowPlayingData, fetchNowPlaying, isCurrentTrackSaved, toggleSaveTrack } = usePlayer();
+const {
+    nowPlayingData,
+    fetchNowPlaying,
+    isCurrentTrackSaved,
+    toggleSaveTrack,
+} = usePlayer();
 const page = usePage<{
     auth: {
         user?: {
@@ -59,7 +74,9 @@ const activeTrackId = ref<string | null>(null);
 const playerRootRef = ref<HTMLElement | null>(null);
 const activeLyricRef = ref<HTMLElement | null>(null);
 const localStatus = ref('');
-const lyricsSecondaryMode = ref<'none' | 'translation' | 'romanization'>('none');
+const lyricsSecondaryMode = ref<'none' | 'translation' | 'romanization'>(
+    'none',
+);
 const lyricsTranslationLanguage = ref<'pt-BR' | 'en'>('pt-BR');
 
 const progressPct = ref(0);
@@ -167,9 +184,12 @@ async function transferToLocalPlayer(): Promise<void> {
     await devices.onTransferToSelectedDevice();
 }
 
-watch(() => data.value?.track?.id, () => {
-    insightsOpen.value = false;
-});
+watch(
+    () => data.value?.track?.id,
+    () => {
+        insightsOpen.value = false;
+    },
+);
 
 function handleDocumentPointerDown(event: PointerEvent) {
     if (!lyrics.lyricsOpen.value || !playerRootRef.value) {
@@ -203,14 +223,20 @@ function handleLyricsHotkeys(event: KeyboardEvent) {
         handleRomanizationToggle();
     }
 
-    if (event.key.toLowerCase() === 'l' && lyricsSecondaryMode.value !== 'none') {
+    if (
+        event.key.toLowerCase() === 'l' &&
+        lyricsSecondaryMode.value !== 'none'
+    ) {
         lyricsTranslationLanguage.value =
             lyricsTranslationLanguage.value === 'pt-BR' ? 'en' : 'pt-BR';
     }
 }
 
 const hasLyricsTranslation = computed(() => {
-    return (lyrics.lyricsData.value?.translation?.translated_lines?.length ?? 0) > 0;
+    return (
+        (lyrics.lyricsData.value?.translation?.translated_lines?.length ?? 0) >
+        0
+    );
 });
 
 const translationStatus = computed(() => {
@@ -218,7 +244,11 @@ const translationStatus = computed(() => {
 });
 
 const isTranslating = computed(() => {
-    return lyrics.translationRequestBusy.value || translationStatus.value === 'queued' || translationStatus.value === 'processing';
+    return (
+        lyrics.translationRequestBusy.value ||
+        translationStatus.value === 'queued' ||
+        translationStatus.value === 'processing'
+    );
 });
 
 const translationButtonLabel = computed(() => {
@@ -238,7 +268,10 @@ const translationButtonLabel = computed(() => {
 });
 
 const hasLyricsRomanization = computed(() => {
-    return (lyrics.lyricsData.value?.romanization?.romanized_lines?.length ?? 0) > 0;
+    return (
+        (lyrics.lyricsData.value?.romanization?.romanized_lines?.length ?? 0) >
+        0
+    );
 });
 
 const romanizationStatus = computed(() => {
@@ -246,7 +279,11 @@ const romanizationStatus = computed(() => {
 });
 
 const isRomanizing = computed(() => {
-    return lyrics.romanizationRequestBusy.value || romanizationStatus.value === 'queued' || romanizationStatus.value === 'processing';
+    return (
+        lyrics.romanizationRequestBusy.value ||
+        romanizationStatus.value === 'queued' ||
+        romanizationStatus.value === 'processing'
+    );
 });
 
 const romanizationButtonLabel = computed(() => {
@@ -265,9 +302,13 @@ const romanizationButtonLabel = computed(() => {
     return 'Romanize';
 });
 
-function renderedSecondaryLine(sourceIndex: number, fallbackText: string): string {
+function renderedSecondaryLine(
+    sourceIndex: number,
+    fallbackText: string,
+): string {
     if (lyricsSecondaryMode.value === 'romanization') {
-        const romanizedLine = lyrics.romanizedLinesByIndex.value.get(sourceIndex);
+        const romanizedLine =
+            lyrics.romanizedLinesByIndex.value.get(sourceIndex);
 
         if (!romanizedLine) {
             return fallbackText;
@@ -304,7 +345,8 @@ function handleTranslationToggle() {
         return;
     }
 
-    lyricsSecondaryMode.value = lyricsSecondaryMode.value === 'translation' ? 'none' : 'translation';
+    lyricsSecondaryMode.value =
+        lyricsSecondaryMode.value === 'translation' ? 'none' : 'translation';
 }
 
 function handleRomanizationToggle() {
@@ -314,7 +356,8 @@ function handleRomanizationToggle() {
         return;
     }
 
-    lyricsSecondaryMode.value = lyricsSecondaryMode.value === 'romanization' ? 'none' : 'romanization';
+    lyricsSecondaryMode.value =
+        lyricsSecondaryMode.value === 'romanization' ? 'none' : 'romanization';
 }
 
 watch(data, (val) => {
@@ -407,7 +450,11 @@ onMounted(() => {
             'Your browser has limited DRM capability. Spotify Web Player controls may not be available.';
     }
 
-    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+    if (
+        page.props.auth?.user?.id &&
+        typeof window !== 'undefined' &&
+        window.Echo
+    ) {
         window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
             .listen(
                 '.Lyrics.TranslationUpdated',
@@ -462,7 +509,6 @@ onMounted(() => {
                 },
             );
     }
-
 });
 
 onUnmounted(() => {
@@ -478,7 +524,11 @@ onUnmounted(() => {
     document.removeEventListener('keydown', handleLyricsHotkeys);
     webPlayer.disconnect();
 
-    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+    if (
+        page.props.auth?.user?.id &&
+        typeof window !== 'undefined' &&
+        window.Echo
+    ) {
         window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
     }
 });
@@ -798,9 +848,7 @@ watch(
                 v-if="hasTrack && lyrics.lyricsOpen.value"
                 class="relative mx-auto max-h-[78vh] max-w-7xl overflow-hidden rounded-t-2xl border border-b-0 border-border/60"
             >
-                <div
-                    class="absolute inset-0 overflow-hidden"
-                >
+                <div class="absolute inset-0 overflow-hidden">
                     <img
                         v-if="data?.track?.album?.images?.[0]?.url"
                         :src="data.track.album.images[0].url"
@@ -808,20 +856,32 @@ watch(
                         aria-hidden="true"
                         class="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl"
                     />
-                    <div class="absolute inset-0 bg-background/85 backdrop-blur-2xl" />
+                    <div
+                        class="absolute inset-0 bg-background/85 backdrop-blur-2xl"
+                    />
                 </div>
 
                 <div class="relative flex h-[74vh] flex-col">
-                    <header class="flex items-center justify-between gap-4 px-6 pt-5">
+                    <header
+                        class="flex items-center justify-between gap-4 px-6 pt-5"
+                    >
                         <div class="min-w-0">
-                            <p class="text-[10px] font-semibold tracking-[0.2em] text-accent uppercase">
+                            <p
+                                class="text-[10px] font-semibold tracking-[0.2em] text-accent uppercase"
+                            >
                                 Lyrics
                             </p>
-                            <p class="truncate text-sm font-semibold text-foreground">
+                            <p
+                                class="truncate text-sm font-semibold text-foreground"
+                            >
                                 {{ data?.track?.name }}
                             </p>
                             <p class="truncate text-xs text-muted-foreground">
-                                {{ data?.track?.artists?.map((item) => item.name).join(', ') }}
+                                {{
+                                    data?.track?.artists
+                                        ?.map((item) => item.name)
+                                        .join(', ')
+                                }}
                             </p>
                         </div>
 
@@ -829,7 +889,11 @@ watch(
                             <button
                                 type="button"
                                 :disabled="isTranslating"
-                                :title="lyricsSecondaryMode === 'translation' ? 'Translation on (T)' : 'Translation off (T)'"
+                                :title="
+                                    lyricsSecondaryMode === 'translation'
+                                        ? 'Translation on (T)'
+                                        : 'Translation off (T)'
+                                "
                                 :class="[
                                     'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
                                     lyricsSecondaryMode === 'translation'
@@ -842,13 +906,19 @@ watch(
                                 @click="handleTranslationToggle"
                             >
                                 <Languages class="size-3.5" />
-                                <span class="hidden sm:inline">{{ translationButtonLabel }}</span>
+                                <span class="hidden sm:inline">{{
+                                    translationButtonLabel
+                                }}</span>
                             </button>
 
                             <button
                                 type="button"
                                 :disabled="isRomanizing"
-                                :title="lyricsSecondaryMode === 'romanization' ? 'Romanization on (R)' : 'Romanization off (R)'"
+                                :title="
+                                    lyricsSecondaryMode === 'romanization'
+                                        ? 'Romanization on (R)'
+                                        : 'Romanization off (R)'
+                                "
                                 :class="[
                                     'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors',
                                     lyricsSecondaryMode === 'romanization'
@@ -861,7 +931,9 @@ watch(
                                 @click="handleRomanizationToggle"
                             >
                                 <span class="text-[11px]">あ</span>
-                                <span class="hidden sm:inline">{{ romanizationButtonLabel }}</span>
+                                <span class="hidden sm:inline">{{
+                                    romanizationButtonLabel
+                                }}</span>
                             </button>
 
                             <button
@@ -905,11 +977,22 @@ watch(
                     </header>
 
                     <div class="h-full overflow-y-auto px-4 py-8 sm:px-8">
-                        <div class="mx-auto max-w-3xl space-y-6 pb-[26vh] pt-[14vh]">
-                            <div v-if="lyrics.lyricsHttp.processing" class="space-y-2">
-                                <div class="h-5 w-2/3 animate-pulse rounded bg-muted" />
-                                <div class="h-5 w-1/2 animate-pulse rounded bg-muted" />
-                                <div class="h-5 w-3/4 animate-pulse rounded bg-muted" />
+                        <div
+                            class="mx-auto max-w-3xl space-y-6 pt-[14vh] pb-[26vh]"
+                        >
+                            <div
+                                v-if="lyrics.lyricsHttp.processing"
+                                class="space-y-2"
+                            >
+                                <div
+                                    class="h-5 w-2/3 animate-pulse rounded bg-muted"
+                                />
+                                <div
+                                    class="h-5 w-1/2 animate-pulse rounded bg-muted"
+                                />
+                                <div
+                                    class="h-5 w-3/4 animate-pulse rounded bg-muted"
+                                />
                             </div>
 
                             <div
@@ -920,43 +1003,84 @@ watch(
                                     v-if="!lyrics.lyricsAreSynced.value"
                                     class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90"
                                 >
-                                    <AlertCircle class="mt-0.5 size-4 shrink-0 text-amber-300" />
+                                    <AlertCircle
+                                        class="mt-0.5 size-4 shrink-0 text-amber-300"
+                                    />
                                     <p>
-                                        These lyrics are not synchronized with playback.
+                                        These lyrics are not synchronized with
+                                        playback.
                                     </p>
                                 </div>
 
                                 <component
-                                    :is="lyrics.lyricsAreSynced.value ? 'button' : 'div'"
-                                    v-for="(line, displayIndex) in lyrics.displayLyricLines.value"
+                                    :is="
+                                        lyrics.lyricsAreSynced.value
+                                            ? 'button'
+                                            : 'div'
+                                    "
+                                    v-for="(line, displayIndex) in lyrics
+                                        .displayLyricLines.value"
                                     :key="`${lyrics.lyricsAreSynced.value ? 'synced' : 'plain'}-${line.sourceIndex}`"
-                                    :type="lyrics.lyricsAreSynced.value ? 'button' : undefined"
-                                    :ref="lyrics.lyricsAreSynced.value ? (element) => setActiveLyricRef(element, displayIndex) : undefined"
-                                    :disabled="lyrics.lyricsAreSynced.value ? seekBusy || !hasTrack : undefined"
+                                    :type="
+                                        lyrics.lyricsAreSynced.value
+                                            ? 'button'
+                                            : undefined
+                                    "
+                                    :ref="
+                                        lyrics.lyricsAreSynced.value
+                                            ? (element) =>
+                                                  setActiveLyricRef(
+                                                      element,
+                                                      displayIndex,
+                                                  )
+                                            : undefined
+                                    "
+                                    :disabled="
+                                        lyrics.lyricsAreSynced.value
+                                            ? seekBusy || !hasTrack
+                                            : undefined
+                                    "
                                     :class="[
                                         'w-full rounded-md px-3 py-2 text-left transition-all',
                                         lyrics.lyricsAreSynced.value
                                             ? [
                                                   'cursor-pointer disabled:cursor-not-allowed disabled:opacity-50',
-                                                  displayIndex === lyrics.activeLyricLineIndex.value
+                                                  displayIndex ===
+                                                  lyrics.activeLyricLineIndex
+                                                      .value
                                                       ? 'bg-muted/60 font-semibold text-foreground [text-shadow:0_0_26px_color-mix(in_oklab,var(--accent)_45%,transparent)]'
-                                                      : displayIndex < lyrics.activeLyricLineIndex.value
+                                                      : displayIndex <
+                                                          lyrics
+                                                              .activeLyricLineIndex
+                                                              .value
                                                         ? 'text-muted-foreground/45'
                                                         : 'text-muted-foreground/70',
                                               ]
                                             : 'text-foreground',
                                     ]"
-                                    @click="lyrics.lyricsAreSynced.value && line.timeMs !== null ? onLyricLineClick(line.timeMs) : undefined"
+                                    @click="
+                                        lyrics.lyricsAreSynced.value &&
+                                        line.timeMs !== null
+                                            ? onLyricLineClick(line.timeMs)
+                                            : undefined
+                                    "
                                 >
-                                    <p class="font-display text-xl leading-tight sm:text-3xl">
+                                    <p
+                                        class="font-display text-xl leading-tight sm:text-3xl"
+                                    >
                                         {{ line.text || '♪' }}
                                     </p>
 
                                     <p
                                         v-if="lyricsSecondaryMode !== 'none'"
-                                        class="mt-1 border-l-2 border-accent/70 pl-3 text-sm italic text-accent/90"
+                                        class="mt-1 border-l-2 border-accent/70 pl-3 text-sm text-accent/90 italic"
                                     >
-                                        {{ renderedSecondaryLine(line.sourceIndex, line.text || '♪') }}
+                                        {{
+                                            renderedSecondaryLine(
+                                                line.sourceIndex,
+                                                line.text || '♪',
+                                            )
+                                        }}
                                     </p>
                                 </component>
                             </div>
@@ -974,10 +1098,14 @@ watch(
                                         <IconMusicNote class="size-5" />
                                     </div>
 
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         No lyrics found for this track
                                     </p>
-                                    <p class="mt-1 text-sm text-muted-foreground">
+                                    <p
+                                        class="mt-1 text-sm text-muted-foreground"
+                                    >
                                         Sometimes metadata differs. You can try
                                         searching again.
                                     </p>
@@ -993,24 +1121,39 @@ watch(
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
-                    <footer class="absolute right-0 bottom-0 left-0 border-t border-border/60 bg-background/80 px-6 py-3 text-[11px] text-muted-foreground backdrop-blur">
-                        <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
+                    <footer
+                        class="absolute right-0 bottom-0 left-0 border-t border-border/60 bg-background/80 px-6 py-3 text-[11px] text-muted-foreground backdrop-blur"
+                    >
+                        <div
+                            class="mx-auto flex max-w-3xl flex-wrap items-center gap-2"
+                        >
                             <span>Lyrics by LRCLIB</span>
                             <span>·</span>
-                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">Esc</kbd>
+                            <kbd
+                                class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]"
+                                >Esc</kbd
+                            >
                             <span>close</span>
                             <span>·</span>
-                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">T</kbd>
+                            <kbd
+                                class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]"
+                                >T</kbd
+                            >
                             <span>translation</span>
                             <span>·</span>
-                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">R</kbd>
+                            <kbd
+                                class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]"
+                                >R</kbd
+                            >
                             <span>romanization</span>
                             <span>·</span>
-                            <kbd class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]">L</kbd>
+                            <kbd
+                                class="rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px]"
+                                >L</kbd
+                            >
                             <span>language</span>
                         </div>
                     </footer>
@@ -1109,20 +1252,28 @@ watch(
                     <button
                         v-if="hasTrack"
                         type="button"
-                        :title="isCurrentTrackSaved ? 'Remove from library' : 'Save to library'"
+                        :title="
+                            isCurrentTrackSaved
+                                ? 'Remove from library'
+                                : 'Save to library'
+                        "
                         :disabled="isFavoriteBusy"
                         :class="[
                             'ml-1 grid size-7 shrink-0 place-items-center rounded-full transition-colors',
                             isCurrentTrackSaved
                                 ? 'text-accent'
                                 : 'text-muted-foreground hover:text-foreground',
-                            isFavoriteBusy ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+                            isFavoriteBusy
+                                ? 'cursor-not-allowed opacity-40'
+                                : 'cursor-pointer',
                         ]"
                         @click="onToggleFavorite"
                     >
                         <Heart
                             class="size-3.5"
-                            :fill="isCurrentTrackSaved ? 'currentColor' : 'none'"
+                            :fill="
+                                isCurrentTrackSaved ? 'currentColor' : 'none'
+                            "
                         />
                     </button>
 
@@ -1432,11 +1583,17 @@ watch(
             >
                 <span class="flex items-center gap-1.5">
                     <span class="relative flex size-1.5">
-                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
-                        <span class="relative inline-flex size-1.5 rounded-full bg-accent" />
+                        <span
+                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60"
+                        />
+                        <span
+                            class="relative inline-flex size-1.5 rounded-full bg-accent"
+                        />
                     </span>
                     Playing on
-                    <span class="font-medium text-foreground">{{ activeDeviceName ?? 'external device' }}</span>
+                    <span class="font-medium text-foreground">{{
+                        activeDeviceName ?? 'external device'
+                    }}</span>
                 </span>
                 <span class="text-border">·</span>
                 <button

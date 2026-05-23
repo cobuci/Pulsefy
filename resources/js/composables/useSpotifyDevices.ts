@@ -24,8 +24,8 @@ export function useSpotifyDevices(
 
     const availableDevices = computed(
         () =>
-            ((devicesHttp.response as { devices?: SpotifyDevice[] } | null)
-                ?.devices ?? []),
+            (devicesHttp.response as { devices?: SpotifyDevice[] } | null)
+                ?.devices ?? [],
     );
 
     const selectableDevices = computed(() => {

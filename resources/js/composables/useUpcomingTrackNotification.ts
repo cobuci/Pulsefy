@@ -7,10 +7,7 @@ import {
     UPCOMING_TRACK_THRESHOLD_MS,
 } from '@/composables/playerTrackToast';
 import { queue as playerQueueRoute } from '@/routes/player';
-import type {
-    PlayerQueueResponse,
-    QueuedTrackPreview,
-} from '@/types/spotify';
+import type { PlayerQueueResponse, QueuedTrackPreview } from '@/types/spotify';
 
 const UPCOMING_TOAST_CLASS = `${PLAYER_TRACK_TOAST_CLASS} upcoming-track-toast`;
 
@@ -25,7 +22,10 @@ type UseUpcomingTrackNotificationOptions = {
     preferApiQueue: MaybeRefOrGetter<boolean>;
 };
 
-function isWithinUpcomingWindow(progressMs: number, durationMs: number): boolean {
+function isWithinUpcomingWindow(
+    progressMs: number,
+    durationMs: number,
+): boolean {
     if (durationMs <= 0) {
         return false;
     }

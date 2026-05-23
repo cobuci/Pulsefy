@@ -76,7 +76,8 @@ const primaryArtistId = computed(() => {
     return props.tracks?.[0]?.artists?.[0]?.id ?? props.artistId ?? null;
 });
 
-const { isPlayingTrack, nowPlayingData, playTrack, fetchNowPlaying } = usePlayer();
+const { isPlayingTrack, nowPlayingData, playTrack, fetchNowPlaying } =
+    usePlayer();
 const { openTrackContextMenu } = useTrackContextMenu();
 const favorite = ref<boolean>(props.isFavorite ?? false);
 const favoriteBusy = ref(false);
@@ -86,7 +87,9 @@ const playbackBusy = ref(false);
 const isAlbumCurrentlyPlaying = computed(() => {
     const nowPlayingAlbumId = nowPlayingData.value?.track?.album?.id;
 
-    return !!(nowPlayingData.value?.is_playing && nowPlayingAlbumId === props.albumId);
+    return !!(
+        nowPlayingData.value?.is_playing && nowPlayingAlbumId === props.albumId
+    );
 });
 
 watchEffect(() => {
@@ -316,9 +319,12 @@ async function playShuffledTracks() {
                                     <button
                                         type="button"
                                         class="shadow-glow bg-gradient-primary flex h-11 items-center gap-2 rounded-full px-5 font-semibold text-primary-foreground"
-                                        :disabled="!tracks?.length || playbackBusy"
+                                        :disabled="
+                                            !tracks?.length || playbackBusy
+                                        "
                                         :class="
-                                            (tracks?.length ?? 0) > 0 && !playbackBusy
+                                            (tracks?.length ?? 0) > 0 &&
+                                            !playbackBusy
                                                 ? 'cursor-pointer'
                                                 : 'cursor-not-allowed'
                                         "
@@ -329,7 +335,11 @@ async function playShuffledTracks() {
                                             class="size-4"
                                         />
                                         <Play v-else class="size-4" />
-                                        {{ isAlbumCurrentlyPlaying ? 'Pause' : 'Play' }}
+                                        {{
+                                            isAlbumCurrentlyPlaying
+                                                ? 'Pause'
+                                                : 'Play'
+                                        }}
                                     </button>
                                     <button
                                         type="button"
@@ -395,7 +405,7 @@ async function playShuffledTracks() {
                 <Deferred data="tracks">
                     <template #fallback>
                         <div
-                            class="min-h-[28rem] max-h-[28rem] lg:min-h-[calc(100vh-24rem)] lg:max-h-[calc(100vh-24rem)]"
+                            class="max-h-[28rem] min-h-[28rem] lg:max-h-[calc(100vh-24rem)] lg:min-h-[calc(100vh-24rem)]"
                         >
                             <div
                                 class="h-full rounded-2xl border border-border bg-card p-5 shadow-card"
@@ -421,7 +431,7 @@ async function playShuffledTracks() {
                     <template #default>
                         <div
                             v-if="!tracks?.length"
-                            class="min-h-[28rem] max-h-[28rem] rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card lg:min-h-[calc(100vh-24rem)] lg:max-h-[calc(100vh-24rem)]"
+                            class="max-h-[28rem] min-h-[28rem] rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-card lg:max-h-[calc(100vh-24rem)] lg:min-h-[calc(100vh-24rem)]"
                         >
                             No tracks found.
                         </div>
@@ -446,7 +456,9 @@ async function playShuffledTracks() {
                                               : 'cursor-default'
                                     "
                                     @click="onTrackRowClick(track)"
-                                    @contextmenu="openTrackContextMenu($event, track)"
+                                    @contextmenu="
+                                        openTrackContextMenu($event, track)
+                                    "
                                 >
                                     <button
                                         class="grid size-5 shrink-0 place-items-center text-muted-foreground transition-colors hover:text-foreground"
@@ -461,7 +473,9 @@ async function playShuffledTracks() {
                                             v-if="isPlayingTrack(track.id)"
                                             class="flex items-end gap-0.5"
                                         >
-                                            <span class="eq-bar h-3 w-0.5 rounded-full bg-accent" />
+                                            <span
+                                                class="eq-bar h-3 w-0.5 rounded-full bg-accent"
+                                            />
                                             <span
                                                 class="eq-bar h-3 w-0.5 rounded-full bg-accent"
                                                 style="animation-delay: 0.15s"
@@ -492,7 +506,9 @@ async function playShuffledTracks() {
                                             v-if="isPlayingTrack(track.id)"
                                             class="mt-1 h-0.5 w-20 overflow-hidden rounded-full bg-accent/25"
                                         >
-                                            <div class="bg-gradient-primary h-full w-full animate-pulse" />
+                                            <div
+                                                class="bg-gradient-primary h-full w-full animate-pulse"
+                                            />
                                         </div>
                                     </div>
                                     <span

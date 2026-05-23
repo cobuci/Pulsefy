@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
 import { ArrowRight, Compass } from 'lucide-vue-next';
+import {
+    computed,
+    defineAsyncComponent,
+    onMounted,
+    onUnmounted,
+    ref,
+} from 'vue';
+import { index as discoveryIndex } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
 import DashboardHeroStats from '@/components/dashboard/DashboardHeroStats.vue';
 import DashboardRecentPlaysSection from '@/components/dashboard/DashboardRecentPlaysSection.vue';
 import DashboardRecommendationsPanel from '@/components/dashboard/DashboardRecommendationsPanel.vue';
@@ -10,7 +17,6 @@ import DashboardTopTracksSection from '@/components/dashboard/DashboardTopTracks
 import PeriodSelector from '@/components/dashboard/PeriodSelector.vue';
 import SectionHeader from '@/components/dashboard/SectionHeader.vue';
 import { usePlayer } from '@/composables/usePlayer';
-import { index as discoveryIndex } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
 import { dashboard } from '@/routes';
 import { refresh as refreshInsights } from '@/routes/insights';
 import type {
@@ -100,15 +106,27 @@ const syncStatusRef = ref(
 const currentSyncStatus = computed(() => syncStatusRef.value);
 
 onMounted(() => {
-    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
-        window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
+    if (
+        page.props.auth?.user?.id &&
+        typeof window !== 'undefined' &&
+        window.Echo
+    ) {
+        window.Echo.private(
+            `App.Models.User.${page.props.auth.user.id}`,
+        ).listen(
             '.Spotify.SyncStatusUpdated',
             (event: { status: typeof syncStatusRef.value }) => {
                 syncStatusRef.value = event.status;
 
                 if (!event.status.isRunning) {
                     router.reload({
-                        only: ['syncStatus', 'topTracks', 'topArtists', 'recentPlays', 'insights'],
+                        only: [
+                            'syncStatus',
+                            'topTracks',
+                            'topArtists',
+                            'recentPlays',
+                            'insights',
+                        ],
                     });
                 }
             },
@@ -117,7 +135,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    if (page.props.auth?.user?.id && typeof window !== 'undefined' && window.Echo) {
+    if (
+        page.props.auth?.user?.id &&
+        typeof window !== 'undefined' &&
+        window.Echo
+    ) {
         window.Echo.leave(`App.Models.User.${page.props.auth.user.id}`);
     }
 });
@@ -149,7 +171,10 @@ const totalHours = computed(() => {
 const uniqueTrackCount = computed(() => props.insights?.uniqueTracksCount ?? 0);
 
 const topGenre = computed(() => {
-    const label = props.insights?.topGenre ?? topArtistsPreview.value[0]?.genres?.[0] ?? 'Mixed';
+    const label =
+        props.insights?.topGenre ??
+        topArtistsPreview.value[0]?.genres?.[0] ??
+        'Mixed';
 
     return label.charAt(0).toUpperCase() + label.slice(1);
 });
@@ -244,19 +269,35 @@ function refreshAllInsights() {
             :href="discoveryIndex().url"
             class="group relative block overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/15 via-accent/10 to-background p-6 transition-all hover:border-accent/60 hover:shadow-[0_0_24px_0_hsl(var(--accent)/0.15)] sm:p-8"
         >
-            <div class="pointer-events-none absolute -right-8 -top-12 h-44 w-44 rounded-full bg-accent/20 blur-3xl" />
-            <div class="relative flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_16px_0_hsl(var(--primary)/0.4)]">
-                        <Compass class="h-7 w-7 text-primary-foreground" :stroke-width="2" />
-                    </div>
+            <div
+                class="pointer-events-none absolute -top-12 -right-8 h-44 w-44 rounded-full bg-accent/20 blur-3xl"
+            />
+            <div
+                class="relative flex flex-col gap-5 sm:flex-row sm:items-center"
+            >
+                <div
+                    class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-[0_0_16px_0_hsl(var(--primary)/0.4)]"
+                >
+                    <Compass
+                        class="h-7 w-7 text-primary-foreground"
+                        :stroke-width="2"
+                    />
+                </div>
                 <div class="min-w-0 flex-1">
-                    <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">New</div>
-                    <h3 class="mt-0.5 font-bold text-2xl">Discover Stack</h3>
+                    <div
+                        class="text-[10px] font-semibold tracking-[0.2em] text-accent uppercase"
+                    >
+                        New
+                    </div>
+                    <h3 class="mt-0.5 text-2xl font-bold">Discover Stack</h3>
                     <p class="mt-1 text-sm text-muted-foreground">
-                        Swipe through fresh tracks tuned to your taste — save the ones that hit.
+                        Swipe through fresh tracks tuned to your taste — save
+                        the ones that hit.
                     </p>
                 </div>
-                <div class="flex items-center gap-2 text-sm font-medium text-accent transition-all group-hover:gap-3">
+                <div
+                    class="flex items-center gap-2 text-sm font-medium text-accent transition-all group-hover:gap-3"
+                >
                     Start discovering
                     <ArrowRight class="h-4 w-4" />
                 </div>
@@ -269,7 +310,10 @@ function refreshAllInsights() {
                     v-if="currentSyncStatus.isRunning"
                     class="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent"
                 >
-                    Syncing {{ currentSyncStatus.completed }}/{{ currentSyncStatus.total }} · {{ currentSyncStatus.progress }}%
+                    Syncing {{ currentSyncStatus.completed }}/{{
+                        currentSyncStatus.total
+                    }}
+                    · {{ currentSyncStatus.progress }}%
                 </span>
                 <span
                     v-else-if="currentSyncStatus.hasFailure"

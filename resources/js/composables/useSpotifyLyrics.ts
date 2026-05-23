@@ -1,8 +1,16 @@
 import { useHttp } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { lyrics } from '@/routes/player';
-import { romanize as romanizeLyrics, translate as translateLyrics } from '@/routes/player/lyrics';
-import type { LyricsResponse, LyricsPronunciationStatus, LyricsTranslationStatus, SpotifyTrack } from '@/types/spotify';
+import {
+    romanize as romanizeLyrics,
+    translate as translateLyrics,
+} from '@/routes/player/lyrics';
+import type {
+    LyricsResponse,
+    LyricsPronunciationStatus,
+    LyricsTranslationStatus,
+    SpotifyTrack,
+} from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 
 export type DisplayLyricLine = {
@@ -13,7 +21,10 @@ export type DisplayLyricLine = {
 
 const LRC_TIMESTAMP_PATTERN = /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/;
 
-function parseTimestampedLine(line: string, sourceIndex: number): DisplayLyricLine | null {
+function parseTimestampedLine(
+    line: string,
+    sourceIndex: number,
+): DisplayLyricLine | null {
     const match = line.match(LRC_TIMESTAMP_PATTERN);
 
     if (!match) {
@@ -33,13 +44,19 @@ function parseTimestampedLine(line: string, sourceIndex: number): DisplayLyricLi
     };
 }
 
-function parseLyricsLines(rawLyrics: string, synced: boolean): DisplayLyricLine[] {
+function parseLyricsLines(
+    rawLyrics: string,
+    synced: boolean,
+): DisplayLyricLine[] {
     const lines = rawLyrics.split('\n');
 
     if (synced) {
         return lines
             .map((line, sourceIndex) => parseTimestampedLine(line, sourceIndex))
-            .filter((line): line is DisplayLyricLine => line !== null && line.text !== '')
+            .filter(
+                (line): line is DisplayLyricLine =>
+                    line !== null && line.text !== '',
+            )
             .sort((a, b) => (a.timeMs ?? 0) - (b.timeMs ?? 0));
     }
 
@@ -159,7 +176,8 @@ export function useSpotifyLyrics(
 
             await fetchLyrics(true);
 
-            const status = (lyricsData.value?.translation?.status ?? null) as LyricsTranslationStatus | null;
+            const status = (lyricsData.value?.translation?.status ??
+                null) as LyricsTranslationStatus | null;
 
             if (status === 'queued' || status === 'processing') {
                 const maxAttempts = 18;
@@ -168,9 +186,13 @@ export function useSpotifyLyrics(
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     await fetchLyrics(true);
 
-                    const currentStatus = (lyricsData.value?.translation?.status ?? null) as LyricsTranslationStatus | null;
+                    const currentStatus = (lyricsData.value?.translation
+                        ?.status ?? null) as LyricsTranslationStatus | null;
 
-                    if (currentStatus === 'ready' || currentStatus === 'failed') {
+                    if (
+                        currentStatus === 'ready' ||
+                        currentStatus === 'failed'
+                    ) {
                         break;
                     }
                 }
@@ -215,7 +237,8 @@ export function useSpotifyLyrics(
 
             await fetchLyrics(true);
 
-            const status = (lyricsData.value?.romanization?.status ?? null) as LyricsPronunciationStatus | null;
+            const status = (lyricsData.value?.romanization?.status ??
+                null) as LyricsPronunciationStatus | null;
 
             if (status === 'queued' || status === 'processing') {
                 const maxAttempts = 18;
@@ -224,9 +247,13 @@ export function useSpotifyLyrics(
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     await fetchLyrics(true);
 
-                    const currentStatus = (lyricsData.value?.romanization?.status ?? null) as LyricsPronunciationStatus | null;
+                    const currentStatus = (lyricsData.value?.romanization
+                        ?.status ?? null) as LyricsPronunciationStatus | null;
 
-                    if (currentStatus === 'ready' || currentStatus === 'failed') {
+                    if (
+                        currentStatus === 'ready' ||
+                        currentStatus === 'failed'
+                    ) {
                         break;
                     }
                 }

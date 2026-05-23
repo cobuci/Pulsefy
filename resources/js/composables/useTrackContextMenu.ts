@@ -1,10 +1,10 @@
+import { Heart, HeartOff } from 'lucide-vue-next';
 import type { ContextMenuItem } from '@/components/ui/context-menu';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { check as checkFavoriteRoute } from '@/routes/player/favorite';
 import { favorite as favoriteRoute } from '@/routes/player';
+import { check as checkFavoriteRoute } from '@/routes/player/favorite';
 import type { SpotifyTrack } from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
-import { Heart, HeartOff } from 'lucide-vue-next';
 
 async function fetchIsSaved(trackId: string): Promise<boolean> {
     try {
@@ -12,14 +12,21 @@ async function fetchIsSaved(trackId: string): Promise<boolean> {
         const response = await fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
         });
-        const payload = (await response.json()) as { ok?: boolean; saved?: boolean };
+        const payload = (await response.json()) as {
+            ok?: boolean;
+            saved?: boolean;
+        };
+
         return payload.ok === true && payload.saved === true;
     } catch {
         return false;
     }
 }
 
-async function toggleSaveTrack(trackId: string, save: boolean): Promise<boolean> {
+async function toggleSaveTrack(
+    trackId: string,
+    save: boolean,
+): Promise<boolean> {
     try {
         const response = await fetch(favoriteRoute.url(), {
             method: 'POST',
@@ -31,7 +38,10 @@ async function toggleSaveTrack(trackId: string, save: boolean): Promise<boolean>
             body: JSON.stringify({ track_id: trackId, favorite: save }),
         });
 
-        const payload = (await response.json()) as { ok?: boolean; favorite?: boolean };
+        const payload = (await response.json()) as {
+            ok?: boolean;
+            favorite?: boolean;
+        };
 
         return payload.ok === true && payload.favorite === save;
     } catch {
@@ -72,11 +82,15 @@ export function useTrackContextMenu() {
             return;
         }
 
-        contextMenu.open(event, [{ key: `track-save-loading-${track.id}`, loading: true }]);
+        contextMenu.open(event, [
+            { key: `track-save-loading-${track.id}`, loading: true },
+        ]);
 
         const isSaved = await fetchIsSaved(track.id);
 
-        contextMenu.updateItems([buildSaveItem(track.id, isSaved, options.onSaveToggled)]);
+        contextMenu.updateItems([
+            buildSaveItem(track.id, isSaved, options.onSaveToggled),
+        ]);
     }
 
     return {

@@ -1,4 +1,5 @@
-import { onUnmounted, ref, type Ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
+import type { Ref } from 'vue';
 
 interface SwipeOptions {
     threshold?: number;
@@ -8,7 +9,10 @@ interface SwipeOptions {
     onSwipeEnd?: () => void;
 }
 
-export function useSwipe(elementRef: Ref<HTMLElement | null>, options: SwipeOptions) {
+export function useSwipe(
+    elementRef: Ref<HTMLElement | null>,
+    options: SwipeOptions,
+) {
     const isDragging = ref(false);
     const deltaX = ref(0);
 
@@ -21,15 +25,22 @@ export function useSwipe(elementRef: Ref<HTMLElement | null>, options: SwipeOpti
     }
 
     function onPointerMove(e: PointerEvent) {
-        if (!isDragging.value) return;
+        if (!isDragging.value) {
+            return;
+        }
+
         deltaX.value = e.clientX - startX;
         options.onSwiping?.(deltaX.value);
     }
 
     function onPointerUp() {
-        if (!isDragging.value) return;
+        if (!isDragging.value) {
+            return;
+        }
+
         isDragging.value = false;
         const threshold = options.threshold ?? 50;
+
         if (deltaX.value < -threshold) {
             options.onSwipeLeft?.();
         } else if (deltaX.value > threshold) {
@@ -37,6 +48,7 @@ export function useSwipe(elementRef: Ref<HTMLElement | null>, options: SwipeOpti
         } else {
             options.onSwipeEnd?.();
         }
+
         deltaX.value = 0;
     }
 
@@ -45,7 +57,11 @@ export function useSwipe(elementRef: Ref<HTMLElement | null>, options: SwipeOpti
 
     function attach() {
         const el = elementRef.value;
-        if (!el || attached) return;
+
+        if (!el || attached) {
+            return;
+        }
+
         el.addEventListener('pointerdown', onPointerDown);
         el.addEventListener('pointermove', onPointerMove);
         el.addEventListener('pointerup', onPointerUp);
@@ -55,7 +71,11 @@ export function useSwipe(elementRef: Ref<HTMLElement | null>, options: SwipeOpti
 
     function detach() {
         const el = elementRef.value;
-        if (!el) return;
+
+        if (!el) {
+            return;
+        }
+
         el.removeEventListener('pointerdown', onPointerDown);
         el.removeEventListener('pointermove', onPointerMove);
         el.removeEventListener('pointerup', onPointerUp);

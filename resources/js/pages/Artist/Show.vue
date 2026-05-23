@@ -489,7 +489,10 @@ async function playShuffledTopTracks() {
                                         ? handlePlay(track)
                                         : null
                                 "
-                                @contextmenu="track.id && openTrackContextMenu($event, track)"
+                                @contextmenu="
+                                    track.id &&
+                                    openTrackContextMenu($event, track)
+                                "
                             >
                                 <button
                                     class="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
@@ -505,7 +508,9 @@ async function playShuffledTopTracks() {
                                         v-if="isPlayingTrack(track.id)"
                                         class="relative flex items-end justify-center gap-0.5"
                                     >
-                                        <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" />
+                                        <span
+                                            class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                        />
                                         <span
                                             class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
                                             style="animation-delay: 0.15s"

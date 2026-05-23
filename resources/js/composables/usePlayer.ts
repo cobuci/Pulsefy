@@ -32,7 +32,9 @@ const isPlayingTrack = computed(
         ),
 );
 
-const isCurrentTrackSaved = computed(() => nowPlayingData.value?.is_saved ?? false);
+const isCurrentTrackSaved = computed(
+    () => nowPlayingData.value?.is_saved ?? false,
+);
 
 async function fetchNowPlaying(): Promise<void> {
     if (typeof window === 'undefined') {
@@ -135,17 +137,26 @@ async function toggleSaveTrack(): Promise<void> {
             body: JSON.stringify({ track_id: trackId, favorite: nextSaved }),
         });
 
-        const payload = (await response.json()) as { ok?: boolean; favorite?: boolean };
+        const payload = (await response.json()) as {
+            ok?: boolean;
+            favorite?: boolean;
+        };
 
         if (!payload.ok && nowPlayingData.value) {
             nowPlayingData.value = {
                 ...nowPlayingData.value,
-                is_saved: typeof payload.favorite === 'boolean' ? payload.favorite : currentlySaved,
+                is_saved:
+                    typeof payload.favorite === 'boolean'
+                        ? payload.favorite
+                        : currentlySaved,
             };
         }
     } catch {
         if (nowPlayingData.value) {
-            nowPlayingData.value = { ...nowPlayingData.value, is_saved: currentlySaved };
+            nowPlayingData.value = {
+                ...nowPlayingData.value,
+                is_saved: currentlySaved,
+            };
         }
     }
 }

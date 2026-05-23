@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Link, useHttp, usePage } from '@inertiajs/vue3';
-import { Activity, Disc3, LayoutGrid, ListMusic, Menu, Search, Sparkles } from 'lucide-vue-next';
+import {
+    Activity,
+    Disc3,
+    LayoutGrid,
+    ListMusic,
+    Menu,
+    Search,
+    Sparkles,
+} from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
@@ -28,10 +36,10 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard, recentlyPlayed } from '@/routes';
+import { search } from '@/routes';
 import { index as artistsIndex } from '@/routes/artists';
 import { index as discoveryIndex } from '@/routes/discovery';
 import { index as libraryIndex } from '@/routes/library';
-import { search } from '@/routes';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
@@ -328,8 +336,9 @@ onUnmounted(() => {
                                 :href="item.href"
                                 :class="
                                     cn(
-                                        'flex items-center gap-x-3 rounded-lg border-l-2 border-transparent bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground hover:border-accent/50',
-                                        isNavItemActive(item.href) && mobileNavLinkActiveClass,
+                                        'flex items-center gap-x-3 rounded-lg border-l-2 border-transparent bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-accent/50 hover:bg-transparent hover:text-foreground',
+                                        isNavItemActive(item.href) &&
+                                            mobileNavLinkActiveClass,
                                     )
                                 "
                             >
@@ -340,7 +349,6 @@ onUnmounted(() => {
                                 />
                                 {{ item.title }}
                             </Link>
-
                         </nav>
                     </SheetContent>
                 </Sheet>
@@ -368,7 +376,8 @@ onUnmounted(() => {
                                 :class="
                                     cn(
                                         desktopNavLinkBaseClass,
-                                        isNavItemActive(item.href) && desktopNavLinkActiveClass,
+                                        isNavItemActive(item.href) &&
+                                            desktopNavLinkActiveClass,
                                     )
                                 "
                                 :href="item.href"
@@ -439,110 +448,139 @@ onUnmounted(() => {
                 v-if="searchOpen"
                 class="fixed inset-0 z-[100] grid place-items-start justify-items-center px-4 pt-[18vh]"
             >
-            <button
-                type="button"
-                class="absolute inset-0 bg-background/60 backdrop-blur-md"
-                @click="closeSearch"
-            />
+                <button
+                    type="button"
+                    class="absolute inset-0 bg-background/60 backdrop-blur-md"
+                    @click="closeSearch"
+                />
 
-            <div
-                class="relative w-full max-w-[640px] overflow-hidden rounded-2xl border border-accent/20 bg-card shadow-xl"
-            >
-                <div class="flex h-14 items-center gap-3 border-b border-border/60 px-5">
-                    <Search class="h-5 w-5 text-muted-foreground" />
-                    <input
-                        ref="searchInputRef"
-                        v-model="searchQuery"
-                        placeholder="Search artists, albums, tracks..."
-                        class="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
-                    />
-                    <button
-                        v-if="searchQuery"
-                        type="button"
-                        class="text-xs text-muted-foreground hover:text-foreground"
-                        @click="searchQuery = ''"
-                    >
-                        Clear
-                    </button>
-                </div>
-
-                <div class="max-h-[50vh] overflow-y-auto py-2">
+                <div
+                    class="relative w-full max-w-[640px] overflow-hidden rounded-2xl border border-accent/20 bg-card shadow-xl"
+                >
                     <div
-                        v-if="searchHttp.processing"
-                        class="px-4 py-8 text-center text-sm text-muted-foreground"
+                        class="flex h-14 items-center gap-3 border-b border-border/60 px-5"
                     >
-                        Searching...
-                    </div>
-
-                    <div
-                        v-else-if="flattenedSearchItems.length === 0"
-                        class="px-4 py-8 text-center text-sm text-muted-foreground"
-                    >
-                        No results for "{{ searchQuery }}"
-                    </div>
-
-                    <div
-                        v-for="group in searchGroups"
-                        :key="group.label"
-                        class="px-2 pb-2"
-                    >
-                        <div class="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                            {{ group.label }}
-                        </div>
-
+                        <Search class="h-5 w-5 text-muted-foreground" />
+                        <input
+                            ref="searchInputRef"
+                            v-model="searchQuery"
+                            placeholder="Search artists, albums, tracks..."
+                            class="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+                        />
                         <button
-                            v-for="item in group.items"
-                            :key="`${item.type}-${item.id}`"
+                            v-if="searchQuery"
                             type="button"
-                            class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-foreground/80 transition-colors"
-                            :class="
-                                flattenedSearchItems[searchActiveIndex] === item
-                                    ? 'bg-accent/15 text-foreground'
-                                    : ''
-                            "
-                            @mouseenter="
-                                searchActiveIndex = flattenedSearchItems.findIndex((flatItem) => flatItem === item)
-                            "
-                            @click="goToSearchItem(item)"
+                            class="text-xs text-muted-foreground hover:text-foreground"
+                            @click="searchQuery = ''"
                         >
-                            <img
-                                v-if="item.image"
-                                :src="item.image"
-                                alt=""
-                                class="h-9 w-9 shrink-0 rounded-md object-cover"
-                            />
-                            <div
-                                v-else
-                                class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-secondary text-xs text-muted-foreground uppercase"
-                            >
-                                {{ String(item.type).slice(0, 1) }}
-                            </div>
-
-                            <div class="min-w-0 flex-1">
-                                <div class="truncate text-sm font-medium">
-                                    {{ item.title }}
-                                </div>
-                                <div class="truncate text-xs text-muted-foreground">
-                                    {{ item.subtitle }}
-                                </div>
-                            </div>
-
-                            <span class="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                                {{ item.type }}
-                            </span>
+                            Clear
                         </button>
                     </div>
-                </div>
 
-                <div class="flex h-10 items-center justify-between border-t border-border/60 px-4 text-[11px] text-muted-foreground">
-                    <div class="flex items-center gap-3">
-                        <span><kbd class="rounded bg-secondary px-1.5 py-0.5">↑↓</kbd> navigate</span>
-                        <span><kbd class="rounded bg-secondary px-1.5 py-0.5">↵</kbd> open</span>
-                        <span><kbd class="rounded bg-secondary px-1.5 py-0.5">esc</kbd> close</span>
+                    <div class="max-h-[50vh] overflow-y-auto py-2">
+                        <div
+                            v-if="searchHttp.processing"
+                            class="px-4 py-8 text-center text-sm text-muted-foreground"
+                        >
+                            Searching...
+                        </div>
+
+                        <div
+                            v-else-if="flattenedSearchItems.length === 0"
+                            class="px-4 py-8 text-center text-sm text-muted-foreground"
+                        >
+                            No results for "{{ searchQuery }}"
+                        </div>
+
+                        <div
+                            v-for="group in searchGroups"
+                            :key="group.label"
+                            class="px-2 pb-2"
+                        >
+                            <div
+                                class="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase"
+                            >
+                                {{ group.label }}
+                            </div>
+
+                            <button
+                                v-for="item in group.items"
+                                :key="`${item.type}-${item.id}`"
+                                type="button"
+                                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-foreground/80 transition-colors"
+                                :class="
+                                    flattenedSearchItems[searchActiveIndex] ===
+                                    item
+                                        ? 'bg-accent/15 text-foreground'
+                                        : ''
+                                "
+                                @mouseenter="
+                                    searchActiveIndex =
+                                        flattenedSearchItems.findIndex(
+                                            (flatItem) => flatItem === item,
+                                        )
+                                "
+                                @click="goToSearchItem(item)"
+                            >
+                                <img
+                                    v-if="item.image"
+                                    :src="item.image"
+                                    alt=""
+                                    class="h-9 w-9 shrink-0 rounded-md object-cover"
+                                />
+                                <div
+                                    v-else
+                                    class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-secondary text-xs text-muted-foreground uppercase"
+                                >
+                                    {{ String(item.type).slice(0, 1) }}
+                                </div>
+
+                                <div class="min-w-0 flex-1">
+                                    <div class="truncate text-sm font-medium">
+                                        {{ item.title }}
+                                    </div>
+                                    <div
+                                        class="truncate text-xs text-muted-foreground"
+                                    >
+                                        {{ item.subtitle }}
+                                    </div>
+                                </div>
+
+                                <span
+                                    class="text-[10px] tracking-wider text-muted-foreground/70 uppercase"
+                                >
+                                    {{ item.type }}
+                                </span>
+                            </button>
+                        </div>
                     </div>
-                    <span class="font-medium text-accent">Pulsefy</span>
+
+                    <div
+                        class="flex h-10 items-center justify-between border-t border-border/60 px-4 text-[11px] text-muted-foreground"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span
+                                ><kbd class="rounded bg-secondary px-1.5 py-0.5"
+                                    >↑↓</kbd
+                                >
+                                navigate</span
+                            >
+                            <span
+                                ><kbd class="rounded bg-secondary px-1.5 py-0.5"
+                                    >↵</kbd
+                                >
+                                open</span
+                            >
+                            <span
+                                ><kbd class="rounded bg-secondary px-1.5 py-0.5"
+                                    >esc</kbd
+                                >
+                                close</span
+                            >
+                        </div>
+                        <span class="font-medium text-accent">Pulsefy</span>
+                    </div>
                 </div>
-            </div>
             </div>
         </Teleport>
     </header>

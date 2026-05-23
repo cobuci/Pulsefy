@@ -15,7 +15,9 @@ defineProps<{
 </script>
 
 <template>
-    <div class="rounded-2xl border border-border bg-card p-5 shadow-card lg:col-span-2">
+    <div
+        class="rounded-2xl border border-border bg-card p-5 shadow-card lg:col-span-2"
+    >
         <div class="mb-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <TrendingUp class="size-4 text-accent" />

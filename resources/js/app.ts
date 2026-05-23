@@ -17,9 +17,12 @@ async function initializeRealtime(): Promise<void> {
         import('pusher-js'),
     ]);
 
-    const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+    const reverbHost =
+        import.meta.env.VITE_REVERB_HOST || window.location.hostname;
     const reverbPort = Number(import.meta.env.VITE_REVERB_PORT || 8080);
-    const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase();
+    const reverbScheme = (
+        import.meta.env.VITE_REVERB_SCHEME || 'http'
+    ).toLowerCase();
     const useTls = import.meta.env.DEV ? false : reverbScheme === 'https';
 
     window.Pusher = Pusher;

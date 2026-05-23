@@ -10,7 +10,9 @@ defineProps<{
 </script>
 
 <template>
-    <div class="rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/10 to-accent/5 p-5">
+    <div
+        class="rounded-2xl border border-accent/30 bg-gradient-to-br from-primary/10 to-accent/5 p-5"
+    >
         <div class="mb-3 flex items-center gap-2">
             <Sparkles class="size-4 text-accent" />
             <h2 class="font-display text-lg font-bold">For you</h2>
@@ -27,7 +29,9 @@ defineProps<{
                 class="group -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-background/40"
                 @click="handlePlay(track)"
             >
-                <div class="relative size-12 shrink-0 overflow-hidden rounded-lg">
+                <div
+                    class="relative size-12 shrink-0 overflow-hidden rounded-lg"
+                >
                     <img
                         v-if="track.album.images?.[0]?.url"
                         :src="track.album.images[0].url"
@@ -50,10 +54,16 @@ defineProps<{
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium">{{ track.name }}</p>
                     <p class="truncate text-xs text-muted-foreground">
-                        {{ track.artists.map((artist) => artist.name).join(', ') }}
+                        {{
+                            track.artists
+                                .map((artist) => artist.name)
+                                .join(', ')
+                        }}
                     </p>
                 </div>
-                <span class="text-[10px] font-bold tracking-wider text-accent uppercase">
+                <span
+                    class="text-[10px] font-bold tracking-wider text-accent uppercase"
+                >
                     Pick
                 </span>
             </button>

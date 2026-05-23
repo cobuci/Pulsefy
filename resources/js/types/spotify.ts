@@ -79,9 +79,17 @@ export interface NowPlaying {
     is_saved: boolean;
 }
 
-export type LyricsTranslationStatus = 'queued' | 'processing' | 'ready' | 'failed';
+export type LyricsTranslationStatus =
+    | 'queued'
+    | 'processing'
+    | 'ready'
+    | 'failed';
 
-export type LyricsPronunciationStatus = 'queued' | 'processing' | 'ready' | 'failed';
+export type LyricsPronunciationStatus =
+    | 'queued'
+    | 'processing'
+    | 'ready'
+    | 'failed';
 
 export interface LyricsResponse {
     track_id: string;

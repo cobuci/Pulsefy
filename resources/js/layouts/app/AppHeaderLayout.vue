@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { onMounted, onUnmounted } from 'vue';
+import { toast } from 'vue-sonner';
 import AppContent from '@/components/AppContent.vue';
 import AppHeader from '@/components/AppHeader.vue';
 import AppShell from '@/components/AppShell.vue';
@@ -7,9 +10,6 @@ import { AppContextMenu } from '@/components/ui/context-menu';
 import { Toaster } from '@/components/ui/sonner';
 import { useContextMenu } from '@/composables/useContextMenu';
 import type { BreadcrumbItem } from '@/types';
-import { usePage } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
-import { toast } from 'vue-sonner';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
@@ -50,7 +50,9 @@ onUnmounted(() => {
         return;
     }
 
-    window.Echo.private(`App.Models.User.${userId}`).stopListening('.Spotify.SyncFailed');
+    window.Echo.private(`App.Models.User.${userId}`).stopListening(
+        '.Spotify.SyncFailed',
+    );
 });
 </script>
 

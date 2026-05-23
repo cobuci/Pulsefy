@@ -5,7 +5,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import IconPause from '@/components/icons/IconPause.vue';
 import { Button } from '@/components/ui/button';
 import { usePlayer } from '@/composables/usePlayer';
-import { discoveryLiked as discoveryLikedRoute, index as libraryIndex } from '@/routes/library';
+import {
+    discoveryLiked as discoveryLikedRoute,
+    index as libraryIndex,
+} from '@/routes/library';
 
 interface LikedTrack {
     id: number;
@@ -134,23 +137,34 @@ function formatDuration(ms: number): string {
                         <Play class="mr-1 size-3.5" />
                         Play
                     </Button>
-                    <span class="truncate font-display text-sm font-bold text-foreground">
+                    <span
+                        class="truncate font-display text-sm font-bold text-foreground"
+                    >
                         Liked from Discovery
                     </span>
                 </div>
             </div>
         </Transition>
 
-        <section ref="headerSectionRef" class="flex flex-wrap gap-4 rounded-2xl border border-border/60 bg-card/70 p-5">
-            <div class="grid size-28 shrink-0 place-items-center rounded-xl bg-accent/10">
+        <section
+            ref="headerSectionRef"
+            class="flex flex-wrap gap-4 rounded-2xl border border-border/60 bg-card/70 p-5"
+        >
+            <div
+                class="grid size-28 shrink-0 place-items-center rounded-xl bg-accent/10"
+            >
                 <Compass class="size-12 text-accent" />
             </div>
 
             <div class="min-w-0 flex-1">
-                <p class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                <p
+                    class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Library
                 </p>
-                <h1 class="mt-1 truncate font-display text-3xl font-bold text-foreground">
+                <h1
+                    class="mt-1 truncate font-display text-3xl font-bold text-foreground"
+                >
                     Liked from Discovery
                 </h1>
                 <p class="mt-2 text-sm text-muted-foreground">
@@ -175,7 +189,10 @@ function formatDuration(ms: number): string {
         </section>
 
         <section class="rounded-2xl border border-border/60 bg-card/70 p-4">
-            <div v-if="likedTracks.data.length === 0" class="py-12 text-center text-sm text-muted-foreground">
+            <div
+                v-if="likedTracks.data.length === 0"
+                class="py-12 text-center text-sm text-muted-foreground"
+            >
                 No liked tracks yet. Head to Discovery and like some tracks.
             </div>
 
@@ -194,7 +211,11 @@ function formatDuration(ms: number): string {
                         >
                             <span
                                 class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-muted-foreground transition-opacity duration-150"
-                                :class="isPlayingTrack(track.spotify_id) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'"
+                                :class="
+                                    isPlayingTrack(track.spotify_id)
+                                        ? 'opacity-0'
+                                        : 'opacity-100 group-hover:opacity-0'
+                                "
                             >
                                 {{ index + 1 }}
                             </span>
@@ -207,10 +228,20 @@ function formatDuration(ms: number): string {
                                 v-else
                                 class="absolute inset-0 m-auto flex items-end justify-center gap-0.5"
                             >
-                                <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" />
-                                <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" style="animation-delay: 0.15s" />
-                                <span class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0" style="animation-delay: 0.3s" />
-                                <IconPause class="absolute inset-0 m-auto size-4 text-accent opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                                <span
+                                    class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                />
+                                <span
+                                    class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                    style="animation-delay: 0.15s"
+                                />
+                                <span
+                                    class="eq-bar h-3 w-0.5 rounded-full bg-accent transition-opacity duration-150 group-hover:opacity-0"
+                                    style="animation-delay: 0.3s"
+                                />
+                                <IconPause
+                                    class="absolute inset-0 m-auto size-4 text-accent opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                                />
                             </div>
                         </button>
 
@@ -225,7 +256,11 @@ function formatDuration(ms: number): string {
                         <div class="min-w-0 flex-1">
                             <p
                                 class="truncate text-sm font-medium"
-                                :class="isPlayingTrack(track.spotify_id) ? 'text-accent' : 'text-foreground'"
+                                :class="
+                                    isPlayingTrack(track.spotify_id)
+                                        ? 'text-accent'
+                                        : 'text-foreground'
+                                "
                             >
                                 {{ track.name }}
                             </p>
@@ -233,7 +268,9 @@ function formatDuration(ms: number): string {
                                 v-if="isPlayingTrack(track.spotify_id)"
                                 class="mt-1 h-0.5 w-20 overflow-hidden rounded-full bg-accent/25"
                             >
-                                <div class="bg-gradient-primary h-full w-full animate-pulse" />
+                                <div
+                                    class="bg-gradient-primary h-full w-full animate-pulse"
+                                />
                             </div>
                             <p
                                 v-if="track.artist_name"
@@ -243,7 +280,9 @@ function formatDuration(ms: number): string {
                             </p>
                         </div>
 
-                        <span class="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                        <span
+                            class="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums"
+                        >
                             {{ formatDuration(track.duration_ms) }}
                         </span>
                     </li>

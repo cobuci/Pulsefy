@@ -104,7 +104,9 @@ const option = computed(() => {
                         class="size-2.5 rounded-full"
                         :style="{ background: genre.color }"
                     />
-                    <span class="flex-1 truncate">{{ formatGenreLabel(genre.label) }}</span>
+                    <span class="flex-1 truncate">{{
+                        formatGenreLabel(genre.label)
+                    }}</span>
                     <span class="text-muted-foreground tabular-nums"
                         >{{ genre.value }}%</span
                     >

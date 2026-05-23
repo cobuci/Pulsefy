@@ -49,12 +49,16 @@ export function useCurrentUrl(): UseCurrentUrlReturn {
         currentUrl?: string,
         startsWith: boolean = false,
     ) {
-        const urlToCompare = normalizePath(currentUrl ?? currentUrlReactive.value);
+        const urlToCompare = normalizePath(
+            currentUrl ?? currentUrlReactive.value,
+        );
         const urlString = normalizePath(toUrl(urlToCheck));
 
         const comparePath = (path: string): boolean => {
             if (startsWith) {
-                return urlToCompare === path || urlToCompare.startsWith(`${path}/`);
+                return (
+                    urlToCompare === path || urlToCompare.startsWith(`${path}/`)
+                );
             }
 
             return path === urlToCompare;

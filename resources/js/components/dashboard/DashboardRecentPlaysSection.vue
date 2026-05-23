@@ -32,7 +32,9 @@ const { openTrackContextMenu } = useTrackContextMenu();
 
         <Deferred data="recentPlays">
             <template #fallback>
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <div
+                    class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+                >
                     <div
                         v-for="n in 6"
                         :key="n"
@@ -53,14 +55,19 @@ const { openTrackContextMenu } = useTrackContextMenu();
                     No recent plays found.
                 </div>
 
-                <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <div
+                    v-else
+                    class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+                >
                     <div
                         v-for="play in recentlyPlayedTracks"
                         :key="`${play.track.id}-${play.played_at}`"
                         class="group"
                         @contextmenu="openTrackContextMenu($event, play.track)"
                     >
-                        <div class="relative mb-3 aspect-square overflow-hidden rounded-xl shadow-card">
+                        <div
+                            class="relative mb-3 aspect-square overflow-hidden rounded-xl shadow-card"
+                        >
                             <img
                                 v-if="play.track.album.images?.[0]?.url"
                                 :src="play.track.album.images[0].url"
@@ -76,7 +83,9 @@ const { openTrackContextMenu } = useTrackContextMenu();
                                     class="bg-gradient-primary shadow-glow grid size-12 scale-75 cursor-pointer place-items-center rounded-full opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100"
                                     @click="handlePlay(play.track)"
                                 >
-                                    <IconPlay class="ml-0.5 size-5 text-primary-foreground" />
+                                    <IconPlay
+                                        class="ml-0.5 size-5 text-primary-foreground"
+                                    />
                                 </button>
                             </div>
                         </div>
@@ -90,7 +99,8 @@ const { openTrackContextMenu } = useTrackContextMenu();
                             </Link>
                             <p class="truncate text-xs text-muted-foreground">
                                 <template
-                                    v-for="(artist, artistIndex) in play.track.artists"
+                                    v-for="(artist, artistIndex) in play.track
+                                        .artists"
                                     :key="artist.id"
                                 >
                                     <Link
@@ -99,7 +109,13 @@ const { openTrackContextMenu } = useTrackContextMenu();
                                     >
                                         {{ artist.name }}
                                     </Link>
-                                    <span v-if="artistIndex < play.track.artists.length - 1">, </span>
+                                    <span
+                                        v-if="
+                                            artistIndex <
+                                            play.track.artists.length - 1
+                                        "
+                                        >,
+                                    </span>
                                 </template>
                             </p>
                         </div>

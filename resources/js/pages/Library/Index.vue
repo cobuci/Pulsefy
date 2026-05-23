@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronRight, Compass, Eye, EyeOff, Folder, FolderOpen, Heart, Home, ListMusic, RefreshCw } from 'lucide-vue-next';
+import {
+    ChevronRight,
+    Compass,
+    Eye,
+    EyeOff,
+    Folder,
+    FolderOpen,
+    Heart,
+    Home,
+    ListMusic,
+    RefreshCw,
+} from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import type { ContextMenuItem } from '@/components/ui/context-menu';
@@ -14,9 +25,9 @@ import {
     visibility as updatePlaylistVisibility,
     refresh as refreshLibrary,
 } from '@/routes/library';
+import { discoveryLiked } from '@/routes/library';
 import { store as storeFolder } from '@/routes/library/folders';
 import { sync as syncLikedSongs } from '@/routes/library/liked-songs';
-import { discoveryLiked } from '@/routes/library';
 
 defineOptions({
     layout: {
@@ -124,36 +135,43 @@ const page = usePage<{
 const currentSyncStatus = computed(() => syncStatusRef.value);
 
 onMounted(() => {
-    if (typeof window === 'undefined' || !window.Echo || !page.props.auth.user?.id) {
+    if (
+        typeof window === 'undefined' ||
+        !window.Echo ||
+        !page.props.auth.user?.id
+    ) {
         return;
     }
 
-    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
-        .listen(
-            '.Library.SyncStatusUpdated',
-            (event: {
-                status: {
-                    isRunning: boolean;
-                    hasFailure: boolean;
-                    completed: number;
-                    total: number;
-                    progress: number;
-                    updatedAt: string | null;
-                };
-            }) => {
-                syncStatusRef.value = event.status;
+    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`).listen(
+        '.Library.SyncStatusUpdated',
+        (event: {
+            status: {
+                isRunning: boolean;
+                hasFailure: boolean;
+                completed: number;
+                total: number;
+                progress: number;
+                updatedAt: string | null;
+            };
+        }) => {
+            syncStatusRef.value = event.status;
 
-                if (! event.status.isRunning) {
-                    router.reload({
-                        only: ['playlists', 'syncStatus'],
-                    });
-                }
-            },
-        );
+            if (!event.status.isRunning) {
+                router.reload({
+                    only: ['playlists', 'syncStatus'],
+                });
+            }
+        },
+    );
 });
 
 onUnmounted(() => {
-    if (typeof window === 'undefined' || !window.Echo || !page.props.auth.user?.id) {
+    if (
+        typeof window === 'undefined' ||
+        !window.Echo ||
+        !page.props.auth.user?.id
+    ) {
         return;
     }
 
@@ -165,7 +183,9 @@ const folderById = computed(() => {
 });
 
 const childFolders = computed<LibraryFolderItem[]>(() => {
-    return props.folders.filter((folder) => folder.parent_id === activeFolderId.value);
+    return props.folders.filter(
+        (folder) => folder.parent_id === activeFolderId.value,
+    );
 });
 
 const visiblePlaylists = computed<LibraryPlaylistItem[]>(() => {
@@ -245,7 +265,10 @@ function onPlaylistDragStart(event: DragEvent, playlistId: string) {
     movedToAnotherFolder.value = false;
     event.dataTransfer?.setData('text/plain', playlistId);
     event.dataTransfer?.setData('application/x-pulsefy-playlist', playlistId);
-    event.dataTransfer?.setData('application/x-pulsefy-origin-folder', String(activeFolderId.value ?? 'root'));
+    event.dataTransfer?.setData(
+        'application/x-pulsefy-origin-folder',
+        String(activeFolderId.value ?? 'root'),
+    );
 
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
@@ -326,7 +349,11 @@ function onPlaylistDragDropZone(event: DragEvent): void {
 function onPlaylistDragEnter(event: DragEvent, playlistId: string) {
     event.preventDefault();
 
-    if (!draggedPlaylistId.value || playlistId === draggedPlaylistId.value || dragOverPlaylistId.value === playlistId) {
+    if (
+        !draggedPlaylistId.value ||
+        playlistId === draggedPlaylistId.value ||
+        dragOverPlaylistId.value === playlistId
+    ) {
         return;
     }
 
@@ -344,11 +371,19 @@ function onPlaylistDragLeave(playlistId: string) {
 function persistReorderIfNeeded() {
     const orderedIds = visiblePlaylists.value.map((playlist) => playlist.id);
     const originalIds = props.playlists
-        .filter((playlist) => (playlist.folder_id ?? null) === activeFolderId.value && !playlist.is_hidden)
+        .filter(
+            (playlist) =>
+                (playlist.folder_id ?? null) === activeFolderId.value &&
+                !playlist.is_hidden,
+        )
         .sort((a, b) => a.position - b.position)
         .map((playlist) => playlist.id);
 
-    if (orderedIds.every((playlistId, index) => playlistId === originalIds[index])) {
+    if (
+        orderedIds.every(
+            (playlistId, index) => playlistId === originalIds[index],
+        )
+    ) {
         return;
     }
 
@@ -378,8 +413,13 @@ function onPlaylistDrop(event: DragEvent, targetPlaylistId: string) {
         event.dataTransfer?.getData('application/x-pulsefy-playlist') ||
         event.dataTransfer?.getData('text/plain') ||
         draggedPlaylistId.value;
-    const originFolderRaw = event.dataTransfer?.getData('application/x-pulsefy-origin-folder');
-    const originFolderId = originFolderRaw === 'root' || originFolderRaw === '' ? null : Number(originFolderRaw);
+    const originFolderRaw = event.dataTransfer?.getData(
+        'application/x-pulsefy-origin-folder',
+    );
+    const originFolderId =
+        originFolderRaw === 'root' || originFolderRaw === ''
+            ? null
+            : Number(originFolderRaw);
 
     if (!sourcePlaylistId || sourcePlaylistId === targetPlaylistId) {
         onPlaylistDragEnd();
@@ -387,7 +427,10 @@ function onPlaylistDrop(event: DragEvent, targetPlaylistId: string) {
         return;
     }
 
-    if (originFolderId !== activeFolderId.value || dragOriginFolderId.value !== activeFolderId.value) {
+    if (
+        originFolderId !== activeFolderId.value ||
+        dragOriginFolderId.value !== activeFolderId.value
+    ) {
         onPlaylistDragEnd();
 
         return;
@@ -400,10 +443,14 @@ function onPlaylistDrop(event: DragEvent, targetPlaylistId: string) {
 
 function previewReorder(sourcePlaylistId: string, targetPlaylistId: string) {
     const sourceIndex = localPlaylists.value.findIndex(
-        (playlist) => playlist.id === sourcePlaylistId && (playlist.folder_id ?? null) === activeFolderId.value,
+        (playlist) =>
+            playlist.id === sourcePlaylistId &&
+            (playlist.folder_id ?? null) === activeFolderId.value,
     );
     const targetIndex = localPlaylists.value.findIndex(
-        (playlist) => playlist.id === targetPlaylistId && (playlist.folder_id ?? null) === activeFolderId.value,
+        (playlist) =>
+            playlist.id === targetPlaylistId &&
+            (playlist.folder_id ?? null) === activeFolderId.value,
     );
 
     if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
@@ -463,7 +510,10 @@ function setPlaylistVisibility(playlist: LibraryPlaylistItem, hidden: boolean) {
     );
 }
 
-function movePlaylistToFolder(playlist: LibraryPlaylistItem, folderId: number | null) {
+function movePlaylistToFolder(
+    playlist: LibraryPlaylistItem,
+    folderId: number | null,
+) {
     closeContextMenu();
 
     router.patch(
@@ -484,7 +534,9 @@ function movePlaylistToFolder(playlist: LibraryPlaylistItem, folderId: number | 
     );
 }
 
-function getPlaylistContextItems(playlist: LibraryPlaylistItem): ContextMenuItem[] {
+function getPlaylistContextItems(
+    playlist: LibraryPlaylistItem,
+): ContextMenuItem[] {
     const folderItems: ContextMenuItem[] = props.folders
         .filter((folder) => folder.id !== playlist.folder_id)
         .map((folder) => ({
@@ -505,7 +557,8 @@ function getPlaylistContextItems(playlist: LibraryPlaylistItem): ContextMenuItem
         {
             key: `toggle-hidden-${playlist.id}`,
             label: playlist.is_hidden ? 'Show playlist' : 'Hide playlist',
-            onSelect: () => setPlaylistVisibility(playlist, !playlist.is_hidden),
+            onSelect: () =>
+                setPlaylistVisibility(playlist, !playlist.is_hidden),
         },
         {
             key: `playlist-sep-${playlist.id}`,
@@ -525,7 +578,10 @@ function getPlaylistContextItems(playlist: LibraryPlaylistItem): ContextMenuItem
     ];
 }
 
-function onPlaylistContextMenu(event: MouseEvent, playlist: LibraryPlaylistItem) {
+function onPlaylistContextMenu(
+    event: MouseEvent,
+    playlist: LibraryPlaylistItem,
+) {
     openContextMenu(event, getPlaylistContextItems(playlist));
 }
 
@@ -571,10 +627,14 @@ function toggleShowHidden() {
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 py-4">
         <section class="flex flex-wrap items-end justify-between gap-4">
             <div>
-                <p class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                <p
+                    class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Your Library
                 </p>
-                <h1 class="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
+                <h1
+                    class="mt-1 font-display text-3xl font-bold tracking-tight text-foreground"
+                >
                     Playlists
                 </h1>
                 <p class="mt-2 text-sm text-muted-foreground">
@@ -587,7 +647,10 @@ function toggleShowHidden() {
                     v-if="currentSyncStatus.isRunning"
                     class="rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent"
                 >
-                    Syncing {{ currentSyncStatus.completed }}/{{ currentSyncStatus.total }} · {{ currentSyncStatus.progress }}%
+                    Syncing {{ currentSyncStatus.completed }}/{{
+                        currentSyncStatus.total
+                    }}
+                    · {{ currentSyncStatus.progress }}%
                 </span>
                 <span
                     v-else-if="currentSyncStatus.hasFailure"
@@ -602,7 +665,11 @@ function toggleShowHidden() {
                     class="shrink-0"
                     v-slot="{ processing }"
                 >
-                    <Button type="submit" variant="outline" :disabled="processing || currentSyncStatus.isRunning">
+                    <Button
+                        type="submit"
+                        variant="outline"
+                        :disabled="processing || currentSyncStatus.isRunning"
+                    >
                         {{ processing ? 'Refreshing…' : 'Refresh playlists' }}
                     </Button>
                 </Form>
@@ -626,19 +693,43 @@ function toggleShowHidden() {
                     class="flex w-full max-w-sm items-center gap-2"
                     v-slot="{ processing }"
                 >
-                    <Input name="name" placeholder="New folder" autocomplete="off" />
-                    <Button type="submit" :disabled="processing">Create folder</Button>
+                    <Input
+                        name="name"
+                        placeholder="New folder"
+                        autocomplete="off"
+                    />
+                    <Button type="submit" :disabled="processing"
+                        >Create folder</Button
+                    >
                 </Form>
             </div>
         </section>
 
-        <div class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+        <div
+            class="flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
+        >
             <div
                 class="rounded-md border border-transparent px-1.5 py-0.5 transition-colors"
-                :class="dragOverFolderId === null && activeFolderId !== null ? 'border-accent/50 bg-accent/10' : ''"
-                @dragover="activeFolderId !== null ? onFolderDragOver($event, null) : undefined"
-                @dragleave="activeFolderId !== null ? onFolderDragLeave(null) : undefined"
-                @drop="activeFolderId !== null ? onFolderDrop($event, null) : undefined"
+                :class="
+                    dragOverFolderId === null && activeFolderId !== null
+                        ? 'border-accent/50 bg-accent/10'
+                        : ''
+                "
+                @dragover="
+                    activeFolderId !== null
+                        ? onFolderDragOver($event, null)
+                        : undefined
+                "
+                @dragleave="
+                    activeFolderId !== null
+                        ? onFolderDragLeave(null)
+                        : undefined
+                "
+                @drop="
+                    activeFolderId !== null
+                        ? onFolderDrop($event, null)
+                        : undefined
+                "
             >
                 <button
                     type="button"
@@ -663,7 +754,9 @@ function toggleShowHidden() {
         </div>
 
         <section>
-            <div class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+            <div
+                class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase"
+            >
                 Folders
             </div>
 
@@ -677,8 +770,13 @@ function toggleShowHidden() {
                         class="block w-full rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
                     >
                         <div class="mb-6 flex items-start justify-between">
-                            <div class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20">
-                                <Heart class="size-5 text-accent" fill="currentColor" />
+                            <div
+                                class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20"
+                            >
+                                <Heart
+                                    class="size-5 text-accent"
+                                    fill="currentColor"
+                                />
                             </div>
                             <Form
                                 :action="syncLikedSongs().url"
@@ -688,17 +786,40 @@ function toggleShowHidden() {
                             >
                                 <button
                                     type="submit"
-                                    class="rounded-md p-1 text-muted-foreground/40 opacity-0 transition-opacity hover:text-accent group-hover:opacity-100"
-                                    :disabled="processing || likedPlaylist.syncStatus.isRunning"
-                                    :title="likedPlaylist.syncStatus.isRunning ? 'Syncing…' : 'Sync liked songs'"
-                                    @click.prevent.stop="($event.currentTarget as HTMLButtonElement).closest('form')?.requestSubmit()"
+                                    class="rounded-md p-1 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 hover:text-accent"
+                                    :disabled="
+                                        processing ||
+                                        likedPlaylist.syncStatus.isRunning
+                                    "
+                                    :title="
+                                        likedPlaylist.syncStatus.isRunning
+                                            ? 'Syncing…'
+                                            : 'Sync liked songs'
+                                    "
+                                    @click.prevent.stop="
+                                        (
+                                            $event.currentTarget as HTMLButtonElement
+                                        )
+                                            .closest('form')
+                                            ?.requestSubmit()
+                                    "
                                 >
-                                    <RefreshCw class="size-4" :class="(processing || likedPlaylist.syncStatus.isRunning) ? 'animate-spin' : ''" />
+                                    <RefreshCw
+                                        class="size-4"
+                                        :class="
+                                            processing ||
+                                            likedPlaylist.syncStatus.isRunning
+                                                ? 'animate-spin'
+                                                : ''
+                                        "
+                                    />
                                 </button>
                             </Form>
                         </div>
 
-                        <div class="truncate font-display text-base font-bold text-foreground">
+                        <div
+                            class="truncate font-display text-base font-bold text-foreground"
+                        >
                             {{ likedPlaylist.name }}
                         </div>
                         <div class="mt-1 text-xs text-muted-foreground">
@@ -708,24 +829,27 @@ function toggleShowHidden() {
                 </div>
 
                 <!-- Discovery Liked Tracks -->
-                <div
-                    v-if="activeFolderId === null"
-                    class="group relative"
-                >
+                <div v-if="activeFolderId === null" class="group relative">
                     <Link
                         :href="discoveryLiked().url"
                         class="block w-full rounded-2xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
                     >
                         <div class="mb-6 flex items-start justify-between">
-                            <div class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20">
+                            <div
+                                class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20"
+                            >
                                 <Compass class="size-5 text-accent" />
                             </div>
-                            <span class="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent uppercase">
+                            <span
+                                class="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent uppercase"
+                            >
                                 Discovery
                             </span>
                         </div>
 
-                        <div class="truncate font-display text-base font-bold text-foreground">
+                        <div
+                            class="truncate font-display text-base font-bold text-foreground"
+                        >
                             Liked from Discovery
                         </div>
                         <div class="mt-1 text-xs text-muted-foreground">
@@ -758,17 +882,28 @@ function toggleShowHidden() {
                         @click="openFolder(folder.id)"
                     >
                         <div class="mb-6 flex items-start justify-between">
-                            <div class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20">
+                            <div
+                                class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 transition-colors group-hover:bg-accent/20"
+                            >
                                 <Folder class="size-5 text-accent" />
                             </div>
-                            <FolderOpen class="size-4 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
+                            <FolderOpen
+                                class="size-4 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100"
+                            />
                         </div>
 
-                        <div class="truncate font-display text-base font-bold text-foreground">
+                        <div
+                            class="truncate font-display text-base font-bold text-foreground"
+                        >
                             {{ folder.name }}
                         </div>
                         <div class="mt-1 text-xs text-muted-foreground">
-                            {{ folders.filter((item) => item.parent_id === folder.id).length }} folders
+                            {{
+                                folders.filter(
+                                    (item) => item.parent_id === folder.id,
+                                ).length
+                            }}
+                            folders
                         </div>
                     </button>
                 </div>
@@ -776,12 +911,19 @@ function toggleShowHidden() {
         </section>
 
         <section>
-            <div class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+            <div
+                class="mb-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase"
+            >
                 {{ includeHidden ? 'Hidden playlists' : 'Playlists' }}
             </div>
 
-            <div v-if="visiblePlaylists.length === 0" class="rounded-2xl border border-dashed border-border p-12 text-center">
-                <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-secondary">
+            <div
+                v-if="visiblePlaylists.length === 0"
+                class="rounded-2xl border border-dashed border-border p-12 text-center"
+            >
+                <div
+                    class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-secondary"
+                >
                     <ListMusic class="size-6 text-muted-foreground" />
                 </div>
                 <h3 class="font-display text-lg font-bold">Nothing here yet</h3>
@@ -813,8 +955,11 @@ function toggleShowHidden() {
                         :href="libraryShow(playlist.id).url"
                         class="block overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-accent/40 hover:shadow-accent"
                         :class="[
-                            draggedPlaylistId === playlist.id ? 'scale-[0.98] opacity-70' : 'opacity-100',
-                            dragOverPlaylistId === playlist.id && draggedPlaylistId !== playlist.id
+                            draggedPlaylistId === playlist.id
+                                ? 'scale-[0.98] opacity-70'
+                                : 'opacity-100',
+                            dragOverPlaylistId === playlist.id &&
+                            draggedPlaylistId !== playlist.id
                                 ? 'ring-2 ring-accent/50'
                                 : '',
                         ]"
@@ -830,12 +975,16 @@ function toggleShowHidden() {
                         <div v-else class="aspect-square w-full bg-muted" />
 
                         <div class="p-3">
-                            <div class="truncate text-sm font-medium text-foreground">
+                            <div
+                                class="truncate text-sm font-medium text-foreground"
+                            >
                                 {{ playlist.name }}
                             </div>
                             <p class="truncate text-xs text-muted-foreground">
                                 {{ playlist.tracks_total }} tracks
-                                <span v-if="playlist.owner_name">· {{ playlist.owner_name }}</span>
+                                <span v-if="playlist.owner_name"
+                                    >· {{ playlist.owner_name }}</span
+                                >
                             </p>
                         </div>
                     </Link>
@@ -843,7 +992,6 @@ function toggleShowHidden() {
             </TransitionGroup>
         </section>
     </div>
-
 </template>
 
 <style scoped>

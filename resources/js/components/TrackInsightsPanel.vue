@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { BookOpen, Compass, Hash, Lightbulb, Music, RefreshCw, Smile, Sparkles, X } from 'lucide-vue-next';
+import {
+    BookOpen,
+    Compass,
+    Hash,
+    Lightbulb,
+    Music,
+    RefreshCw,
+    Smile,
+    Sparkles,
+    X,
+} from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useTrackInsights } from '@/composables/useTrackInsights';
 import type { NowPlaying } from '@/types/spotify';
@@ -96,30 +106,47 @@ onUnmounted(() => {
                 class="fixed top-0 right-0 z-[70] flex h-full w-96 flex-col overflow-hidden border-l border-border/60 bg-background shadow-2xl"
             >
                 <!-- Header -->
-                <header class="flex items-center justify-between border-b border-border/60 px-4 py-3">
+                <header
+                    class="flex items-center justify-between border-b border-border/60 px-4 py-3"
+                >
                     <div class="flex items-center gap-2">
                         <Sparkles class="h-4 w-4 text-purple-400" />
-                        <span class="text-sm font-semibold">AI Track Insights</span>
+                        <span class="text-sm font-semibold"
+                            >AI Track Insights</span
+                        >
                     </div>
                     <div class="flex items-center gap-1">
                         <!-- Language toggle -->
                         <button
                             v-if="trackInsights.isReady.value"
                             class="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            :title="trackInsights.language.value === 'en' ? 'Switch to Portuguese' : 'Switch to English'"
+                            :title="
+                                trackInsights.language.value === 'en'
+                                    ? 'Switch to Portuguese'
+                                    : 'Switch to English'
+                            "
                             @click="trackInsights.toggleLanguage()"
                         >
-                            {{ trackInsights.language.value === 'en' ? 'EN' : 'PT' }}
+                            {{
+                                trackInsights.language.value === 'en'
+                                    ? 'EN'
+                                    : 'PT'
+                            }}
                         </button>
 
                         <button
-                            :disabled="trackInsights.isLoading.value || trackInsights.isBusy.value"
+                            :disabled="
+                                trackInsights.isLoading.value ||
+                                trackInsights.isBusy.value
+                            "
                             class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             title="Regenerate insights"
                             @click="track && trackInsights.regenerate(track)"
                         >
                             <RefreshCw
-                                :class="{ 'animate-spin': trackInsights.isBusy.value }"
+                                :class="{
+                                    'animate-spin': trackInsights.isBusy.value,
+                                }"
                                 class="h-3.5 w-3.5"
                             />
                         </button>
@@ -135,8 +162,12 @@ onUnmounted(() => {
 
                 <!-- Track info -->
                 <div class="border-b border-border/60 px-4 py-3">
-                    <p class="truncate text-sm font-medium">{{ track?.name }}</p>
-                    <p class="truncate text-xs text-muted-foreground">{{ track?.artists[0]?.name }}</p>
+                    <p class="truncate text-sm font-medium">
+                        {{ track?.name }}
+                    </p>
+                    <p class="truncate text-xs text-muted-foreground">
+                        {{ track?.artists[0]?.name }}
+                    </p>
                 </div>
 
                 <!-- Body -->
@@ -144,22 +175,37 @@ onUnmounted(() => {
                     <!-- Loading skeleton -->
                     <template v-if="trackInsights.isLoading.value">
                         <div v-for="i in 6" :key="i" class="space-y-2">
-                            <div class="h-3 w-20 animate-pulse rounded bg-muted" />
-                            <div class="h-4 w-full animate-pulse rounded bg-muted" />
-                            <div class="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                            <div
+                                class="h-3 w-20 animate-pulse rounded bg-muted"
+                            />
+                            <div
+                                class="h-4 w-full animate-pulse rounded bg-muted"
+                            />
+                            <div
+                                class="h-4 w-3/4 animate-pulse rounded bg-muted"
+                            />
                         </div>
                     </template>
 
                     <!-- Error -->
                     <template v-else-if="trackInsights.hasFailed.value">
-                        <div class="space-y-2 rounded-lg border border-red-800 bg-red-950/50 p-4">
-                            <p class="text-sm text-red-400">Could not generate insights.</p>
-                            <p v-if="trackInsights.errorMessage.value" class="text-xs text-red-500/80">
+                        <div
+                            class="space-y-2 rounded-lg border border-red-800 bg-red-950/50 p-4"
+                        >
+                            <p class="text-sm text-red-400">
+                                Could not generate insights.
+                            </p>
+                            <p
+                                v-if="trackInsights.errorMessage.value"
+                                class="text-xs text-red-500/80"
+                            >
                                 {{ trackInsights.errorMessage.value }}
                             </p>
                             <button
                                 class="text-xs text-red-300 underline underline-offset-2"
-                                @click="track && trackInsights.regenerate(track)"
+                                @click="
+                                    track && trackInsights.regenerate(track)
+                                "
                             >
                                 Try again
                             </button>
@@ -167,23 +213,41 @@ onUnmounted(() => {
                     </template>
 
                     <!-- Ready -->
-                    <template v-else-if="trackInsights.isReady.value && trackInsights.localizedInsights.value">
+                    <template
+                        v-else-if="
+                            trackInsights.isReady.value &&
+                            trackInsights.localizedInsights.value
+                        "
+                    >
                         <!-- About the track -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <Music class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <Music
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     About
                                 </span>
                             </div>
-                            <p class="text-sm leading-relaxed">{{ trackInsights.localizedInsights.value.summary }}</p>
+                            <p class="text-sm leading-relaxed">
+                                {{
+                                    trackInsights.localizedInsights.value
+                                        .summary
+                                }}
+                            </p>
                         </section>
 
                         <!-- Mood -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <Smile class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <Smile
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     Mood
                                 </span>
                             </div>
@@ -197,14 +261,19 @@ onUnmounted(() => {
                         <!-- Themes -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <Hash class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <Hash
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     Themes
                                 </span>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <span
-                                    v-for="theme in trackInsights.localizedInsights.value.themes"
+                                    v-for="theme in trackInsights
+                                        .localizedInsights.value.themes"
                                     :key="theme"
                                     class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
                                 >
@@ -216,25 +285,39 @@ onUnmounted(() => {
                         <!-- Meaning -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <BookOpen class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <BookOpen
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     Meaning
                                 </span>
                             </div>
-                            <p class="text-sm leading-relaxed italic">{{ trackInsights.localizedInsights.value.meaning }}</p>
+                            <p class="text-sm leading-relaxed italic">
+                                {{
+                                    trackInsights.localizedInsights.value
+                                        .meaning
+                                }}
+                            </p>
                         </section>
 
                         <!-- Trivia -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <Lightbulb class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <Lightbulb
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     Trivia
                                 </span>
                             </div>
                             <ul class="space-y-2">
                                 <li
-                                    v-for="fact in trackInsights.localizedInsights.value.trivia"
+                                    v-for="fact in trackInsights
+                                        .localizedInsights.value.trivia"
                                     :key="fact"
                                     class="border-l-2 border-purple-500 pl-3 text-sm leading-relaxed"
                                 >
@@ -246,14 +329,19 @@ onUnmounted(() => {
                         <!-- You might also like -->
                         <section class="space-y-2">
                             <div class="flex items-center gap-1.5">
-                                <Compass class="h-3.5 w-3.5 text-muted-foreground" />
-                                <span class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                                <Compass
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span
+                                    class="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+                                >
                                     You might also like
                                 </span>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <span
-                                    v-for="item in trackInsights.localizedInsights.value.similar"
+                                    v-for="item in trackInsights
+                                        .localizedInsights.value.similar"
                                     :key="item"
                                     class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
                                 >

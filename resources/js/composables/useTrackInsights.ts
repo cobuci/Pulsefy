@@ -1,6 +1,16 @@
 import { computed, ref } from 'vue';
-import { status as trackInsightsStatus, store as trackInsightsStore, regenerate as trackInsightsRegenerate } from '@/actions/App/Http/Controllers/Player/TrackInsightsController';
-import type { NowPlaying, TrackInsightsData, TrackInsightStatus, TrackInsightsResponse, TrackInsightsUpdatedEvent } from '@/types/spotify';
+import {
+    status as trackInsightsStatus,
+    store as trackInsightsStore,
+    regenerate as trackInsightsRegenerate,
+} from '@/actions/App/Http/Controllers/Player/TrackInsightsController';
+import type {
+    NowPlaying,
+    TrackInsightsData,
+    TrackInsightStatus,
+    TrackInsightsResponse,
+    TrackInsightsUpdatedEvent,
+} from '@/types/spotify';
 import { getCsrfToken } from '@/utils/csrf';
 
 export type InsightsLanguage = 'en' | 'pt';
@@ -12,7 +22,9 @@ export function useTrackInsights() {
     const isBusy = ref(false);
     const language = ref<InsightsLanguage>('en');
 
-    const isLoading = computed(() => status.value === 'queued' || status.value === 'processing');
+    const isLoading = computed(
+        () => status.value === 'queued' || status.value === 'processing',
+    );
     const isReady = computed(() => status.value === 'ready');
     const hasFailed = computed(() => status.value === 'failed');
 
@@ -146,7 +158,10 @@ export function useTrackInsights() {
         }
     }
 
-    function handleBroadcast(trackId: string, event: TrackInsightsUpdatedEvent): void {
+    function handleBroadcast(
+        trackId: string,
+        event: TrackInsightsUpdatedEvent,
+    ): void {
         if (event.trackId !== trackId) {
             return;
         }
@@ -166,9 +181,12 @@ export function useTrackInsights() {
     function listenForUpdates(trackId: string): () => void {
         const channel = window.Echo.channel(`track-insights.${trackId}`);
 
-        channel.listen('.TrackInsights.Updated', (event: TrackInsightsUpdatedEvent) => {
-            handleBroadcast(trackId, event);
-        });
+        channel.listen(
+            '.TrackInsights.Updated',
+            (event: TrackInsightsUpdatedEvent) => {
+                handleBroadcast(trackId, event);
+            },
+        );
 
         return () => {
             channel.stopListening('.TrackInsights.Updated');

@@ -13,10 +13,14 @@ defineProps<{
 <template>
     <section class="grid gap-4 lg:grid-cols-3">
         <div class="mb-2 lg:col-span-3">
-            <p class="text-xs font-semibold tracking-[0.2em] text-accent uppercase">
+            <p
+                class="text-xs font-semibold tracking-[0.2em] text-accent uppercase"
+            >
                 Good evening, {{ greetingName }}
             </p>
-            <h1 class="mt-2 max-w-2xl font-display text-4xl font-bold sm:text-5xl">
+            <h1
+                class="mt-2 max-w-2xl font-display text-4xl font-bold sm:text-5xl"
+            >
                 {{ headlineText }}
             </h1>
         </div>

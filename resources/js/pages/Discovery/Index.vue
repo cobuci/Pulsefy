@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { router, useHttp, usePoll } from '@inertiajs/vue3';
-import { Heart, Pause, Play, RefreshCw, SkipForward, Sparkles, X } from 'lucide-vue-next';
+import {
+    Heart,
+    Pause,
+    Play,
+    RefreshCw,
+    SkipForward,
+    Sparkles,
+    X,
+} from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { usePlayer } from '@/composables/usePlayer';
-import { useSwipe } from '@/composables/useSwipe';
 import {
     like as discoveryLike,
     skip as discoverySkip,
     ignore as discoveryIgnore,
     retry as discoveryRetry,
 } from '@/actions/App/Http/Controllers/Discovery/DiscoveryController';
+import { usePlayer } from '@/composables/usePlayer';
+import { useSwipe } from '@/composables/useSwipe';
 import { index as discoveryIndex } from '@/routes/discovery';
 
 interface Recommendation {
@@ -81,7 +89,9 @@ watch(
     { immediate: true },
 );
 
-const showGenerating = computed(() => props.status === 'generating' && !pollTimedOut.value);
+const showGenerating = computed(
+    () => props.status === 'generating' && !pollTimedOut.value,
+);
 const showFailed = computed(
     () => props.status === 'failed' || pollTimedOut.value,
 );
@@ -93,7 +103,10 @@ const displayError = computed(() => {
         return 'Recommendation generation is taking longer than expected. Please try again.';
     }
 
-    return props.error_message ?? 'Recommendation generation failed. Please try again.';
+    return (
+        props.error_message ??
+        'Recommendation generation failed. Please try again.'
+    );
 });
 
 const retrying = ref(false);
@@ -117,11 +130,15 @@ function retryGeneration() {
         },
     );
 }
-const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } = usePlayer();
+const { playTrack, pausePlayback, nowPlayingData, isPlayingTrack } =
+    usePlayer();
 
 function ignore() {
     const track = currentTrack.value;
-    if (!track || processing.value) return;
+
+    if (!track || processing.value) {
+        return;
+    }
 
     processing.value = true;
     ignoreHttp.spotify_id = track.spotify_id;
@@ -140,21 +157,33 @@ const cardRef = ref<HTMLElement | null>(null);
 const stats = ref({ saved: 0, skipped: 0 });
 const processing = ref(false);
 
-const currentTrack = computed(() => props.recommendations[currentIndex.value] ?? null);
+const currentTrack = computed(
+    () => props.recommendations[currentIndex.value] ?? null,
+);
 
 const stackEmpty = computed(
     () =>
         showReady.value &&
-        (props.recommendations.length === 0 || currentIndex.value >= props.recommendations.length),
+        (props.recommendations.length === 0 ||
+            currentIndex.value >= props.recommendations.length),
 );
 
 const isCurrentTrackPlaying = computed(() => {
-    if (!currentTrack.value) return false;
-    return isPlayingTrack.value(currentTrack.value.spotify_id) && nowPlayingData.value?.is_playing === true;
+    if (!currentTrack.value) {
+        return false;
+    }
+
+    return (
+        isPlayingTrack.value(currentTrack.value.spotify_id) &&
+        nowPlayingData.value?.is_playing === true
+    );
 });
 
 function togglePlayback() {
-    if (!currentTrack.value) return;
+    if (!currentTrack.value) {
+        return;
+    }
+
     if (isCurrentTrackPlaying.value) {
         pausePlayback();
     } else {
@@ -170,7 +199,10 @@ watch(currentTrack, (track) => {
 
 function commit(dir: 'left' | 'right') {
     const track = currentTrack.value;
-    if (!track || processing.value) return;
+
+    if (!track || processing.value) {
+        return;
+    }
 
     processing.value = true;
 
@@ -238,7 +270,11 @@ onUnmounted(() => {
 
 function onKey(e: KeyboardEvent) {
     const tag = (e.target as HTMLElement)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        return;
+    }
+
     if (e.key === 'ArrowRight') {
         e.preventDefault();
         commit('right');
@@ -265,52 +301,77 @@ const skipOverlayOpacity = computed(() =>
 <template>
     <div class="mx-auto max-w-5xl px-6 py-10">
         <div class="mb-8 text-center">
-            <div class="text-accent inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em]">
+            <div
+                class="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.2em] text-accent uppercase"
+            >
                 <Sparkles class="h-3 w-3" />
                 Discover
             </div>
-            <h1 class="mt-3 text-4xl font-bold sm:text-5xl">Find your next obsession</h1>
-            <p class="text-muted-foreground mt-3 text-sm">
+            <h1 class="mt-3 text-4xl font-bold sm:text-5xl">
+                Find your next obsession
+            </h1>
+            <p class="mt-3 text-sm text-muted-foreground">
                 Swipe right to save · left to skip ·
-                <kbd class="bg-secondary text-foreground/80 mx-0.5 rounded px-1.5 py-0.5">←</kbd>
-                <kbd class="bg-secondary text-foreground/80 mx-0.5 rounded px-1.5 py-0.5">→</kbd>
+                <kbd
+                    class="mx-0.5 rounded bg-secondary px-1.5 py-0.5 text-foreground/80"
+                    >←</kbd
+                >
+                <kbd
+                    class="mx-0.5 rounded bg-secondary px-1.5 py-0.5 text-foreground/80"
+                    >→</kbd
+                >
                 arrow keys
             </p>
         </div>
 
         <div v-if="showGenerating" class="mx-auto w-full max-w-[380px]">
-            <div class="bg-card border-border aspect-[3/4] animate-pulse rounded-3xl border" />
+            <div
+                class="aspect-[3/4] animate-pulse rounded-3xl border border-border bg-card"
+            />
             <div class="mt-4 text-center">
-                <p class="text-muted-foreground flex items-center justify-center gap-2 text-sm">
-                    <Sparkles class="text-accent h-3.5 w-3.5 animate-pulse" />
+                <p
+                    class="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+                >
+                    <Sparkles class="h-3.5 w-3.5 animate-pulse text-accent" />
                     Generating your recommendations…
                 </p>
             </div>
             <div class="mt-6 flex items-center justify-center gap-5">
-                <div class="bg-card border-border h-14 w-14 animate-pulse rounded-full border" />
-                <div class="bg-card border-border h-12 w-12 animate-pulse rounded-full border" />
-                <div class="bg-card border-border h-14 w-14 animate-pulse rounded-full border" />
+                <div
+                    class="h-14 w-14 animate-pulse rounded-full border border-border bg-card"
+                />
+                <div
+                    class="h-12 w-12 animate-pulse rounded-full border border-border bg-card"
+                />
+                <div
+                    class="h-14 w-14 animate-pulse rounded-full border border-border bg-card"
+                />
             </div>
         </div>
 
         <div
             v-else-if="showFailed"
-            class="border-border mx-auto grid w-full max-w-[380px] place-items-center rounded-3xl border border-dashed px-6 py-16 text-center aspect-[3/4]"
+            class="mx-auto grid aspect-[3/4] w-full max-w-[380px] place-items-center rounded-3xl border border-dashed border-border px-6 py-16 text-center"
         >
             <div>
-                <Sparkles class="text-destructive mx-auto mb-3 h-8 w-8" />
-                <h3 class="text-xl font-bold">Could not generate recommendations</h3>
-                <p class="text-muted-foreground mt-2 text-sm">
+                <Sparkles class="mx-auto mb-3 h-8 w-8 text-destructive" />
+                <h3 class="text-xl font-bold">
+                    Could not generate recommendations
+                </h3>
+                <p class="mt-2 text-sm text-muted-foreground">
                     {{ displayError }}
                 </p>
                 <button
                     v-if="can_retry || pollTimedOut"
                     type="button"
-                    class="bg-primary text-primary-foreground mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
+                    class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
                     :disabled="retrying"
                     @click="retryGeneration"
                 >
-                    <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': retrying }" />
+                    <RefreshCw
+                        class="h-4 w-4"
+                        :class="{ 'animate-spin': retrying }"
+                    />
                     Try again
                 </button>
             </div>
@@ -318,39 +379,47 @@ const skipOverlayOpacity = computed(() =>
 
         <div
             v-else-if="showEmpty"
-            class="border-border mx-auto grid w-full max-w-[380px] place-items-center rounded-3xl border border-dashed px-6 py-16 text-center aspect-[3/4]"
+            class="mx-auto grid aspect-[3/4] w-full max-w-[380px] place-items-center rounded-3xl border border-dashed border-border px-6 py-16 text-center"
         >
             <div>
-                <Sparkles class="text-accent mx-auto mb-3 h-8 w-8" />
+                <Sparkles class="mx-auto mb-3 h-8 w-8 text-accent" />
                 <h3 class="text-xl font-bold">No recommendations today</h3>
-                <p class="text-muted-foreground mt-2 text-sm">
-                    We could not find new tracks for your taste profile. Sync your Spotify listening data and try again.
+                <p class="mt-2 text-sm text-muted-foreground">
+                    We could not find new tracks for your taste profile. Sync
+                    your Spotify listening data and try again.
                 </p>
                 <button
                     v-if="can_retry"
                     type="button"
-                    class="bg-primary text-primary-foreground mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
+                    class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
                     :disabled="retrying"
                     @click="retryGeneration"
                 >
-                    <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': retrying }" />
+                    <RefreshCw
+                        class="h-4 w-4"
+                        :class="{ 'animate-spin': retrying }"
+                    />
                     Try again
                 </button>
             </div>
         </div>
 
         <div v-else-if="showReady">
-            <div class="relative mx-auto mb-8 aspect-[3/4] w-full max-w-[380px]">
+            <div
+                class="relative mx-auto mb-8 aspect-[3/4] w-full max-w-[380px]"
+            >
                 <div
                     v-if="stackEmpty"
-                    class="border-border absolute inset-0 grid place-items-center rounded-3xl border border-dashed px-6 text-center"
+                    class="absolute inset-0 grid place-items-center rounded-3xl border border-dashed border-border px-6 text-center"
                 >
                     <div>
-                        <Sparkles class="text-accent mx-auto mb-3 h-8 w-8 animate-pulse" />
+                        <Sparkles
+                            class="mx-auto mb-3 h-8 w-8 animate-pulse text-accent"
+                        />
                         <h3 class="text-xl font-bold">Come back tomorrow ✨</h3>
-                        <p class="text-muted-foreground mt-1 text-sm">
-                            You've gone through all of today's recommendations. New ones will be ready
-                            tomorrow.
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            You've gone through all of today's recommendations.
+                            New ones will be ready tomorrow.
                         </p>
                     </div>
                 </div>
@@ -359,7 +428,7 @@ const skipOverlayOpacity = computed(() =>
                     v-else-if="currentTrack"
                     ref="cardRef"
                     :style="cardStyle"
-                    class="border-border bg-card absolute inset-0 cursor-grab overflow-hidden rounded-3xl border select-none active:cursor-grabbing touch-none"
+                    class="absolute inset-0 cursor-grab touch-none overflow-hidden rounded-3xl border border-border bg-card select-none active:cursor-grabbing"
                 >
                     <div class="absolute inset-0">
                         <img
@@ -370,51 +439,79 @@ const skipOverlayOpacity = computed(() =>
                         />
                         <div
                             v-else
-                            class="from-accent/30 to-secondary absolute inset-0 bg-gradient-to-br"
+                            class="absolute inset-0 bg-gradient-to-br from-accent/30 to-secondary"
                         />
-                        <div class="from-transparent to-background absolute inset-0 bg-gradient-to-b via-transparent" />
+                        <div
+                            class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background"
+                        />
                     </div>
 
-                    <div class="absolute inset-0 rounded-3xl ring-1 ring-inset ring-white/10" />
+                    <div
+                        class="absolute inset-0 rounded-3xl ring-1 ring-white/10 ring-inset"
+                    />
 
                     <div
                         :style="{ opacity: likeOverlayOpacity }"
-                        class="border-accent text-accent bg-accent/10 absolute top-6 left-6 rotate-[-12deg] rounded-md border-2 px-3 py-1.5 text-lg font-black tracking-widest backdrop-blur-md"
+                        class="absolute top-6 left-6 rotate-[-12deg] rounded-md border-2 border-accent bg-accent/10 px-3 py-1.5 text-lg font-black tracking-widest text-accent backdrop-blur-md"
                     >
                         SAVE
                     </div>
 
                     <div
                         :style="{ opacity: skipOverlayOpacity }"
-                        class="border-destructive text-destructive bg-destructive/10 absolute top-6 right-6 rotate-[12deg] rounded-md border-2 px-3 py-1.5 text-lg font-black tracking-widest backdrop-blur-md"
+                        class="absolute top-6 right-6 rotate-[12deg] rounded-md border-2 border-destructive bg-destructive/10 px-3 py-1.5 text-lg font-black tracking-widest text-destructive backdrop-blur-md"
                     >
                         SKIP
                     </div>
 
-                    <div class="bg-background/40 border-accent/30 absolute top-4 left-4 flex items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-md">
-                        <Sparkles class="text-accent h-3 w-3" />
-                        <span class="text-accent text-[11px] font-bold tabular-nums">
+                    <div
+                        class="absolute top-4 left-4 flex items-center gap-1.5 rounded-full border border-accent/30 bg-background/40 px-2.5 py-1 backdrop-blur-md"
+                    >
+                        <Sparkles class="h-3 w-3 text-accent" />
+                        <span
+                            class="text-[11px] font-bold text-accent tabular-nums"
+                        >
                             {{ currentTrack.match_score }}% match
                         </span>
                     </div>
 
                     <div class="absolute inset-x-0 bottom-0 space-y-1 p-6">
-                        <h2 class="text-2xl font-bold leading-tight">{{ currentTrack.name }}</h2>
-                        <p v-if="currentTrack.artist" class="text-foreground/80 text-sm font-medium">
+                        <h2 class="text-2xl leading-tight font-bold">
+                            {{ currentTrack.name }}
+                        </h2>
+                        <p
+                            v-if="currentTrack.artist"
+                            class="text-sm font-medium text-foreground/80"
+                        >
                             {{ currentTrack.artist }}
                         </p>
-                        <div class="flex items-center justify-between gap-3 pt-1">
-                            <p v-if="currentTrack.album" class="text-muted-foreground truncate text-sm">
+                        <div
+                            class="flex items-center justify-between gap-3 pt-1"
+                        >
+                            <p
+                                v-if="currentTrack.album"
+                                class="truncate text-sm text-muted-foreground"
+                            >
                                 {{ currentTrack.album }}
                             </p>
                             <div v-else class="flex-1" />
                             <button
-                                class="bg-background/40 hover:bg-background/70 text-foreground flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-110"
-                                :aria-label="isCurrentTrackPlaying ? 'Pause' : 'Play'"
+                                class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-background/40 text-foreground backdrop-blur-md transition-all hover:scale-110 hover:bg-background/70"
+                                :aria-label="
+                                    isCurrentTrackPlaying ? 'Pause' : 'Play'
+                                "
                                 @click.stop="togglePlayback"
                             >
-                                <Pause v-if="isCurrentTrackPlaying" class="h-4 w-4" fill="currentColor" />
-                                <Play v-else class="h-4 w-4" fill="currentColor" />
+                                <Pause
+                                    v-if="isCurrentTrackPlaying"
+                                    class="h-4 w-4"
+                                    fill="currentColor"
+                                />
+                                <Play
+                                    v-else
+                                    class="h-4 w-4"
+                                    fill="currentColor"
+                                />
                             </button>
                         </div>
                     </div>
@@ -424,7 +521,7 @@ const skipOverlayOpacity = computed(() =>
                     <div
                         v-for="offset in [1, 2]"
                         :key="offset"
-                        class="border-border bg-card pointer-events-none absolute inset-0 rounded-3xl border"
+                        class="pointer-events-none absolute inset-0 rounded-3xl border border-border bg-card"
                         :style="{
                             transform: `scale(${1 - offset * 0.05}) translateY(${offset * 14}px)`,
                             opacity: 1 - offset * 0.25,
@@ -436,13 +533,15 @@ const skipOverlayOpacity = computed(() =>
 
             <div class="flex items-center justify-center gap-5">
                 <div class="group relative flex flex-col items-center">
-                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                    <span
+                        class="pointer-events-none absolute -top-9 rounded bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    >
                         Dislike
                     </span>
                     <button
                         :disabled="stackEmpty || processing"
                         aria-label="Skip"
-                        class="border-border bg-card hover:border-destructive/60 hover:text-destructive grid h-14 w-14 cursor-pointer place-items-center rounded-full border transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                        class="grid h-14 w-14 cursor-pointer place-items-center rounded-full border border-border bg-card transition-all hover:scale-105 hover:border-destructive/60 hover:text-destructive disabled:opacity-40 disabled:hover:scale-100"
                         @click="commit('left')"
                     >
                         <X class="h-6 w-6" />
@@ -450,13 +549,15 @@ const skipOverlayOpacity = computed(() =>
                 </div>
 
                 <div class="group relative flex flex-col items-center">
-                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                    <span
+                        class="pointer-events-none absolute -top-9 rounded bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    >
                         Ignore
                     </span>
                     <button
                         :disabled="stackEmpty || processing"
                         aria-label="Ignore"
-                        class="border-border bg-card hover:border-muted-foreground/60 hover:text-muted-foreground grid h-12 w-12 cursor-pointer place-items-center rounded-full border transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
+                        class="grid h-12 w-12 cursor-pointer place-items-center rounded-full border border-border bg-card transition-all hover:scale-105 hover:border-muted-foreground/60 hover:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         @click="ignore"
                     >
                         <SkipForward class="h-5 w-5" />
@@ -464,13 +565,15 @@ const skipOverlayOpacity = computed(() =>
                 </div>
 
                 <div class="group relative flex flex-col items-center">
-                    <span class="bg-popover text-popover-foreground pointer-events-none absolute -top-9 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100">
+                    <span
+                        class="pointer-events-none absolute -top-9 rounded bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    >
                         Save
                     </span>
                     <button
                         :disabled="stackEmpty || processing"
                         aria-label="Save"
-                        class="bg-primary text-primary-foreground grid h-14 w-14 cursor-pointer place-items-center rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                        class="grid h-14 w-14 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
                         @click="commit('right')"
                     >
                         <Heart class="h-6 w-6" fill="currentColor" />
@@ -478,15 +581,21 @@ const skipOverlayOpacity = computed(() =>
                 </div>
             </div>
 
-            <div class="text-muted-foreground mt-8 flex items-center justify-center gap-6 text-xs">
+            <div
+                class="mt-8 flex items-center justify-center gap-6 text-xs text-muted-foreground"
+            >
                 <span>
                     Saved:
-                    <span class="text-accent tabular-nums font-semibold">{{ stats.saved }}</span>
+                    <span class="font-semibold text-accent tabular-nums">{{
+                        stats.saved
+                    }}</span>
                 </span>
                 <span class="opacity-50">·</span>
                 <span>
                     Skipped:
-                    <span class="tabular-nums font-semibold">{{ stats.skipped }}</span>
+                    <span class="font-semibold tabular-nums">{{
+                        stats.skipped
+                    }}</span>
                 </span>
             </div>
         </div>

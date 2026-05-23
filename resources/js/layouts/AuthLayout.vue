@@ -18,7 +18,11 @@ const contextMenuState = contextMenu.state;
 </script>
 
 <template>
-    <AuthLayout :title="title" :description="description" @contextmenu="openGlobalContextMenu">
+    <AuthLayout
+        :title="title"
+        :description="description"
+        @contextmenu="openGlobalContextMenu"
+    >
         <slot />
     </AuthLayout>
 

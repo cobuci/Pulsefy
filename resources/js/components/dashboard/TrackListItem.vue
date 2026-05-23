@@ -55,7 +55,13 @@ function handlePause() {
         class="group flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary/60"
         @mouseenter="isHovered = true"
         @mouseleave="isHovered = false"
-        @contextmenu="track && openTrackContextMenu($event, track, { isSaved: isSaved, onSaveToggled: (saved) => emit('saveToggled', track, saved) })"
+        @contextmenu="
+            track &&
+            openTrackContextMenu($event, track, {
+                isSaved: isSaved,
+                onSaveToggled: (saved) => emit('saveToggled', track, saved),
+            })
+        "
     >
         <button
             v-if="!loading && track"
@@ -93,7 +99,9 @@ function handlePause() {
                 v-else
                 class="absolute inset-0 m-auto flex items-end justify-center gap-0.5"
             >
-                <span class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0" />
+                <span
+                    class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0"
+                />
                 <span
                     class="eq-bar h-3 w-0.5 rounded-full bg-green-500 transition-opacity duration-150 group-hover:opacity-0"
                     style="animation-delay: 0.15s"

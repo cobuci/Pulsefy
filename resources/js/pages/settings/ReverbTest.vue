@@ -89,9 +89,12 @@ onUnmounted(() => {
             description="Dispatch a queued job and verify realtime toast delivery through Reverb."
         />
 
-        <div class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card">
+        <div
+            class="rounded-xl border border-border/60 bg-card/50 p-4 shadow-card"
+        >
             <p class="mb-3 text-sm text-muted-foreground">
-                Click to dispatch a test job. When the job runs, a Reverb event will trigger a toast on this page.
+                Click to dispatch a test job. When the job runs, a Reverb event
+                will trigger a toast on this page.
             </p>
             <button
                 type="button"
