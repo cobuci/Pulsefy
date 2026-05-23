@@ -50,12 +50,19 @@
     },
     "scripts": {
         "setup": [
+            "Composer\\Config::disableProcessTimeout",
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
+            "@php artisan key:generate --ansi",
+            "@php artisan storage:link --ansi",
+            "@php artisan migrate --force --ansi",
             "npm install",
             "npm run build"
+        ],
+        "setup:sail": [
+            "Composer\\Config::disableProcessTimeout",
+            "composer install",
+            "bash bin/setup-sail.sh"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -91,9 +98,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
+            "@setup"
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
