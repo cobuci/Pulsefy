@@ -32,5 +32,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="LASTFM_API_KEY" value="test-key"/>
+        <env name="SPOTIFY_CLIENT_ID" value="test-client-id"/>
+        <env name="SPOTIFY_CLIENT_SECRET" value="test-client-secret"/>
+        <env name="GEMINI_API_KEY" value="test-gemini-key"/>
     </php>
 </phpunit>
