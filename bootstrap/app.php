@@ -18,10 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        $isProduction = ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production') === 'production';
+
         $middleware->web(append: array_values(array_filter([
             HandleAppearance::class,
             HandleInertiaRequests::class,
-            app()->isProduction() ? null : AddLinkHeadersForPreloadedAssets::class,
+            $isProduction ? null : AddLinkHeadersForPreloadedAssets::class,
         ])));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
