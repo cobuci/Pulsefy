@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router, useHttp, usePoll } from '@inertiajs/vue3';
+import { router, useHttp, usePage } from '@inertiajs/vue3';
 import {
     Heart,
     Pause,
@@ -31,8 +31,7 @@ interface Recommendation {
 
 type DiscoveryStatus = 'generating' | 'ready' | 'failed' | 'empty';
 
-const POLL_INTERVAL_MS = 4000;
-const MAX_POLL_ATTEMPTS = 45;
+const WAIT_TIMEOUT_MS = 180_000;
 
 const props = defineProps<{
     status: DiscoveryStatus;
@@ -53,9 +52,15 @@ defineOptions({
     },
 });
 
-const pollAttempts = ref(0);
-const pollTimedOut = ref(false);
+const waitTimedOut = ref(false);
 const currentIndex = ref(0);
+const page = usePage<{
+    auth: {
+        user?: {
+            id: number;
+        };
+    };
+}>();
 
 const showReady = computed(() => props.status === 'ready');
 
@@ -66,7 +71,7 @@ const stackEmpty = computed(
             currentIndex.value >= props.recommendations.length),
 );
 
-const shouldPoll = computed(
+const shouldWaitForBroadcast = computed(
     () =>
         props.status === 'generating' ||
         (props.status === 'ready' &&
@@ -74,50 +79,91 @@ const shouldPoll = computed(
             stackEmpty.value),
 );
 
-const { start: startPolling, stop: stopPolling } = usePoll(
-    POLL_INTERVAL_MS,
-    {
-        only: ['status', 'recommendations', 'error_message', 'can_retry', 'is_topping_up'],
-        onFinish: () => {
-            if (!shouldPoll.value) {
-                return;
-            }
+let waitTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-            pollAttempts.value++;
+function clearWaitTimeout(): void {
+    if (waitTimeoutId !== undefined) {
+        clearTimeout(waitTimeoutId);
+        waitTimeoutId = undefined;
+    }
+}
 
-            if (pollAttempts.value >= MAX_POLL_ATTEMPTS) {
-                pollTimedOut.value = true;
-                stopPolling();
-            }
-        },
-    },
-    { autoStart: false },
-);
+function reloadDiscoveryProps(): void {
+    router.reload({
+        only: [
+            'status',
+            'recommendations',
+            'error_message',
+            'can_retry',
+            'is_topping_up',
+        ],
+    });
+}
 
 watch(
-    shouldPoll,
-    (poll) => {
-        if (poll) {
-            pollAttempts.value = 0;
-            pollTimedOut.value = false;
-            startPolling();
-        } else {
-            stopPolling();
+    shouldWaitForBroadcast,
+    (waiting) => {
+        clearWaitTimeout();
+
+        if (!waiting) {
+            waitTimedOut.value = false;
+
+            return;
         }
+
+        waitTimedOut.value = false;
+        waitTimeoutId = setTimeout(() => {
+            waitTimedOut.value = true;
+        }, WAIT_TIMEOUT_MS);
     },
     { immediate: true },
 );
 
+onMounted(() => {
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId || typeof window === 'undefined' || !window.Echo) {
+        return;
+    }
+
+    window.Echo.private(`App.Models.User.${userId}`).listen(
+        '.Discovery.RecommendationsUpdated',
+        () => {
+            if (!shouldWaitForBroadcast.value) {
+                return;
+            }
+
+            clearWaitTimeout();
+            waitTimedOut.value = false;
+            reloadDiscoveryProps();
+        },
+    );
+});
+
+onUnmounted(() => {
+    clearWaitTimeout();
+
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId || typeof window === 'undefined' || !window.Echo) {
+        return;
+    }
+
+    window.Echo.private(`App.Models.User.${userId}`).stopListening(
+        '.Discovery.RecommendationsUpdated',
+    );
+});
+
 const showGenerating = computed(
-    () => props.status === 'generating' && !pollTimedOut.value,
+    () => props.status === 'generating' && !waitTimedOut.value,
 );
 const showFailed = computed(
-    () => props.status === 'failed' || pollTimedOut.value,
+    () => props.status === 'failed' || waitTimedOut.value,
 );
 const showEmpty = computed(() => props.status === 'empty');
 
 const displayError = computed(() => {
-    if (pollTimedOut.value) {
+    if (waitTimedOut.value) {
         return 'Recommendation generation is taking longer than expected. Please try again.';
     }
 
@@ -130,7 +176,7 @@ const displayError = computed(() => {
 const retrying = ref(false);
 
 function retryGeneration() {
-    if (!props.can_retry && !pollTimedOut.value) {
+    if (!props.can_retry && !waitTimedOut.value) {
         return;
     }
 
@@ -142,8 +188,7 @@ function retryGeneration() {
             preserveScroll: true,
             onFinish: () => {
                 retrying.value = false;
-                pollAttempts.value = 0;
-                pollTimedOut.value = false;
+                waitTimedOut.value = false;
             },
         },
     );
@@ -346,7 +391,7 @@ const skipOverlayOpacity = computed(() =>
                     Generating your recommendations…
                 </p>
             </div>
-            <div class="mt-6 flex items-center justify-center gap-5">
+            <div class="mt-6 flex items-end justify-between px-2">
                 <div
                     class="h-14 w-14 animate-pulse rounded-full border border-border bg-card"
                 />
@@ -372,7 +417,7 @@ const skipOverlayOpacity = computed(() =>
                     {{ displayError }}
                 </p>
                 <button
-                    v-if="can_retry || pollTimedOut"
+                    v-if="can_retry || waitTimedOut"
                     type="button"
                     class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
                     :disabled="retrying"
@@ -414,10 +459,8 @@ const skipOverlayOpacity = computed(() =>
             </div>
         </div>
 
-        <div v-else-if="showReady">
-            <div
-                class="relative mx-auto mb-8 aspect-[3/4] w-full max-w-[380px]"
-            >
+        <div v-else-if="showReady" class="mx-auto w-full max-w-[380px]">
+            <div class="relative mb-8 aspect-[3/4] w-full">
                 <div
                     v-if="stackEmpty"
                     class="absolute inset-0 grid place-items-center rounded-3xl border border-dashed border-border px-6 text-center"
@@ -550,12 +593,12 @@ const skipOverlayOpacity = computed(() =>
                 </template>
             </div>
 
-            <div class="flex items-center justify-center gap-5">
+            <div class="flex items-end justify-between px-2">
                 <div class="group relative flex flex-col items-center">
                     <span
                         class="pointer-events-none absolute -top-9 rounded bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 transition-opacity group-hover:opacity-100"
                     >
-                        Dislike
+                        Skip
                     </span>
                     <button
                         :disabled="stackEmpty || processing"
@@ -600,9 +643,7 @@ const skipOverlayOpacity = computed(() =>
                 </div>
             </div>
 
-            <div
-                class="mt-8 flex items-center justify-center gap-6 text-xs text-muted-foreground"
-            >
+            <div class="mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
                 <span>
                     Saved:
                     <span class="font-semibold text-accent tabular-nums">{{

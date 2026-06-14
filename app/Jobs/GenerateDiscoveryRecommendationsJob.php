@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\DailyRecommendationStatus;
+use App\Events\Discovery\DiscoveryRecommendationsUpdated;
 use App\Models\DailyRecommendation;
 use App\Models\User;
 use App\Services\Discovery\DiscoveryService;
@@ -55,6 +56,8 @@ final class GenerateDiscoveryRecommendationsJob implements ShouldBeUnique, Shoul
         }
 
         $discovery->generate($this->user);
+
+        DiscoveryRecommendationsUpdated::dispatch($this->user->id);
     }
 
     public function failed(?Throwable $exception): void
@@ -72,5 +75,7 @@ final class GenerateDiscoveryRecommendationsJob implements ShouldBeUnique, Shoul
             ->first();
 
         $daily?->markFailed($message);
+
+        DiscoveryRecommendationsUpdated::dispatch($this->user->id);
     }
 }
