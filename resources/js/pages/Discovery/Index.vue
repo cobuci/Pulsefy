@@ -39,6 +39,7 @@ const props = defineProps<{
     recommendations: Recommendation[];
     error_message: string | null;
     can_retry: boolean;
+    is_topping_up: boolean;
 }>();
 
 defineOptions({
@@ -54,13 +55,31 @@ defineOptions({
 
 const pollAttempts = ref(0);
 const pollTimedOut = ref(false);
+const currentIndex = ref(0);
+
+const showReady = computed(() => props.status === 'ready');
+
+const stackEmpty = computed(
+    () =>
+        showReady.value &&
+        (props.recommendations.length === 0 ||
+            currentIndex.value >= props.recommendations.length),
+);
+
+const shouldPoll = computed(
+    () =>
+        props.status === 'generating' ||
+        (props.status === 'ready' &&
+            props.is_topping_up &&
+            stackEmpty.value),
+);
 
 const { start: startPolling, stop: stopPolling } = usePoll(
     POLL_INTERVAL_MS,
     {
-        only: ['status', 'recommendations', 'error_message', 'can_retry'],
+        only: ['status', 'recommendations', 'error_message', 'can_retry', 'is_topping_up'],
         onFinish: () => {
-            if (props.status !== 'generating') {
+            if (!shouldPoll.value) {
                 return;
             }
 
@@ -76,9 +95,9 @@ const { start: startPolling, stop: stopPolling } = usePoll(
 );
 
 watch(
-    () => props.status,
-    (status) => {
-        if (status === 'generating') {
+    shouldPoll,
+    (poll) => {
+        if (poll) {
             pollAttempts.value = 0;
             pollTimedOut.value = false;
             startPolling();
@@ -96,7 +115,6 @@ const showFailed = computed(
     () => props.status === 'failed' || pollTimedOut.value,
 );
 const showEmpty = computed(() => props.status === 'empty');
-const showReady = computed(() => props.status === 'ready');
 
 const displayError = computed(() => {
     if (pollTimedOut.value) {
@@ -152,20 +170,12 @@ function ignore() {
     });
 }
 
-const currentIndex = ref(0);
 const cardRef = ref<HTMLElement | null>(null);
 const stats = ref({ saved: 0, skipped: 0 });
 const processing = ref(false);
 
 const currentTrack = computed(
     () => props.recommendations[currentIndex.value] ?? null,
-);
-
-const stackEmpty = computed(
-    () =>
-        showReady.value &&
-        (props.recommendations.length === 0 ||
-            currentIndex.value >= props.recommendations.length),
 );
 
 const isCurrentTrackPlaying = computed(() => {
@@ -383,7 +393,7 @@ const skipOverlayOpacity = computed(() =>
         >
             <div>
                 <Sparkles class="mx-auto mb-3 h-8 w-8 text-accent" />
-                <h3 class="text-xl font-bold">No recommendations today</h3>
+                <h3 class="text-xl font-bold">No recommendations yet</h3>
                 <p class="mt-2 text-sm text-muted-foreground">
                     We could not find new tracks for your taste profile. Sync
                     your Spotify listening data and try again.
@@ -416,10 +426,19 @@ const skipOverlayOpacity = computed(() =>
                         <Sparkles
                             class="mx-auto mb-3 h-8 w-8 animate-pulse text-accent"
                         />
-                        <h3 class="text-xl font-bold">Come back tomorrow ✨</h3>
+                        <h3 class="text-xl font-bold">
+                            {{
+                                is_topping_up
+                                    ? 'Finding more tracks…'
+                                    : "You're all caught up"
+                            }}
+                        </h3>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            You've gone through all of today's recommendations.
-                            New ones will be ready tomorrow.
+                            {{
+                                is_topping_up
+                                    ? 'New recommendations are on the way. Check back in a moment.'
+                                    : 'You went through your queue. We will add more as we find matches for your taste.'
+                            }}
                         </p>
                     </div>
                 </div>

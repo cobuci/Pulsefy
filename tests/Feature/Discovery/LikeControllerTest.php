@@ -80,3 +80,26 @@ test('like fails validation with missing required fields', function (): void {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['spotify_id', 'name']);
 });
+
+test('unlike removes discovery liked track and like interaction', function (): void {
+    $user = User::factory()->create();
+    $track = Track::factory()->create(['spotify_id' => 'AAAAAAAAAAAAAAAAAAAAAA']);
+
+    DiscoveryLikedTrack::factory()->create([
+        'user_id' => $user->id,
+        'track_id' => $track->id,
+    ]);
+
+    TrackInteraction::factory()->like()->create([
+        'user_id' => $user->id,
+        'track_id' => $track->id,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('discovery.unlike'), ['spotify_id' => $track->spotify_id])
+        ->assertOk()
+        ->assertJson(['ok' => true, 'liked' => false]);
+
+    expect(DiscoveryLikedTrack::query()->where('user_id', $user->id)->count())->toBe(0)
+        ->and(TrackInteraction::query()->where('user_id', $user->id)->where('type', 'like')->count())->toBe(0);
+});

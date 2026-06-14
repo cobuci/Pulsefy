@@ -12,10 +12,12 @@ use App\Models\UserRecentPlay;
 use App\Models\UserTopArtist;
 use App\Models\UserTopTrack;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Collection as SupportCollection;
 
 final class DiscoveryService
 {
+    public const int MIN_PENDING_BEFORE_TOP_UP = 5;
+
     private const int MAX_CANDIDATES = 60;
 
     private const int MIN_RECOMMENDATIONS = 20;
@@ -35,21 +37,16 @@ final class DiscoveryService
      */
     public function generate(User $user): array
     {
-        $cacheKey = $this->cacheKey($user->id);
-
-        $cached = Cache::get($cacheKey);
-
-        if (is_array($cached) && $cached !== []) {
-            return $cached;
-        }
-
         $daily = $this->findToday($user);
 
         $topArtists = UserTopArtist::query()->where('user_id', $user->id)->with('artist')->get();
         $topTracks = UserTopTrack::query()->where('user_id', $user->id)->with('track.artists')->get();
         $recentPlays = UserRecentPlay::query()->where('user_id', $user->id)->latest('played_at')->limit(200)->with('track.artists')->get();
 
-        $exclusionSet = $this->buildExclusionSet($user->id, $recentPlays);
+        $exclusionSet = array_merge(
+            $this->buildExclusionSet($user->id, $recentPlays),
+            $this->queuedSpotifyIds($user->id),
+        );
         $penalizedArtists = $this->buildPenalizedArtists($user->id);
         $affinityMap = $this->affinityBuilder->build($user, $topArtists, $recentPlays);
         $candidates = $this->candidateResolver->resolve($user, $affinityMap, $topTracks, $exclusionSet, $recentPlays);
@@ -58,7 +55,7 @@ final class DiscoveryService
             $candidates[$id]['match_score'] = $this->scorer->score($candidate, $penalizedArtists);
         }
 
-        $recommendations = $this->selectAndShape($candidates, $user->id);
+        $recommendations = $this->selectAndShape($candidates, $user->id, $this->pendingCount($user));
 
         $daily ??= DailyRecommendation::query()->updateOrCreate(
             ['user_id' => $user->id, 'date' => $this->today()],
@@ -67,40 +64,21 @@ final class DiscoveryService
 
         if ($recommendations !== []) {
             $this->persist($user, $recommendations);
-            $daily->update([
-                'status' => DailyRecommendationStatus::Ready,
-                'generated_at' => now(),
-                'error_message' => null,
-            ]);
-
-            $ttl = now()->secondsUntilEndOfDay();
-            Cache::put($cacheKey, $recommendations, $ttl > 0 ? $ttl : 60);
-        } else {
-            RecommendedTrack::query()
-                ->where('daily_recommendation_id', $daily->id)
-                ->delete();
-
-            $daily->update([
-                'status' => DailyRecommendationStatus::Empty,
-                'generated_at' => now(),
-                'error_message' => null,
-            ]);
-
-            Cache::forget($cacheKey);
         }
+
+        $daily->update([
+            'status' => $recommendations !== [] || $this->pendingCount($user) > 0
+                ? DailyRecommendationStatus::Ready
+                : DailyRecommendationStatus::Empty,
+            'generated_at' => now(),
+            'error_message' => null,
+        ]);
 
         return $recommendations;
     }
 
-    public function cacheKey(int $userId): string
-    {
-        return "discovery:{$userId}:".now()->toDateString();
-    }
-
     public function beginGeneration(User $user): DailyRecommendation
     {
-        Cache::forget($this->cacheKey($user->id));
-
         $daily = $this->findToday($user);
 
         if ($daily !== null) {
@@ -123,6 +101,98 @@ final class DiscoveryService
         ]);
     }
 
+    public function isGenerating(User $user): bool
+    {
+        return $this->processingDaily($user) !== null;
+    }
+
+    public function shouldTopUpQueue(User $user): bool
+    {
+        if ($this->isGenerating($user)) {
+            return false;
+        }
+
+        if ($this->pendingCount($user) >= self::MIN_PENDING_BEFORE_TOP_UP) {
+            return false;
+        }
+
+        $latestDaily = $this->latestDaily($user);
+
+        if ($latestDaily === null) {
+            return true;
+        }
+
+        if ($latestDaily->status->isPending()) {
+            return false;
+        }
+
+        return ! in_array($latestDaily->status, [DailyRecommendationStatus::Failed, DailyRecommendationStatus::Empty], true);
+    }
+
+    public function latestDaily(User $user): ?DailyRecommendation
+    {
+        return DailyRecommendation::query()
+            ->where('user_id', $user->id)
+            ->latest('date')
+            ->first();
+    }
+
+    public function pendingCount(User $user): int
+    {
+        return $this->pendingRecommendations($user)->count();
+    }
+
+    /**
+     * @return SupportCollection<int, RecommendedTrack>
+     */
+    public function pendingRecommendations(User $user): SupportCollection
+    {
+        $interactedTrackIds = TrackInteraction::query()
+            ->where('user_id', $user->id)
+            ->pluck('track_id');
+
+        return RecommendedTrack::query()
+            ->whereHas('recommendation', fn ($query) => $query->where('user_id', $user->id))
+            ->when(
+                $interactedTrackIds->isNotEmpty(),
+                fn ($query) => $query->whereNotIn('track_id', $interactedTrackIds),
+            )
+            ->with(['track.album'])
+            ->join('daily_recommendations', 'daily_recommendations.id', '=', 'recommended_tracks.daily_recommendation_id')
+            ->orderBy('daily_recommendations.date')
+            ->orderBy('recommended_tracks.position')
+            ->select('recommended_tracks.*')
+            ->get();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function pendingRecommendationsForInertia(User $user): array
+    {
+        return $this->pendingRecommendations($user)
+            ->map(fn (RecommendedTrack $recommendedTrack) => [
+                'spotify_id' => $recommendedTrack->track->spotify_id,
+                'name' => $recommendedTrack->track->name,
+                'artist' => $recommendedTrack->artist_name,
+                /** @phpstan-ignore nullsafe.neverNull */
+                'album' => $recommendedTrack->track->album?->name ?? '',
+                'image_url' => $recommendedTrack->track->image_url,
+                'match_score' => $recommendedTrack->match_score,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function processingDaily(User $user): ?DailyRecommendation
+    {
+        return DailyRecommendation::query()
+            ->where('user_id', $user->id)
+            ->where('status', DailyRecommendationStatus::Processing)
+            ->latest('started_at')
+            ->first();
+    }
+
     private function today(): string
     {
         return now()->toDateString();
@@ -134,6 +204,19 @@ final class DiscoveryService
             ->where('user_id', $user->id)
             ->whereDate('date', $this->today())
             ->first();
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function queuedSpotifyIds(int $userId): array
+    {
+        $ids = RecommendedTrack::query()
+            ->whereHas('recommendation', fn ($query) => $query->where('user_id', $userId))
+            ->join('tracks', 'tracks.id', '=', 'recommended_tracks.track_id')
+            ->pluck('tracks.spotify_id');
+
+        return array_fill_keys($ids->all(), true);
     }
 
     /**
@@ -173,8 +256,8 @@ final class DiscoveryService
 
         $cutoff = now()->subDays(self::SUPPRESSION_WINDOW_DAYS);
         $recent = $recentPlays
-            ->filter(fn (UserRecentPlay $p) => $p->played_at->gt($cutoff))
-            ->map(fn (UserRecentPlay $p) => $p->track->spotify_id)
+            ->filter(fn (UserRecentPlay $play) => $play->played_at->gt($cutoff))
+            ->map(fn (UserRecentPlay $play) => $play->track->spotify_id)
             ->filter()
             ->flip()
             ->all();
@@ -193,13 +276,13 @@ final class DiscoveryService
      * @param  array<string, array<string, mixed>>  $candidates
      * @return array<int, array<string, mixed>>
      */
-    private function selectAndShape(array $candidates, int $userId): array
+    private function selectAndShape(array $candidates, int $userId, int $pendingCount): array
     {
         uasort($candidates, fn ($a, $b) => $b['match_score'] <=> $a['match_score']);
         $top = array_slice($candidates, 0, self::MAX_CANDIDATES, true);
 
         $keys = array_keys($top);
-        $this->seededShuffle($keys, $userId + (int) now()->format('Ymd'));
+        $this->seededShuffle($keys, $userId + $pendingCount + (int) now()->format('Ymd'));
 
         $count = min(max(count($keys), self::MIN_RECOMMENDATIONS), self::MAX_RECOMMENDATIONS);
         $keys = array_slice($keys, 0, $count);
@@ -226,20 +309,36 @@ final class DiscoveryService
      */
     private function persist(User $user, array $recommendations): void
     {
-        $daily = DailyRecommendation::updateOrCreate(
+        $daily = DailyRecommendation::query()->updateOrCreate(
             ['user_id' => $user->id, 'date' => $this->today()],
             ['generated_at' => now()],
         );
 
-        foreach ($recommendations as $position => $rec) {
-            RecommendedTrack::updateOrCreate(
-                ['daily_recommendation_id' => $daily->id, 'track_id' => $rec['track_id']],
-                [
-                    'artist_name' => $rec['artist_name'] ?? '',
-                    'match_score' => $rec['match_score'],
-                    'position' => $position + 1,
-                ],
-            );
+        $existingTrackIds = RecommendedTrack::query()
+            ->whereHas('recommendation', fn ($query) => $query->where('user_id', $user->id))
+            ->pluck('track_id')
+            ->all();
+
+        $position = (int) (RecommendedTrack::query()
+            ->whereHas('recommendation', fn ($query) => $query->where('user_id', $user->id))
+            ->max('position') ?? 0);
+
+        foreach ($recommendations as $recommendation) {
+            if (in_array($recommendation['track_id'], $existingTrackIds, true)) {
+                continue;
+            }
+
+            $position++;
+
+            RecommendedTrack::query()->create([
+                'daily_recommendation_id' => $daily->id,
+                'track_id' => $recommendation['track_id'],
+                'artist_name' => $recommendation['artist_name'] ?? '',
+                'match_score' => $recommendation['match_score'],
+                'position' => $position,
+            ]);
+
+            $existingTrackIds[] = $recommendation['track_id'];
         }
     }
 }

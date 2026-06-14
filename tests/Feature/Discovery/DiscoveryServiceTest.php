@@ -5,11 +5,11 @@ use App\Enums\DailyRecommendationStatus;
 use App\Models\Artist;
 use App\Models\DailyRecommendation;
 use App\Models\DiscoveryLikedTrack;
+use App\Models\RecommendedTrack;
 use App\Models\Track;
 use App\Models\TrackInteraction;
 use App\Models\User;
 use App\Services\Discovery\DiscoveryService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 function makeArtist(string $name): Artist
@@ -88,33 +88,18 @@ it('proceeds gracefully when last.fm returns failure', function (): void {
     expect($result)->toBeArray();
 });
 
-it('returns cached recommendations on second call without regenerating', function (): void {
+it('appends recommendations without replacing the existing queue', function (): void {
     $user = User::factory()->create();
-    $cacheKey = "discovery:{$user->id}:".now()->toDateString();
+    $daily = DailyRecommendation::factory()->forToday()->create(['user_id' => $user->id]);
+    $existingTrack = Track::factory()->create(['spotify_id' => 'EXISTINGTRACK00000001']);
 
-    $cached = [
-        [
-            'track_id' => 1,
-            'match_score' => 75,
-        ],
-    ];
-    Cache::put($cacheKey, $cached, 3600);
-
-    DiscoveryRecommendationAgent::fake()->preventStrayPrompts();
-    Http::fake();
-
-    $result = app(DiscoveryService::class)->generate($user);
-
-    Http::assertNothingSent();
-    DiscoveryRecommendationAgent::assertNeverPrompted();
-    expect($result)->toBe($cached);
-});
-
-it('does not cache empty generation results', function (): void {
-    $user = User::factory()->create();
-    $cacheKey = app(DiscoveryService::class)->cacheKey($user->id);
-
-    Cache::forget($cacheKey);
+    RecommendedTrack::factory()->create([
+        'daily_recommendation_id' => $daily->id,
+        'track_id' => $existingTrack->id,
+        'artist_name' => 'Existing Artist',
+        'match_score' => 90,
+        'position' => 1,
+    ]);
 
     DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
     Http::fake([
@@ -123,7 +108,42 @@ it('does not cache empty generation results', function (): void {
 
     app(DiscoveryService::class)->generate($user);
 
-    expect(Cache::has($cacheKey))->toBeFalse();
+    expect(RecommendedTrack::query()->whereHas('recommendation', fn ($query) => $query->where('user_id', $user->id))->count())->toBe(1);
+});
+
+it('keeps pending recommendations from previous days visible', function (): void {
+    $user = User::factory()->create();
+    $yesterday = DailyRecommendation::factory()->create([
+        'user_id' => $user->id,
+        'date' => now()->subDay()->toDateString(),
+    ]);
+    $track = Track::factory()->create(['spotify_id' => 'YESTERDAY00000000001']);
+
+    RecommendedTrack::factory()->create([
+        'daily_recommendation_id' => $yesterday->id,
+        'track_id' => $track->id,
+        'artist_name' => 'Yesterday Artist',
+        'match_score' => 88,
+        'position' => 1,
+    ]);
+
+    $pending = app(DiscoveryService::class)->pendingRecommendationsForInertia($user);
+
+    expect($pending)->toHaveCount(1)
+        ->and($pending[0]['spotify_id'])->toBe('YESTERDAY00000000001');
+});
+
+it('marks daily recommendation as empty when generation produces no pending tracks', function (): void {
+    $user = User::factory()->create();
+
+    DiscoveryRecommendationAgent::fake(fn () => ['tracks' => []]);
+    Http::fake([
+        'ws.audioscrobbler.com/*' => Http::response(['similarartists' => ['artist' => []]], 200),
+    ]);
+
+    app(DiscoveryService::class)->generate($user);
+
+    expect(app(DiscoveryService::class)->pendingCount($user))->toBe(0);
 });
 
 it('boosts affinity for artists of previously liked tracks', function (): void {

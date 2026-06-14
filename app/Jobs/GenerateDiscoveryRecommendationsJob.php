@@ -20,13 +20,15 @@ final class GenerateDiscoveryRecommendationsJob implements ShouldBeUnique, Shoul
 
     public int $tries = 3;
 
+    public int $uniqueFor = 300;
+
     public function __construct(
         public readonly User $user,
     ) {}
 
     public function uniqueId(): string
     {
-        return $this->user->id.'_'.now()->toDateString();
+        return (string) $this->user->id;
     }
 
     /**

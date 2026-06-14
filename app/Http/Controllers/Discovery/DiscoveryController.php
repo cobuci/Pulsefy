@@ -7,9 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Discovery\IgnoreTrackRequest;
 use App\Http\Requests\Discovery\LikeTrackRequest;
 use App\Http\Requests\Discovery\SkipTrackRequest;
+use App\Http\Requests\Discovery\UnlikeTrackRequest;
 use App\Jobs\GenerateDiscoveryRecommendationsJob;
-use App\Models\DailyRecommendation;
-use App\Models\TrackInteraction;
 use App\Models\User;
 use App\Services\Discovery\DiscoveryLikeService;
 use App\Services\Discovery\DiscoveryService;
@@ -26,47 +25,48 @@ final class DiscoveryController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $daily = DailyRecommendation::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->with(['tracks.track.album'])
-            ->first();
+        $processingDaily = $discovery->processingDaily($user);
 
-        if ($daily === null) {
-            $discovery->beginGeneration($user);
-            GenerateDiscoveryRecommendationsJob::dispatch($user);
+        if ($processingDaily?->isStale()) {
+            $processingDaily->markFailed('Recommendation generation timed out. Please try again.');
+            $processingDaily = null;
+        }
 
+        $pendingCount = $discovery->pendingCount($user);
+
+        if ($processingDaily !== null && $pendingCount === 0) {
             return $this->generatingResponse();
         }
 
-        if ($daily->isStale()) {
-            $daily->markFailed('Recommendation generation timed out. Please try again.');
-            $daily->refresh();
+        if ($discovery->shouldTopUpQueue($user)) {
+            $this->dispatchGeneration($discovery, $user);
+            $processingDaily = $discovery->processingDaily($user);
         }
 
-        if ($daily->status->isPending()) {
+        if ($pendingCount > 0) {
+            return $this->readyResponse($discovery, $user, $processingDaily !== null);
+        }
+
+        if ($processingDaily !== null) {
             return $this->generatingResponse();
         }
 
-        if ($daily->status === DailyRecommendationStatus::Failed) {
-            return Inertia::render('Discovery/Index', [
-                'status' => 'failed',
-                'recommendations' => [],
-                'error_message' => $daily->error_message ?? 'Recommendation generation failed. Please try again.',
-                'can_retry' => true,
-            ]);
+        $latestDaily = $discovery->latestDaily($user);
+
+        if ($latestDaily?->status === DailyRecommendationStatus::Failed) {
+            return $this->terminalResponse(
+                'failed',
+                $latestDaily->error_message ?? 'Recommendation generation failed. Please try again.',
+            );
         }
 
-        if ($daily->status === DailyRecommendationStatus::Empty) {
-            return Inertia::render('Discovery/Index', [
-                'status' => 'empty',
-                'recommendations' => [],
-                'error_message' => null,
-                'can_retry' => true,
-            ]);
+        if ($latestDaily?->status === DailyRecommendationStatus::Empty) {
+            return $this->terminalResponse('empty');
         }
 
-        return $this->readyResponse($user, $daily);
+        $this->dispatchGeneration($discovery, $user);
+
+        return $this->generatingResponse();
     }
 
     public function retry(Request $request, DiscoveryService $discovery): RedirectResponse
@@ -74,17 +74,11 @@ final class DiscoveryController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $daily = DailyRecommendation::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
-            ->first();
-
-        if ($daily !== null && $daily->status->isPending()) {
+        if ($discovery->processingDaily($user) !== null) {
             return redirect()->route('discovery.index');
         }
 
-        $discovery->beginGeneration($user);
-        GenerateDiscoveryRecommendationsJob::dispatch($user);
+        $this->dispatchGeneration($discovery, $user);
 
         return redirect()->route('discovery.index');
     }
@@ -94,6 +88,13 @@ final class DiscoveryController extends Controller
         $likes->like($request->user(), $request->validated());
 
         return response()->json(['ok' => true, 'liked' => true]);
+    }
+
+    public function unlike(UnlikeTrackRequest $request, DiscoveryLikeService $likes): JsonResponse
+    {
+        $likes->unlike($request->user(), $request->validated('spotify_id'));
+
+        return response()->json(['ok' => true, 'liked' => false]);
     }
 
     public function skip(SkipTrackRequest $request, DiscoveryLikeService $likes): JsonResponse
@@ -110,6 +111,12 @@ final class DiscoveryController extends Controller
         return response()->json(['ok' => true, 'ignored' => true]);
     }
 
+    private function dispatchGeneration(DiscoveryService $discovery, User $user): void
+    {
+        $discovery->beginGeneration($user);
+        GenerateDiscoveryRecommendationsJob::dispatch($user);
+    }
+
     private function generatingResponse(): Response
     {
         return Inertia::render('Discovery/Index', [
@@ -117,33 +124,29 @@ final class DiscoveryController extends Controller
             'recommendations' => [],
             'error_message' => null,
             'can_retry' => false,
+            'is_topping_up' => false,
         ]);
     }
 
-    private function readyResponse(User $user, DailyRecommendation $daily): Response
+    private function readyResponse(DiscoveryService $discovery, User $user, bool $isToppingUp): Response
     {
-        $interactedTrackIds = TrackInteraction::query()
-            ->where('user_id', $user->id)
-            ->whereIn('track_id', $daily->tracks->pluck('track_id'))
-            ->pluck('track_id')
-            ->flip()
-            ->all();
-
         return Inertia::render('Discovery/Index', [
             'status' => 'ready',
-            'recommendations' => $daily->tracks
-                ->reject(fn ($rt) => isset($interactedTrackIds[$rt->track_id]))
-                ->map(fn ($rt) => [
-                    'spotify_id' => $rt->track->spotify_id,
-                    'name' => $rt->track->name,
-                    'artist' => $rt->artist_name,
-                    /** @phpstan-ignore nullsafe.neverNull */
-                    'album' => $rt->track->album?->name ?? '',
-                    'image_url' => $rt->track->image_url,
-                    'match_score' => $rt->match_score,
-                ])->values()->all(),
+            'recommendations' => $discovery->pendingRecommendationsForInertia($user),
             'error_message' => null,
             'can_retry' => false,
+            'is_topping_up' => $isToppingUp,
+        ]);
+    }
+
+    private function terminalResponse(string $status, ?string $errorMessage = null): Response
+    {
+        return Inertia::render('Discovery/Index', [
+            'status' => $status,
+            'recommendations' => [],
+            'error_message' => $errorMessage,
+            'can_retry' => true,
+            'is_topping_up' => false,
         ]);
     }
 }

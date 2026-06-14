@@ -36,6 +36,7 @@ test('creates daily record dispatches job and returns generating status when no 
             ->where('status', 'generating')
             ->where('recommendations', [])
             ->where('can_retry', false)
+            ->where('is_topping_up', false)
         );
 
     expect(DailyRecommendation::query()->where('user_id', $user->id)->count())->toBe(1);
@@ -98,6 +99,7 @@ test('returns failed status when generation failed', function () {
             ->where('status', 'failed')
             ->where('error_message', 'Gemini unavailable')
             ->where('can_retry', true)
+            ->where('is_topping_up', false)
         );
 });
 
@@ -114,7 +116,40 @@ test('returns empty status when generation produced no tracks', function () {
             ->where('status', 'empty')
             ->where('recommendations', [])
             ->where('can_retry', true)
+            ->where('is_topping_up', false)
         );
+});
+
+test('returns ready status with recommendations accumulated across days', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $yesterday = DailyRecommendation::factory()->create([
+        'user_id' => $user->id,
+        'date' => now()->subDay()->toDateString(),
+    ]);
+    $track = Track::factory()->create(['spotify_id' => 'TRACK001', 'name' => 'Test Track']);
+
+    RecommendedTrack::factory()->create([
+        'daily_recommendation_id' => $yesterday->id,
+        'track_id' => $track->id,
+        'artist_name' => 'Test Artist',
+        'match_score' => 80,
+        'position' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('discovery.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Discovery/Index')
+            ->where('status', 'ready')
+            ->has('recommendations', 1)
+            ->where('recommendations.0.spotify_id', 'TRACK001')
+            ->where('is_topping_up', true)
+        );
+
+    Queue::assertPushed(GenerateDiscoveryRecommendationsJob::class);
 });
 
 test('returns ready status with recommendations when they exist for today', function () {
@@ -142,9 +177,10 @@ test('returns ready status with recommendations when they exist for today', func
             ->where('recommendations.0.spotify_id', 'TRACK001')
             ->where('recommendations.0.artist', 'Test Artist')
             ->where('recommendations.0.match_score', 80)
+            ->where('is_topping_up', true)
         );
 
-    Queue::assertNotPushed(GenerateDiscoveryRecommendationsJob::class);
+    Queue::assertPushed(GenerateDiscoveryRecommendationsJob::class);
 });
 
 test('retry restarts generation for failed daily recommendations', function () {

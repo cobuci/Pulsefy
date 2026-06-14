@@ -6,7 +6,6 @@ use App\Models\DiscoveryLikedTrack;
 use App\Models\Track;
 use App\Models\TrackInteraction;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 
 final class DiscoveryLikeService
 {
@@ -37,8 +36,26 @@ final class DiscoveryLikeService
             ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'like'],
             ['interacted_at' => now(), 'expires_at' => null],
         );
+    }
 
-        Cache::forget("discovery:{$user->id}:".now()->toDateString());
+    public function unlike(User $user, string $spotifyId): void
+    {
+        $track = Track::query()->where('spotify_id', $spotifyId)->first();
+
+        if ($track === null) {
+            return;
+        }
+
+        DiscoveryLikedTrack::query()
+            ->where('user_id', $user->id)
+            ->where('track_id', $track->id)
+            ->delete();
+
+        TrackInteraction::query()
+            ->where('user_id', $user->id)
+            ->where('track_id', $track->id)
+            ->where('type', 'like')
+            ->delete();
     }
 
     public function ignore(User $user, string $spotifyId): void
@@ -52,8 +69,6 @@ final class DiscoveryLikeService
             ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'ignore'],
             ['interacted_at' => now(), 'expires_at' => null],
         );
-
-        Cache::forget("discovery:{$user->id}:".now()->toDateString());
     }
 
     public function skip(User $user, string $spotifyId): void
@@ -67,7 +82,5 @@ final class DiscoveryLikeService
             ['user_id' => $user->id, 'track_id' => $track->id, 'type' => 'skip'],
             ['interacted_at' => now(), 'expires_at' => now()->addDays(14)],
         );
-
-        Cache::forget("discovery:{$user->id}:".now()->toDateString());
     }
 }
